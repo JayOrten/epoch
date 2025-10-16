@@ -1,0 +1,12 @@
+/home/jayo/repos/aegis/Engine/bin/Debug/net8.0/Engine.deps.json
+/home/jayo/repos/aegis/Engine/bin/Debug/net8.0/Engine.dll
+/home/jayo/repos/aegis/Engine/bin/Debug/net8.0/Engine.pdb
+/home/jayo/repos/aegis/Engine/obj/Debug/net8.0/Engine.csproj.AssemblyReference.cache
+/home/jayo/repos/aegis/Engine/obj/Debug/net8.0/Engine.GeneratedMSBuildEditorConfig.editorconfig
+/home/jayo/repos/aegis/Engine/obj/Debug/net8.0/Engine.AssemblyInfoInputs.cache
+/home/jayo/repos/aegis/Engine/obj/Debug/net8.0/Engine.AssemblyInfo.cs
+/home/jayo/repos/aegis/Engine/obj/Debug/net8.0/Engine.csproj.CoreCompileInputs.cache
+/home/jayo/repos/aegis/Engine/obj/Debug/net8.0/Engine.dll
+/home/jayo/repos/aegis/Engine/obj/Debug/net8.0/refint/Engine.dll
+/home/jayo/repos/aegis/Engine/obj/Debug/net8.0/Engine.pdb
+/home/jayo/repos/aegis/Engine/obj/Debug/net8.0/ref/Engine.dll
