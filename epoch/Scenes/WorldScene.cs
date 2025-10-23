@@ -58,10 +58,26 @@ public class WorldScene : Scene
         return movementDirection;
     }
 
+    private void AdjustZoom()
+    {
+        var state = Keyboard.GetState();
+        float zoomPerTick = 0.01f;
+        if (state.IsKeyDown(Keys.Z))
+        {
+            _camera.ZoomIn(zoomPerTick);
+        }
+        if (state.IsKeyDown(Keys.X))
+        {
+            _camera.ZoomOut(zoomPerTick);
+        }
+    }
+
     public override void Update(GameTime gameTime)
     {
-        const float movementSpeed = 200;
+        const float movementSpeed = 1000;
         _camera.Move(GetMovementDirection() * movementSpeed * gameTime.GetElapsedSeconds());
+
+        AdjustZoom();
     }
 
     public override void Draw(GameTime gameTime)
