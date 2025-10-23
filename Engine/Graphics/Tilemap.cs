@@ -120,7 +120,7 @@ public class Tilemap
             int x = i % Columns;
             int y = i / Columns;
 
-            Vector2 position = new Vector2((x * TileWidth)-30, (y * TileHeight)-20);
+            Vector2 position = new Vector2(x * TileWidth, y * TileHeight);
             Console.WriteLine(position);
             tile.Draw(spriteBatch, position, Color.White, 0.0f, Vector2.Zero, Scale, SpriteEffects.None, 1.0f);
         }
