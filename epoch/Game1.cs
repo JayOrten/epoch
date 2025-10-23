@@ -3,14 +3,14 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Engine;
 using Engine.Scenes;
-using aegis.Scenes;
+using epoch.Scenes;
 
-namespace aegis;
+namespace epoch;
 
 public class Game1 : Core
 {
 
-    public Game1(): base("aegis", 1280, 720, false)
+    public Game1(): base("epoch", 1280, 720, false)
     {
 
     }

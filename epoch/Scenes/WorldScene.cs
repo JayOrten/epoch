@@ -6,7 +6,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Audio;
 
-namespace aegis.Scenes;
+namespace epoch.Scenes;
 
 public class WorldScene : Scene
 {

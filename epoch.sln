@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "aegis", "aegis\aegis.csproj", "{F843ACAC-3D0E-4613-B1A7-6635B1F46177}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "epoch", "epoch\epoch.csproj", "{F843ACAC-3D0E-4613-B1A7-6635B1F46177}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Engine", "Engine\Engine.csproj", "{BEDBF78A-6BE7-442A-9774-1C10DE6F9C29}"
 EndProject
