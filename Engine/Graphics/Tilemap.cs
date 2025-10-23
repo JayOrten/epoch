@@ -120,7 +120,8 @@ public class Tilemap
             int x = i % Columns;
             int y = i / Columns;
 
-            Vector2 position = new Vector2(x * TileWidth, y * TileHeight);
+            Vector2 position = new Vector2((x * TileWidth)-30, (y * TileHeight)-20);
+            Console.WriteLine(position);
             tile.Draw(spriteBatch, position, Color.White, 0.0f, Vector2.Zero, Scale, SpriteEffects.None, 1.0f);
         }
     }
@@ -168,7 +169,11 @@ public class Tilemap
 
                 int tileWidth = int.Parse(tilesetElement.Attribute("tileWidth").Value);
                 int tileHeight = int.Parse(tilesetElement.Attribute("tileHeight").Value);
+                int padding = int.Parse(tilesetElement.Attribute("padding")?.Value ?? "0");
                 string contentPath = tilesetElement.Value;
+
+                XElement tilesetNamesElement = root.Element("TilesetNames");
+                string tilesetNamesPath = tilesetNamesElement != null ? tilesetNamesElement.Value : null;
 
                 // Load the texture 2d at the content path
                 Texture2D texture = content.Load<Texture2D>(contentPath);
@@ -177,7 +182,7 @@ public class Tilemap
                 TextureRegion textureRegion = new TextureRegion(texture, x, y, width, height);
 
                 // Create the tileset using the texture region
-                Tileset tileset = new Tileset(textureRegion, tileWidth, tileHeight);
+                Tileset tileset = new Tileset(textureRegion, tileWidth, tileHeight, padding, tilesetNamesPath);
 
                 // The <Tiles> element contains lines of strings where each line
                 // represents a row in the tilemap.  Each line is a space

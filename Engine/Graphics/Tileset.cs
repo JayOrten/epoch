@@ -1,9 +1,17 @@
+using System;
+using System.IO;
+using System.Collections.Generic;
+using Microsoft.Xna.Framework.Graphics;
+using System.Text.Json;
+
 namespace Engine.Graphics;
 
 public class Tileset
 {
     private readonly TextureRegion[] _tiles;
 
+    private Dictionary<string, int> _namedTiles;
+    
     /// <summary>
     /// Gets the width, in pixels, of each tile in this tileset.
     /// </summary>
@@ -36,12 +44,13 @@ public class Tileset
     /// <param name="textureRegion">The texture region that contains the tiles for the tileset.</param>
     /// <param name="tileWidth">The width of each tile in the tileset.</param>
     /// <param name="tileHeight">The height of each tile in the tileset.</param>
-    public Tileset(TextureRegion textureRegion, int tileWidth, int tileHeight)
+    /// <param name="padding">The amount of padding, in pixels, between tiles in the tileset. This is assuming the border also has this padding</param>
+    public Tileset(TextureRegion textureRegion, int tileWidth, int tileHeight, int padding=0, string path=null)
     {
         TileWidth = tileWidth;
         TileHeight = tileHeight;
-        Columns = textureRegion.Width / tileWidth;
-        Rows = textureRegion.Height / tileHeight;
+        Columns = (textureRegion.Width - padding) / (tileWidth + padding); // Subtract one padding for end, and add padding for each column
+        Rows = (textureRegion.Height - padding) / (tileHeight + padding);
         Count = Columns * Rows;
 
         // Create the texture regions that make up each individual tile
@@ -49,10 +58,26 @@ public class Tileset
 
         for (int i = 0; i < Count; i++)
         {
-            int x = i % Columns * tileWidth;
-            int y = i / Columns * tileHeight;
+            int x = (i % Columns) * (tileWidth + padding) + padding;
+            int y = (i / Columns) * (tileHeight + padding) + padding;
             _tiles[i] = new TextureRegion(textureRegion.Texture, textureRegion.SourceRectangle.X + x, textureRegion.SourceRectangle.Y + y, tileWidth, tileHeight);
         }
+
+        // Load named tiles if a path is provided
+        if (path != null)
+            LoadNamesFromFile(path);
+    }
+
+    public void LoadNamesFromFile(string path)
+    {
+        _namedTiles = new Dictionary<string, int>();
+        var json = File.ReadAllText(path);
+        var data = JsonSerializer.Deserialize<Dictionary<string, int>>(json);
+        foreach (var kvp in data)
+        {
+            _namedTiles[kvp.Key] = kvp.Value;
+        }
+        
     }
 
     /// <summary>
@@ -72,6 +97,15 @@ public class Tileset
     {
         int index = row * Columns + column;
         return GetTile(index);
+    }
+
+    public TextureRegion GetTile(string name)
+    {
+        if (_namedTiles != null && _namedTiles.TryGetValue(name, out int index))
+        {
+            return GetTile(index);
+        }
+        throw new KeyNotFoundException($"Tile with name '{name}' not found in tileset.");
     }
 
 }
