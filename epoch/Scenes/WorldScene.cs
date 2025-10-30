@@ -1,10 +1,11 @@
 using Engine;
-using Engine.Scenes;
 using Engine.Graphics;
+using Engine.Scenes;
+using epoch.Utilities;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using Microsoft.Xna.Framework.Audio;
 using MonoGame.Extended;
 using MonoGame.Extended.ViewportAdapters;
 
@@ -12,26 +13,42 @@ namespace epoch.Scenes;
 
 public class WorldScene : Scene
 {
-    private Tilemap _tilemap;
-
     private OrthographicCamera _camera;
-    
+
     public override void Initialize()
     {
         base.Initialize();
 
-        var viewportAdapter = new BoxingViewportAdapter(Core.Instance.Window, Core.GraphicsDevice, 1280, 720);
+        var viewportAdapter = new BoxingViewportAdapter(
+            Core.Instance.Window,
+            Core.GraphicsDevice,
+            1280,
+            720
+        );
         _camera = new OrthographicCamera(viewportAdapter);
     }
 
     public override void LoadContent()
     {
-        // Load textures
-        TextureAtlas atlas = TextureAtlas.FromFile(Core.Content, "images/atlas-definition.xml");
+        // Load textures; unnecessary for now.
+        // TextureAtlas atlas = TextureAtlas.FromFile(Core.Content, "images/atlas-definition.xml");
 
         // Create the tilemap from the XML file
-        _tilemap = Tilemap.FromFile(Content, "images/tilemap-definition.xml");
-        _tilemap.Scale = new Vector2(8.0f, 8.0f);
+        // _tilemap = Tilemap.FromFile(Content, "images/tilemap-definition.xml");
+        // _tilemap.Scale = new Vector2(8.0f, 8.0f);
+
+        TileMode mode = TileMode.Ascii;
+        string tileDefinitionsPath = ContentPaths.Config("tile-definitions");
+        string tileSetPath = ContentPaths.Image($"{mode}-tileset");
+
+        // Load tile definitions
+        TileDefinitions tileDefinitions = TileDefinitions.FromFile(Content, tileDefinitionsPath);
+
+        // Load tileset
+        Tileset tileset = Tileset.FromFile(Content, tileSetPath);
+
+        // Create the tile manager
+        TileManager tileManager = new TileManager(tileset, tileDefinitions, mode);
     }
 
     private Vector2 GetMovementDirection()
@@ -54,7 +71,7 @@ public class WorldScene : Scene
         {
             movementDirection += Vector2.UnitX;
         }
-        
+
         return movementDirection;
     }
 
@@ -82,12 +99,14 @@ public class WorldScene : Scene
 
     public override void Draw(GameTime gameTime)
     {
-        Core.GraphicsDevice.Clear(Color.CornflowerBlue);
+        Core.GraphicsDevice.Clear(Color.Black);
 
         var transformMatrix = _camera.GetViewMatrix();
-        
-        Core.SpriteBatch.Begin(samplerState: SamplerState.PointClamp, transformMatrix: transformMatrix);
-        _tilemap.Draw(Core.SpriteBatch);
+
+        Core.SpriteBatch.Begin(
+            samplerState: SamplerState.PointClamp,
+            transformMatrix: transformMatrix
+        );
         Core.SpriteBatch.End();
     }
 }

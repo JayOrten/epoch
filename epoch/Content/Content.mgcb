@@ -14,14 +14,32 @@
 
 #---------------------------------- Content ---------------------------------#
 
-#begin images/atlas-definition.xml
-/copy:images/atlas-definition.xml
+#begin config/ascii-tileset.json
+/copy:config/ascii-tileset.json
 
-#begin images/tilemap-definition.xml
-/copy:images/tilemap-definition.xml
+#begin config/atlas-definition.xml
+/copy:config/atlas-definition.xml
 
-#begin images/tileset-names.json
-/copy:images/tileset-names.json
+#begin config/graphical-tileset.json
+/copy:config/graphical-tileset.json
+
+#begin config/tile-definitions.json
+/copy:config/tile-definitions.json
+
+#begin config/tilemap-definition.xml
+/copy:config/tilemap-definition.xml
+
+#begin images/Terbert_7x7.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:images/Terbert_7x7.png
 
 #begin images/urizen_onebit_tileset__v2d0.png
 /importer:TextureImporter

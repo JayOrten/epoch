@@ -1,17 +1,20 @@
-using System;
 using System.IO;
-using System.Collections.Generic;
-using Microsoft.Xna.Framework.Graphics;
 using System.Text.Json;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Content;
+using Microsoft.Xna.Framework.Graphics;
 
 namespace Engine.Graphics;
 
+/// <summary>
+/// Represents a tileset, a collection of tiles extracted from a single texture region.
+/// This class is focused on loading from file and splitting up the texture into a grid
+/// The tiles are then accessed by index or by column/row.
+/// </summary>
 public class Tileset
 {
     private readonly TextureRegion[] _tiles;
 
-    private Dictionary<string, int> _namedTiles;
-    
     /// <summary>
     /// Gets the width, in pixels, of each tile in this tileset.
     /// </summary>
@@ -45,7 +48,7 @@ public class Tileset
     /// <param name="tileWidth">The width of each tile in the tileset.</param>
     /// <param name="tileHeight">The height of each tile in the tileset.</param>
     /// <param name="padding">The amount of padding, in pixels, between tiles in the tileset. This is assuming the border also has this padding</param>
-    public Tileset(TextureRegion textureRegion, int tileWidth, int tileHeight, int padding=0, string path=null)
+    public Tileset(TextureRegion textureRegion, int tileWidth, int tileHeight, int padding = 0)
     {
         TileWidth = tileWidth;
         TileHeight = tileHeight;
@@ -60,24 +63,40 @@ public class Tileset
         {
             int x = (i % Columns) * (tileWidth + padding) + padding;
             int y = (i / Columns) * (tileHeight + padding) + padding;
-            _tiles[i] = new TextureRegion(textureRegion.Texture, textureRegion.SourceRectangle.X + x, textureRegion.SourceRectangle.Y + y, tileWidth, tileHeight);
+            _tiles[i] = new TextureRegion(
+                textureRegion.Texture,
+                textureRegion.SourceRectangle.X + x,
+                textureRegion.SourceRectangle.Y + y,
+                tileWidth,
+                tileHeight
+            );
         }
-
-        // Load named tiles if a path is provided
-        if (path != null)
-            LoadNamesFromFile(path);
     }
 
-    public void LoadNamesFromFile(string path)
+    public static Tileset FromFile(ContentManager contentManager, string tilesetPath)
     {
-        _namedTiles = new Dictionary<string, int>();
-        var json = File.ReadAllText(path);
-        var data = JsonSerializer.Deserialize<Dictionary<string, int>>(json);
-        foreach (var kvp in data)
-        {
-            _namedTiles[kvp.Key] = kvp.Value;
-        }
-        
+        string fullPath = Path.Combine(contentManager.RootDirectory, tilesetPath);
+
+        using var stream = TitleContainer.OpenStream(fullPath);
+        using var reader = new StreamReader(stream);
+
+        // Load the tileset definition from a JSON file
+        string json = reader.ReadToEnd();
+        var tiledef = JsonSerializer.Deserialize<TilesetDefinition>(json);
+
+        Texture2D texture = contentManager.Load<Texture2D>(tiledef.file);
+
+        // Load the texture region for the tileset
+        TextureRegion textureRegion = new TextureRegion(
+            texture,
+            tiledef.region.x,
+            tiledef.region.y,
+            tiledef.region.width,
+            tiledef.region.height
+        );
+
+        // Create and return the tileset
+        return new Tileset(textureRegion, tiledef.tile_width, tiledef.tile_height, tiledef.padding);
     }
 
     /// <summary>
@@ -98,16 +117,21 @@ public class Tileset
         int index = row * Columns + column;
         return GetTile(index);
     }
-
-    public TextureRegion GetTile(string name)
-    {
-        if (_namedTiles != null && _namedTiles.TryGetValue(name, out int index))
-        {
-            return GetTile(index);
-        }
-        throw new KeyNotFoundException($"Tile with name '{name}' not found in tileset.");
-    }
-
 }
 
+public class Region
+{
+    public int x { get; set; }
+    public int y { get; set; }
+    public int width { get; set; }
+    public int height { get; set; }
+}
 
+public class TilesetDefinition
+{
+    public string file { get; set; }
+    public Region region { get; set; }
+    public int tile_width { get; set; }
+    public int tile_height { get; set; }
+    public int padding { get; set; }
+}

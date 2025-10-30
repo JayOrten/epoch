@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<!-- This tileset is 12x12 with 1 pixel border and 1 pixel between tiles. -->
+<!-- This tileset is 7x7 with 0 pixel border and 1 pixel between tiles. -->
 <TextureAtlas>
-    <Texture>images/urizen_onebit_tileset__v2d0</Texture>
+    <Texture>images/Terbert_7x7</Texture>
     <Regions>
     </Regions>
     <Animations>
