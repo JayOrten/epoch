@@ -1,3 +1,4 @@
+using System;
 using Engine;
 using Engine.Graphics;
 using Engine.Scenes;
@@ -39,16 +40,19 @@ public class WorldScene : Scene
 
         TileMode mode = TileMode.Ascii;
         string tileDefinitionsPath = ContentPaths.Config("tile-definitions");
-        string tileSetPath = ContentPaths.Image($"{mode}-tileset");
+        string tileSetPath = ContentPaths.Config("ascii-tileset");
 
         // Load tile definitions
-        TileDefinitions tileDefinitions = TileDefinitions.FromFile(Content, tileDefinitionsPath);
+        TileDefinitions tileDefinitions = TileDefinitions.FromFile(tileDefinitionsPath);
 
         // Load tileset
         Tileset tileset = Tileset.FromFile(Content, tileSetPath);
 
         // Create the tile manager
         TileManager tileManager = new TileManager(tileset, tileDefinitions, mode);
+
+        // try to get tile by name
+        TileRenderInfo? tileInfo = tileManager.GetTile("grass");
     }
 
     private Vector2 GetMovementDirection()

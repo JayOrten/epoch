@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Text.Json;
 using Microsoft.Xna.Framework;
@@ -75,9 +76,7 @@ public class Tileset
 
     public static Tileset FromFile(ContentManager contentManager, string tilesetPath)
     {
-        string fullPath = Path.Combine(contentManager.RootDirectory, tilesetPath);
-
-        using var stream = TitleContainer.OpenStream(fullPath);
+        using var stream = TitleContainer.OpenStream(tilesetPath);
         using var reader = new StreamReader(stream);
 
         // Load the tileset definition from a JSON file

@@ -1,14 +1,12 @@
 {
-    "graphical_tiles": {
-        "graphical_tile_file": "/images/urizen_onebit_tileset__v2d0.png",
-        "region": {
-            "x": 0,
-            "y": 0,
-            "width": 112,
-            "height": 112
-        },
-        "tile_width": 7,
-        "tile_height": 7,
-        "padding": 1
-    }
+    "file": "images/urizen_onebit_tileset__v2d0",
+    "region": {
+        "x": 0,
+        "y": 0,
+        "width": 724,
+        "height": 176
+    },
+    "tile_width": 12,
+    "tile_height": 12,
+    "padding": 1
 }

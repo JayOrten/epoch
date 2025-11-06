@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -18,20 +19,22 @@ public class TileDefinitions
         _tilesByName = Tiles.ToDictionary(t => t.Name);
     }
 
-    public static TileDefinitions FromFile(ContentManager content, string path)
+    public static TileDefinitions FromFile(string path)
     {
-        // TODO: is the path a full path or relative to content?
-        string fullPath = Path.Combine(content.RootDirectory, path);
-
         // Load and parse the tile definitions from the specified file
         List<Tile> tiles = new List<Tile>();
 
         // Parse tile objects from json file specified by path
-        using var stream = TitleContainer.OpenStream(fullPath);
+        using var stream = TitleContainer.OpenStream(path);
         using var reader = new StreamReader(stream);
 
         string json = reader.ReadToEnd();
-        tiles = System.Text.Json.JsonSerializer.Deserialize<List<Tile>>(json);
+        tiles =
+            System.Text.Json.JsonSerializer.Deserialize<List<Tile>>(
+                json,
+                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+            )
+            ?? new List<Tile>();
 
         return new TileDefinitions(tiles);
     }

@@ -1,11 +1,11 @@
 using System;
+using Engine.Audio;
+using Engine.Input;
+using Engine.Scenes;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using Engine.Audio;
-using Engine.Input;
-using Engine.Scenes;
 
 namespace Engine;
 
@@ -102,7 +102,7 @@ public class Core : Game
         IsMouseVisible = true;
 
         // Exit on escape is true by default
-        ExitOnEscape = true;        
+        ExitOnEscape = true;
     }
 
     protected override void Initialize()
@@ -204,6 +204,33 @@ public class Core : Game
         if (s_activeScene != null)
         {
             s_activeScene.Initialize();
+        }
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        // Dispose managed resources first
+        base.Dispose(disposing);
+
+        if (disposing)
+        {
+            // Reset all singleton and static references
+            s_instance = null;
+            Content = null;
+            SpriteBatch = null;
+            Graphics = null;
+            GraphicsDevice = null;
+            Input = null;
+            Audio = null;
+
+            // Reset scene management
+            s_activeScene?.Dispose();
+            s_activeScene = null;
+            s_nextScene?.Dispose();
+            s_nextScene = null;
+
+            // Reset other static properties
+            ExitOnEscape = true;
         }
     }
 }
