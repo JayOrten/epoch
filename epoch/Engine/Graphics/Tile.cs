@@ -1,4 +1,7 @@
-namespace Engine.Graphics;
+using System.Text.Json.Serialization;
+using Microsoft.Xna.Framework;
+
+namespace epoch.Engine.Graphics;
 
 /// <summary>
 /// Represents a single tile definition.
@@ -8,7 +11,8 @@ public record Tile(
     int Id,
     string Name,
     char AsciiTileIndex,
-    string AsciiColor,
+    string ColorString,
+    [property: JsonIgnore] Color Color,
     int GraphicalTileIndex
 );
 
@@ -18,9 +22,9 @@ public record Tile(
 public struct TileRenderInfo
 {
     public TextureRegion TextureRegion;
-    public string Color;
+    public Color Color;
 
-    public TileRenderInfo(TextureRegion textureRegion, string color)
+    public TileRenderInfo(TextureRegion textureRegion, Color color)
     {
         TextureRegion = textureRegion;
         Color = color;

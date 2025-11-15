@@ -1,11 +1,10 @@
-using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using epoch.Utilities;
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Content;
 
-namespace Engine.Graphics;
+namespace epoch.Engine.Graphics;
 
 public class TileDefinitions
 {
@@ -36,6 +35,13 @@ public class TileDefinitions
             )
             ?? new List<Tile>();
 
+        // Convert string color values to Color objects
+        for (int i = 0; i < tiles.Count; i++)
+        {
+            var tile = tiles[i];
+            if (!string.IsNullOrEmpty(tile.ColorString))
+                tiles[i] = tile with { Color = Utils.FromHex(tile.ColorString) };
+        }
         return new TileDefinitions(tiles);
     }
 

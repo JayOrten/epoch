@@ -2,11 +2,10 @@ using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 
-namespace Engine.Scenes;
+namespace epoch.Engine.Scenes;
 
 public abstract class Scene : IDisposable
 {
-
     /// <summary>
     /// Gets the ContentManager used for loading scene-specific assets.
     /// </summary>
@@ -52,6 +51,8 @@ public abstract class Scene : IDisposable
     /// Override to provide logic to load content for the scene.
     /// </summary>
     public virtual void LoadContent() { }
+
+    public virtual void BeginRun() { }
 
     /// <summary>
     /// Unloads scene-specific content.
@@ -102,5 +103,4 @@ public abstract class Scene : IDisposable
             Content.Dispose();
         }
     }
-
 }

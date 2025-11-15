@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Media;
 
-namespace Engine.Audio;
+namespace epoch.Engine.Audio;
 
 public class AudioController : IDisposable
 {
@@ -15,7 +15,7 @@ public class AudioController : IDisposable
 
     // Tracks the volume for sound effect playback when muting and unmuting.
     private float _previousSoundEffectVolume;
-    
+
     /// <summary>
     /// Gets a value that indicates if audio is muted.
     /// </summary>
@@ -32,7 +32,7 @@ public class AudioController : IDisposable
     {
         get
         {
-            if(IsMuted)
+            if (IsMuted)
             {
                 return 0.0f;
             }
@@ -41,7 +41,7 @@ public class AudioController : IDisposable
         }
         set
         {
-            if(IsMuted)
+            if (IsMuted)
             {
                 return;
             }
@@ -61,7 +61,7 @@ public class AudioController : IDisposable
     {
         get
         {
-            if(IsMuted)
+            if (IsMuted)
             {
                 return 0.0f;
             }
@@ -70,14 +70,14 @@ public class AudioController : IDisposable
         }
         set
         {
-            if(IsMuted)
+            if (IsMuted)
             {
                 return;
             }
 
             SoundEffect.MasterVolume = Math.Clamp(value, 0.0f, 1.0f);
         }
-    }    
+    }
 
     /// <summary>
     /// Gets a value that indicates if this audio controller has been disposed.
@@ -135,7 +135,13 @@ public class AudioController : IDisposable
     /// <param name="isLooped">Whether the the sound effect should loop after playback.</param>
     /// <returns>The sound effect instance created by playing the sound effect.</returns>
     /// <returns>The sound effect instance created by this method.</returns>
-    public SoundEffectInstance PlaySoundEffect(SoundEffect soundEffect, float volume, float pitch, float pan, bool isLooped)
+    public SoundEffectInstance PlaySoundEffect(
+        SoundEffect soundEffect,
+        float volume,
+        float pitch,
+        float pan,
+        bool isLooped
+    )
     {
         // Create an instance from the sound effect given.
         SoundEffectInstance soundEffectInstance = soundEffect.CreateInstance();
@@ -261,7 +267,7 @@ public class AudioController : IDisposable
     /// <param name="disposing">Indicates whether managed resources should be disposed.</param>
     protected void Dispose(bool disposing)
     {
-        if(IsDisposed)
+        if (IsDisposed)
         {
             return;
         }
@@ -277,5 +283,4 @@ public class AudioController : IDisposable
 
         IsDisposed = true;
     }
-
 }

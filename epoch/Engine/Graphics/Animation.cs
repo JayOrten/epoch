@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 
-namespace Engine.Graphics;
+namespace epoch.Engine.Graphics;
 
-public class Animation 
+public class Animation
 {
     /// <summary>
     /// The texture regions that make up the frames of this animation.  The order of the regions within the collection
@@ -35,5 +35,4 @@ public class Animation
         Frames = frames;
         Delay = delay;
     }
-
 }

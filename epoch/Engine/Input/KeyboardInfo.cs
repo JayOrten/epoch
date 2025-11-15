@@ -1,9 +1,9 @@
 using Microsoft.Xna.Framework.Input;
 
-namespace Engine.Input;
+namespace epoch.Engine.Input;
 
-public class KeyboardInfo {
-
+public class KeyboardInfo
+{
     /// <summary>
     /// Gets the state of keyboard input during the previous update cycle.
     /// </summary>
@@ -15,7 +15,7 @@ public class KeyboardInfo {
     public KeyboardState CurrentState { get; private set; }
 
     /// <summary>
-    /// Creates a new KeyboardInfo. 
+    /// Creates a new KeyboardInfo.
     /// </summary>
     public KeyboardInfo()
     {
@@ -71,5 +71,4 @@ public class KeyboardInfo {
     {
         return CurrentState.IsKeyUp(key) && PreviousState.IsKeyDown(key);
     }
-
 }

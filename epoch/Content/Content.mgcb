@@ -20,6 +20,9 @@
 #begin config/atlas-definition.xml
 /copy:config/atlas-definition.xml
 
+#begin config/entity-definitions.json
+/copy:config/entity-definitions.json
+
 #begin config/graphical-tileset.json
 /copy:config/graphical-tileset.json
 

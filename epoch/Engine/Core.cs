@@ -1,13 +1,14 @@
 using System;
-using Engine.Audio;
-using Engine.Input;
-using Engine.Scenes;
+using Arch;
+using epoch.Engine.Audio;
+using epoch.Engine.Input;
+using epoch.Engine.Scenes;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 
-namespace Engine;
+namespace epoch.Engine;
 
 public class Core : Game
 {
@@ -204,6 +205,7 @@ public class Core : Game
         if (s_activeScene != null)
         {
             s_activeScene.Initialize();
+            s_activeScene.BeginRun();
         }
     }
 

@@ -1,7 +1,15 @@
 using System;
-using Engine;
-using Engine.Graphics;
-using Engine.Scenes;
+using Arch;
+using Arch.Core;
+using Arch.Core.Extensions;
+using Arch.Core.Extensions.Dangerous;
+using Arch.Core.Utils;
+using epoch.Components;
+using epoch.Engine;
+using epoch.Engine.Graphics;
+using epoch.Engine.Input;
+using epoch.Engine.Scenes;
+using epoch.Systems;
 using epoch.Utilities;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
@@ -9,12 +17,19 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using MonoGame.Extended;
 using MonoGame.Extended.ViewportAdapters;
+using Schedulers;
 
 namespace epoch.Scenes;
 
 public class WorldScene : Scene
 {
     private OrthographicCamera _camera;
+
+    private World _world;
+
+    private DrawSystem _drawSystem;
+
+    private TileManager _tileManager;
 
     public override void Initialize()
     {
@@ -49,10 +64,28 @@ public class WorldScene : Scene
         Tileset tileset = Tileset.FromFile(Content, tileSetPath);
 
         // Create the tile manager
-        TileManager tileManager = new TileManager(tileset, tileDefinitions, mode);
+        // TODO: where is this available?
+        _tileManager = new TileManager(tileset, tileDefinitions, mode);
+    }
 
-        // try to get tile by name
-        TileRenderInfo? tileInfo = tileManager.GetTile("grass");
+    public override void BeginRun()
+    {
+        base.BeginRun();
+
+        // Create the world
+        _world = World.Create();
+
+        // Create systems
+        _drawSystem = new DrawSystem(_world, _tileManager);
+
+        _world.Create(new GlobalSettings { GlobalScale = 8.0f });
+
+        // Spawn entities
+        // TODO: move this to a proper spawner system
+        _world.Create(
+            new Position { Vec2 = new Vector2(0, 0) },
+            new GraphicalTile { Name = "grass", Color = Color.White }
+        );
     }
 
     private Vector2 GetMovementDirection()
@@ -111,6 +144,9 @@ public class WorldScene : Scene
             samplerState: SamplerState.PointClamp,
             transformMatrix: transformMatrix
         );
+
+        _drawSystem.Update(in gameTime);
+
         Core.SpriteBatch.End();
     }
 }

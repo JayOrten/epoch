@@ -1,4 +1,4 @@
-namespace Engine.Graphics;
+namespace epoch.Engine.Graphics;
 
 public enum TileMode
 {
@@ -46,13 +46,10 @@ public class TileManager
 
         return Mode switch
         {
-            TileMode.Ascii => new TileRenderInfo(
-                TileSet.GetTile(tile.AsciiTileIndex),
-                tile.AsciiColor
-            ),
+            TileMode.Ascii => new TileRenderInfo(TileSet.GetTile(tile.AsciiTileIndex), tile.Color),
             TileMode.Graphical => new TileRenderInfo(
                 TileSet.GetTile(tile.GraphicalTileIndex),
-                null
+                tile.Color
             ),
             _ => null,
         };

@@ -1,4 +1,4 @@
-namespace Engine.Input;
+namespace epoch.Engine.Input;
 
 public enum MouseButton
 {
@@ -6,5 +6,5 @@ public enum MouseButton
     Middle,
     Right,
     XButton1,
-    XButton2
+    XButton2,
 }

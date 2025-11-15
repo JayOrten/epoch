@@ -7,14 +7,14 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace Engine.Graphics;
+namespace epoch.Engine.Graphics;
 
-public class TextureAtlas 
+public class TextureAtlas
 {
     private Dictionary<string, TextureRegion> _regions;
 
     private Dictionary<string, Animation> _animations;
-    
+
     /// <summary>
     /// Gets or Sets the source texture represented by this texture atlas.
     /// </summary>
@@ -137,7 +137,7 @@ public class TextureAtlas
                 atlas.Texture = content.Load<Texture2D>(texturePath);
 
                 // The <Regions> element contains individual <Region> elements, each one describing
-                // a different texture region within the atlas.  
+                // a different texture region within the atlas.
                 //
                 // Example:
                 // <Regions>
@@ -186,7 +186,9 @@ public class TextureAtlas
                     foreach (var animationElement in animationElements)
                     {
                         string name = animationElement.Attribute("name")?.Value;
-                        float delayInMilliseconds = float.Parse(animationElement.Attribute("delay")?.Value ?? "0");
+                        float delayInMilliseconds = float.Parse(
+                            animationElement.Attribute("delay")?.Value ?? "0"
+                        );
                         TimeSpan delay = TimeSpan.FromMilliseconds(delayInMilliseconds);
 
                         List<TextureRegion> frames = new List<TextureRegion>();
@@ -223,7 +225,7 @@ public class TextureAtlas
         TextureRegion region = GetRegion(regionName);
         return new Sprite(region);
     }
-    
+
     /// <summary>
     /// Creates a new animated sprite using the animation from this texture atlas with the specified name.
     /// </summary>
@@ -234,5 +236,4 @@ public class TextureAtlas
         Animation animation = GetAnimation(animationName);
         return new AnimatedSprite(animation);
     }
-
 }

@@ -11,7 +11,7 @@ public static class Log
     {
         _factory = LoggerFactory.Create(builder =>
         {
-            builder.AddConsole().SetMinimumLevel(LogLevel.Information);
+            builder.AddConsole().SetMinimumLevel(LogLevel.Debug);
         });
 
         _logger = _factory.CreateLogger("Global");

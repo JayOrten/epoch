@@ -1,9 +1,9 @@
 using System;
 using Microsoft.Xna.Framework;
 
-namespace Engine.Graphics;
+namespace epoch.Engine.Graphics;
 
-public class AnimatedSprite : Sprite 
+public class AnimatedSprite : Sprite
 {
     private int _currentFrame;
     private TimeSpan _elapsed;
@@ -57,5 +57,4 @@ public class AnimatedSprite : Sprite
             Region = _animation.Frames[_currentFrame];
         }
     }
-
 }

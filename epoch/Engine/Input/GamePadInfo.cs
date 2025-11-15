@@ -2,9 +2,9 @@ using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 
-namespace Engine.Input;
+namespace epoch.Engine.Input;
 
-public class GamePadInfo 
+public class GamePadInfo
 {
     private TimeSpan _vibrationTimeRemaining = TimeSpan.Zero;
 
@@ -137,6 +137,4 @@ public class GamePadInfo
     {
         GamePad.SetVibration(PlayerIndex, 0.0f, 0.0f);
     }
-
-
 }

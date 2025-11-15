@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<entityDefinitions>
+    <entity name="grass">
+      <component component_name="GraphicalTile" name="grass" color="#00FF02"/>
+    </entity>
+</entityDefinitions>

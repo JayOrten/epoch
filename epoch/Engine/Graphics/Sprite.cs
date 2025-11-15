@@ -1,9 +1,9 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace Engine.Graphics;
+namespace epoch.Engine.Graphics;
 
-public class Sprite 
+public class Sprite
 {
     /// <summary>
     /// Gets or Sets the source texture region represented by this sprite.
@@ -59,7 +59,7 @@ public class Sprite
     public float LayerDepth { get; set; } = 0.0f;
 
     /// <summary>
-    /// Gets the width, in pixels, of this sprite. 
+    /// Gets the width, in pixels, of this sprite.
     /// </summary>
     /// <remarks>
     /// Width is calculated by multiplying the width of the source texture region by the x-axis scale factor.
@@ -105,5 +105,4 @@ public class Sprite
     {
         Region.Draw(spriteBatch, position, Color, Rotation, Origin, Scale, Effects, LayerDepth);
     }
-
 }

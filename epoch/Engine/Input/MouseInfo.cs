@@ -1,9 +1,9 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 
-namespace Engine.Input;
+namespace epoch.Engine.Input;
 
-public class MouseInfo 
+public class MouseInfo
 {
     /// <summary>
     /// The state of mouse input during the previous update cycle.
@@ -148,15 +148,20 @@ public class MouseInfo
         switch (button)
         {
             case MouseButton.Left:
-                return CurrentState.LeftButton == ButtonState.Pressed && PreviousState.LeftButton == ButtonState.Released;
+                return CurrentState.LeftButton == ButtonState.Pressed
+                    && PreviousState.LeftButton == ButtonState.Released;
             case MouseButton.Middle:
-                return CurrentState.MiddleButton == ButtonState.Pressed && PreviousState.MiddleButton == ButtonState.Released;
+                return CurrentState.MiddleButton == ButtonState.Pressed
+                    && PreviousState.MiddleButton == ButtonState.Released;
             case MouseButton.Right:
-                return CurrentState.RightButton == ButtonState.Pressed && PreviousState.RightButton == ButtonState.Released;
+                return CurrentState.RightButton == ButtonState.Pressed
+                    && PreviousState.RightButton == ButtonState.Released;
             case MouseButton.XButton1:
-                return CurrentState.XButton1 == ButtonState.Pressed && PreviousState.XButton1 == ButtonState.Released;
+                return CurrentState.XButton1 == ButtonState.Pressed
+                    && PreviousState.XButton1 == ButtonState.Released;
             case MouseButton.XButton2:
-                return CurrentState.XButton2 == ButtonState.Pressed && PreviousState.XButton2 == ButtonState.Released;
+                return CurrentState.XButton2 == ButtonState.Pressed
+                    && PreviousState.XButton2 == ButtonState.Released;
             default:
                 return false;
         }
@@ -172,15 +177,20 @@ public class MouseInfo
         switch (button)
         {
             case MouseButton.Left:
-                return CurrentState.LeftButton == ButtonState.Released && PreviousState.LeftButton == ButtonState.Pressed;
+                return CurrentState.LeftButton == ButtonState.Released
+                    && PreviousState.LeftButton == ButtonState.Pressed;
             case MouseButton.Middle:
-                return CurrentState.MiddleButton == ButtonState.Released && PreviousState.MiddleButton == ButtonState.Pressed;
+                return CurrentState.MiddleButton == ButtonState.Released
+                    && PreviousState.MiddleButton == ButtonState.Pressed;
             case MouseButton.Right:
-                return CurrentState.RightButton == ButtonState.Released && PreviousState.RightButton == ButtonState.Pressed;
+                return CurrentState.RightButton == ButtonState.Released
+                    && PreviousState.RightButton == ButtonState.Pressed;
             case MouseButton.XButton1:
-                return CurrentState.XButton1 == ButtonState.Released && PreviousState.XButton1 == ButtonState.Pressed;
+                return CurrentState.XButton1 == ButtonState.Released
+                    && PreviousState.XButton1 == ButtonState.Pressed;
             case MouseButton.XButton2:
-                return CurrentState.XButton2 == ButtonState.Released && PreviousState.XButton2 == ButtonState.Pressed;
+                return CurrentState.XButton2 == ButtonState.Released
+                    && PreviousState.XButton2 == ButtonState.Pressed;
             default:
                 return false;
         }
@@ -205,5 +215,4 @@ public class MouseInfo
             CurrentState.XButton2
         );
     }
-
 }

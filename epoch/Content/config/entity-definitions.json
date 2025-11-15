@@ -1,0 +1,9 @@
+{
+    "grass": {
+        "id": 1,
+        "GraphicalTile": {
+            "Name": "grass",
+            "Color": "#00FF02"
+        }
+    }
+}

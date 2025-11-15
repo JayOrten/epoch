@@ -1,9 +1,9 @@
 using Microsoft.Xna.Framework;
 
-namespace Engine.Input;
+namespace epoch.Engine.Input;
 
-public class InputManager {
-
+public class InputManager
+{
     /// <summary>
     /// Gets the state information of keyboard input.
     /// </summary>
@@ -48,7 +48,4 @@ public class InputManager {
             GamePads[i].Update(gameTime);
         }
     }
-
-
 }
-
