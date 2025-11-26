@@ -1,37 +1,111 @@
-using Engine;
-using Engine.Scenes;
-using Engine.Graphics;
+using System;
+using System.Collections.Generic;
+using Arch;
+using Arch.Core;
+using Arch.Core.Extensions;
+using Arch.Core.Extensions.Dangerous;
+using Arch.Core.Utils;
+using epoch.Components;
+using epoch.Engine;
+using epoch.Engine.Graphics;
+using epoch.Engine.Input;
+using epoch.Engine.Scenes;
+using epoch.Entities;
+using epoch.Systems;
+using epoch.Utilities;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using Microsoft.Xna.Framework.Audio;
 using MonoGame.Extended;
 using MonoGame.Extended.ViewportAdapters;
+using Schedulers;
 
 namespace epoch.Scenes;
 
 public class WorldScene : Scene
 {
-    private Tilemap _tilemap;
-
     private OrthographicCamera _camera;
-    
+
+    private World _world;
+
+    private DrawSystem _drawSystem;
+
+    private TileManager _tileManager;
+
+    private EntityManager _entityManager;
+
     public override void Initialize()
     {
         base.Initialize();
 
-        var viewportAdapter = new BoxingViewportAdapter(Core.Instance.Window, Core.GraphicsDevice, 1280, 720);
+        var viewportAdapter = new BoxingViewportAdapter(
+            Core.Instance.Window,
+            Core.GraphicsDevice,
+            1280,
+            720
+        );
         _camera = new OrthographicCamera(viewportAdapter);
     }
 
     public override void LoadContent()
     {
-        // Load textures
-        TextureAtlas atlas = TextureAtlas.FromFile(Core.Content, "images/atlas-definition.xml");
+        // Load textures; unnecessary for now.
+        // TextureAtlas atlas = TextureAtlas.FromFile(Core.Content, "images/atlas-definition.xml");
 
         // Create the tilemap from the XML file
-        _tilemap = Tilemap.FromFile(Content, "images/tilemap-definition.xml");
-        _tilemap.Scale = new Vector2(8.0f, 8.0f);
+        // _tilemap = Tilemap.FromFile(Content, "images/tilemap-definition.xml");
+        // _tilemap.Scale = new Vector2(8.0f, 8.0f);
+
+        TileMode mode = TileMode.Ascii;
+        string tileDefinitionsPath = ContentPaths.Config("tile-definitions");
+        string tileSetPath = ContentPaths.Config("ascii-tileset");
+        string entityDefinitionsPath = ContentPaths.Config("entity-definitions");
+
+        // Load tile definitions
+        TileDefinitions tileDefinitions = TileDefinitions.FromFile(tileDefinitionsPath);
+
+        // Load tileset
+        Tileset tileset = Tileset.FromFile(Content, tileSetPath);
+
+        // Create the tile manager
+        _tileManager = new TileManager(tileset, tileDefinitions, mode);
+
+        // Create the world
+        _world = World.Create();
+
+        // Create the entity manager, loading in entity definitions from file
+        _entityManager = new EntityManager(_world, entityDefinitionsPath);
+
+        // TODO: load in the entity map
+    }
+
+    public record struct Position(float X, float Y);
+
+    public record struct Velocity(float Dx, float Dy);
+
+    public override void BeginRun()
+    {
+        base.BeginRun();
+
+        // Create systems
+        _drawSystem = new DrawSystem(_world, _tileManager);
+
+        _world.Create(new GlobalSettings { GlobalScale = 8.0f });
+
+        // Spawn entities
+        _entityManager.Spawn("grass");
+        _entityManager.Spawn(
+            "tree",
+            new Dictionary<string, Dictionary<string, string>>
+            {
+                {
+                    "Position",
+                    new Dictionary<string, string> { { "vec2", "100,0" } }
+                },
+            }
+        );
+        // _entityManager.Spawn("tree");
     }
 
     private Vector2 GetMovementDirection()
@@ -54,7 +128,7 @@ public class WorldScene : Scene
         {
             movementDirection += Vector2.UnitX;
         }
-        
+
         return movementDirection;
     }
 
@@ -82,12 +156,17 @@ public class WorldScene : Scene
 
     public override void Draw(GameTime gameTime)
     {
-        Core.GraphicsDevice.Clear(Color.CornflowerBlue);
+        Core.GraphicsDevice.Clear(Color.Black);
 
         var transformMatrix = _camera.GetViewMatrix();
-        
-        Core.SpriteBatch.Begin(samplerState: SamplerState.PointClamp, transformMatrix: transformMatrix);
-        _tilemap.Draw(Core.SpriteBatch);
+
+        Core.SpriteBatch.Begin(
+            samplerState: SamplerState.PointClamp,
+            transformMatrix: transformMatrix
+        );
+
+        _drawSystem.Update(in gameTime);
+
         Core.SpriteBatch.End();
     }
 }

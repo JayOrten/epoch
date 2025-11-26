@@ -1,0 +1,23 @@
+[
+    {
+        "id": 0,
+        "name": "blank",
+        "asciiTileIndex": "a",
+        "asciiColor": "#00FF01",
+        "graphicalTileIndex": 0
+    },
+    {
+        "id": 1,
+        "name": "grass",
+        "asciiTileIndex": "b",
+        "asciiColor": "#00FF02",
+        "graphicalTileIndex": 1
+    },
+    {
+        "id": 2,
+        "name": "tree",
+        "asciiTileIndex": "c",
+        "asciiColor": "#00FF03",
+        "graphicalTileIndex": 2
+    }
+]

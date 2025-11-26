@@ -1,9 +1,0 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<!-- This tileset is 12x12 with 1 pixel border and 1 pixel between tiles. -->
-<TextureAtlas>
-    <Texture>images/urizen_onebit_tileset__v2d0</Texture>
-    <Regions>
-    </Regions>
-    <Animations>
-    </Animations>
-</TextureAtlas>
