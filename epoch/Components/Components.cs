@@ -2,32 +2,21 @@ using Microsoft.Xna.Framework;
 
 namespace epoch.Components;
 
-public struct GlobalSettings
-{
-    public GlobalSettings()
-    {
-        GlobalScale = 8.0f;
-    }
+public abstract class Component { }
 
-    public float GlobalScale;
+public class GlobalSettings : Component
+{
+    public float GlobalScale { get; set; } = 8.0f;
 }
 
-// TODO: need to reconcile with the tilemanager stuff
-public struct GraphicalTile
+public class GraphicalTile : Component
 {
-    public GraphicalTile()
-    {
-        Name = "default";
-        Color = Color.White;
-        Scale = 1.0f;
-    }
-
-    public string Name;
-    public Color Color;
-    public float Scale;
+    public required string Name { get; set; }
+    public required Color Color { get; set; }
+    public float Scale { get; set; } = 1.0f;
 }
 
-public struct Position
+public class Position : Component
 {
-    public Vector2 Vec2;
+    public Vector2 Vec2 { get; set; } = Vector2.Zero;
 }

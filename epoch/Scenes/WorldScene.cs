@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Arch;
 using Arch.Core;
 using Arch.Core.Extensions;
@@ -9,6 +10,7 @@ using epoch.Engine;
 using epoch.Engine.Graphics;
 using epoch.Engine.Input;
 using epoch.Engine.Scenes;
+using epoch.Entities;
 using epoch.Systems;
 using epoch.Utilities;
 using Microsoft.Xna.Framework;
@@ -30,6 +32,8 @@ public class WorldScene : Scene
     private DrawSystem _drawSystem;
 
     private TileManager _tileManager;
+
+    private EntityManager _entityManager;
 
     public override void Initialize()
     {
@@ -56,6 +60,7 @@ public class WorldScene : Scene
         TileMode mode = TileMode.Ascii;
         string tileDefinitionsPath = ContentPaths.Config("tile-definitions");
         string tileSetPath = ContentPaths.Config("ascii-tileset");
+        string entityDefinitionsPath = ContentPaths.Config("entity-definitions");
 
         // Load tile definitions
         TileDefinitions tileDefinitions = TileDefinitions.FromFile(tileDefinitionsPath);
@@ -64,16 +69,24 @@ public class WorldScene : Scene
         Tileset tileset = Tileset.FromFile(Content, tileSetPath);
 
         // Create the tile manager
-        // TODO: where is this available?
         _tileManager = new TileManager(tileset, tileDefinitions, mode);
+
+        // Create the world
+        _world = World.Create();
+
+        // Create the entity manager, loading in entity definitions from file
+        _entityManager = new EntityManager(_world, entityDefinitionsPath);
+
+        // TODO: load in the entity map
     }
+
+    public record struct Position(float X, float Y);
+
+    public record struct Velocity(float Dx, float Dy);
 
     public override void BeginRun()
     {
         base.BeginRun();
-
-        // Create the world
-        _world = World.Create();
 
         // Create systems
         _drawSystem = new DrawSystem(_world, _tileManager);
@@ -81,11 +94,18 @@ public class WorldScene : Scene
         _world.Create(new GlobalSettings { GlobalScale = 8.0f });
 
         // Spawn entities
-        // TODO: move this to a proper spawner system
-        _world.Create(
-            new Position { Vec2 = new Vector2(0, 0) },
-            new GraphicalTile { Name = "grass", Color = Color.White }
+        _entityManager.Spawn("grass");
+        _entityManager.Spawn(
+            "tree",
+            new Dictionary<string, Dictionary<string, string>>
+            {
+                {
+                    "Position",
+                    new Dictionary<string, string> { { "vec2", "100,0" } }
+                },
+            }
         );
+        // _entityManager.Spawn("tree");
     }
 
     private Vector2 GetMovementDirection()

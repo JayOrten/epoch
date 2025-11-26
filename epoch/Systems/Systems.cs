@@ -49,6 +49,7 @@ public sealed class DrawSystem : SystemBase<GameTime>
         Position,
         GraphicalTile
     >();
+
     private readonly SpriteBatch _batch;
     private readonly TileManager _tileManager;
 
@@ -70,7 +71,7 @@ public sealed class DrawSystem : SystemBase<GameTime>
     /// <param name="time">The <see cref="GameTime"/> being passed from outside the system.</param>
     public override void Update(in GameTime time)
     {
-        Log.Debug("DrawSystem Update started.");
+        // Log.Debug("DrawSystem Update started.");
         // Get global scale from GlobalSettings singleton
         float globalScale = 1.0f;
         World.Query(
@@ -80,25 +81,30 @@ public sealed class DrawSystem : SystemBase<GameTime>
                 globalScale = settings.GlobalScale;
             }
         );
-        Log.Debug("Global scale is {0}", globalScale);
+        // Log.Debug("Global scale is {0}", globalScale);
         // _batch.Begin();
 
         // Get query for the description, targets all entities with "Positions" and "Sprite".
         var query = World.Query(in _entitiesToDraw);
         foreach (ref var chunk in query) // Iterate over each chunk that has entities that fit the query.
         {
+            Log.Debug("Processing chunk with {0} entities", chunk.Count);
             // Receive raw arrays of positions and sprites from the chunk.
-            chunk.GetSpan<Position, GraphicalTile>(out var positions, out var graphicalTiles);
+            // chunk.GetArray<Position, GraphicalTile>(out var positions, out var graphicalTiles);
+            var positions = chunk.GetArray<Position>();
+            var graphicalTiles = chunk.GetArray<GraphicalTile>();
 
             // Loop over the chunk
             foreach (var index in chunk)
             {
                 // Get refs to position and sprite.
-                ref var position = ref positions[index];
-                ref var graphicalTile = ref graphicalTiles[index];
+                // ref var position = ref positions[index]; // IS NULL
+                // ref var graphicalTile = ref graphicalTiles[index]; // IS POSITION OBJ
+                var position = positions[index];
+                var graphicalTile = graphicalTiles[index];
                 // graphicalTile contains a name, referencing a tile in the TileManager,
                 // and a color
-                Log.Debug("Drawing tile {0} at position {1}", graphicalTile.Name, position.Vec2);
+                // Log.Debug("Drawing tile {0} at position {1}", graphicalTile.Name, position.Vec2);
 
                 TileRenderInfo? tileInfo = _tileManager.GetTile(graphicalTile.Name);
                 // tileInfo contains a TextureRegion and color string
