@@ -177,9 +177,9 @@ public class EntityManager
         _world.AddRange(entity, components.AsSpan());
 
         // print out component contents for debugigng
-        Log.Debug(
-            $"Spawned entity with components: {string.Join(", ", components.Select(c => c.GetType().Name))}"
-        );
+        // Log.Debug(
+        //     $"Spawned entity with components: {string.Join(", ", components.Select(c => c.GetType().Name))}"
+        // );
     }
 
     public void Spawn(string entityName, EntityDefinition entityDefinitionOverride = null)

@@ -82,13 +82,12 @@ public sealed class DrawSystem : SystemBase<GameTime>
             }
         );
         // Log.Debug("Global scale is {0}", globalScale);
-        // _batch.Begin();
 
         // Get query for the description, targets all entities with "Positions" and "Sprite".
         var query = World.Query(in _entitiesToDraw);
         foreach (ref var chunk in query) // Iterate over each chunk that has entities that fit the query.
         {
-            Log.Debug("Processing chunk with {0} entities", chunk.Count);
+            // Log.Debug("Processing chunk with {0} entities", chunk.Count);
             // Receive raw arrays of positions and sprites from the chunk.
             // chunk.GetArray<Position, GraphicalTile>(out var positions, out var graphicalTiles);
             var positions = chunk.GetArray<Position>();
@@ -124,7 +123,5 @@ public sealed class DrawSystem : SystemBase<GameTime>
                 }
             }
         }
-
-        // _batch.End();
     }
 }

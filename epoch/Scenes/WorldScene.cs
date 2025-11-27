@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using Arch;
 using Arch.Core;
 using Arch.Core.Extensions;
@@ -101,32 +102,23 @@ public class WorldScene : Scene
             new EntityDefinition(new ComponentDefinition("Position").Add("vec2", "100,0"))
         );
 
+        EntityDefinition entityDefinition = new EntityDefinition(
+            new ComponentDefinition("Position")
+        );
+
+        var sw = Stopwatch.StartNew();
         for (int i = 0; i < 10000; i += 50)
         {
             for (int j = 0; j < 10000; j += 50)
             {
-                string coord = $"{i},{j}";
-                Log.Info(coord);
-                _entityManager.Spawn(
-                    "grass",
-                    new EntityDefinition(new ComponentDefinition("Position").Add("vec2", coord))
-                );
+                // string coord = $"{i},{j}";
+                string coord = string.Concat(i, ",", j);
+
+                _entityManager.Spawn("grass", entityDefinition.Add("Position", "vec2", coord));
             }
         }
-
-        // Old:
-        // _entityManager.Spawn(
-        //     "tree",
-        //     new Dictionary<string, Dictionary<string, string>>
-        //     {
-        //         {
-        //             "Position",
-        //             new Dictionary<string, string> { { "vec2", "100,0" } }
-        //         },
-        //     }
-        // );
-
-        // _entityManager.Spawn("tree");
+        sw.Stop();
+        Log.Info($"Spawned grass in {sw.ElapsedMilliseconds} ms");
     }
 
     private Vector2 GetMovementDirection()
