@@ -11,15 +11,124 @@ using epoch.Utilities.Logging;
 
 namespace epoch.Entities;
 
+/// <summary>
+/// Represents a flexible definition of an entity, consisting of a type name and a collection of components.
+/// Components are stored in a dictionary and can be accessed or added dynamically.
+/// </summary>
+/// <example>
+/// // Create an entity with only a type name
+/// var entity = new EntityDefinition("Enemy");
+///
+/// // Add a component and set properties
+/// entity.Add("Position", "x", "10")
+///       .Add("Position", "y", "20")
+///
+/// // Access or create a component via indexer
+/// entity["Inventory"].Properties["Slot1"] = "Sword";
+///
+/// // Create entity directly from components
+/// var entity2 = new EntityDefinition(
+///     new ComponentDefinition("Position"),
+///     new ComponentDefinition("Health")
+/// );
+///
+/// // Create entity with type name and components
+/// var entity3 = new EntityDefinition("Enemy",
+///     new ComponentDefinition("Position"),
+///     new ComponentDefinition("Health")
+/// );
+/// </example>
 public class EntityDefinition
 {
-    public string TypeName { get; set; }
-    public List<ComponentDefinition> Components { get; } = new();
+    public string TypeName { get; init; }
+    public Dictionary<String, ComponentDefinition> Components { get; } = new();
+
+    public EntityDefinition() { }
+
+    public EntityDefinition(string typeName)
+    {
+        TypeName = typeName;
+    }
+
+    public EntityDefinition(params ComponentDefinition[] components)
+    {
+        foreach (var component in components)
+            Components[component.TypeName] = component;
+    }
+
+    public EntityDefinition(string typeName, params ComponentDefinition[] components)
+        : this(components)
+    {
+        TypeName = typeName;
+    }
+
+    public ComponentDefinition this[string componentName]
+    {
+        get =>
+            Components.TryGetValue(componentName, out var comp)
+                ? comp
+                : Components[componentName] = new ComponentDefinition(componentName);
+        set => Components[componentName] = value;
+    }
+
+    public bool TryGet(string componentName, out ComponentDefinition componentDefinition)
+    {
+        return Components.TryGetValue(componentName, out componentDefinition);
+    }
+
+    public EntityDefinition Add(string componentName, ComponentDefinition componentDefinition)
+    {
+        Components[componentName] = componentDefinition;
+        return this;
+    }
+
+    public EntityDefinition Add(string componentName, string property, string value)
+    {
+        this[componentName].Properties[property] = value;
+        return this;
+    }
+
+    public EntityDefinition Add(string componentName, Dictionary<string, string> properties)
+    {
+        var componentDefinition = this[componentName];
+        foreach (var kvp in properties)
+            componentDefinition.Properties[kvp.Key] = kvp.Value;
+        return this;
+    }
+
+    /// <summary>
+    /// Merges another EntityDefinition into this one.
+    /// Components from the other definition will overwrite or add to this definition's components.
+    /// </summary>
+    public EntityDefinition Merge(EntityDefinition other)
+    {
+        if (other == null)
+            return this;
+
+        foreach (var kvp in other.Components)
+        {
+            if (Components.TryGetValue(kvp.Key, out var existingComponent))
+            {
+                // Merge properties
+                foreach (var propKvp in kvp.Value.Properties)
+                {
+                    existingComponent.Properties[propKvp.Key] = propKvp.Value;
+                }
+            }
+            else
+            {
+                // Add new component
+                Components[kvp.Key] = kvp.Value;
+            }
+        }
+
+        return this;
+    }
 }
 
 public class EntityManager
 {
-    private List<EntityDefinition> _entityDefs;
+    private Dictionary<string, EntityDefinition> _entityDefs;
 
     private World _world;
 
@@ -32,10 +141,10 @@ public class EntityManager
         _world = world;
     }
 
-    public static List<EntityDefinition> Parse(string xmlPath)
+    public static Dictionary<string, EntityDefinition> Parse(string xmlPath)
     {
         var doc = XDocument.Load(xmlPath);
-        var entities = new List<EntityDefinition>();
+        var entities = new Dictionary<string, EntityDefinition>();
 
         foreach (var entityElem in doc.Root.Elements("entity"))
         {
@@ -43,55 +152,53 @@ public class EntityManager
 
             foreach (var compElem in entityElem.Elements("component"))
             {
-                var compDef = new ComponentDefinition
-                {
-                    TypeName = compElem.Attribute("component_name")?.Value,
-                };
+                var compDef = new ComponentDefinition(compElem.Attribute("component_name")?.Value);
 
                 foreach (var attr in compElem.Attributes())
                     if (attr.Name != "component_name")
                         compDef.Properties[attr.Name.LocalName] = attr.Value;
 
-                entity.Components.Add(compDef);
+                entity.Components[compDef.TypeName] = compDef;
             }
-            entities.Add(entity);
+            entities[entity.TypeName] = entity;
         }
         return entities;
     }
 
-    public void Spawn(
-        string entityName,
-        Dictionary<string, Dictionary<string, string>> overrides = null
-    )
+    public void Spawn(EntityDefinition entityDefinition)
     {
-        overrides ??= new Dictionary<string, Dictionary<string, string>>();
+        var entity = _world.Create();
 
+        // Get list of components
+        object[] components = entityDefinition
+            .Components.Values.Select(component => (object)ComponentFactory.Create(component))
+            .ToArray();
+
+        _world.AddRange(entity, components.AsSpan());
+
+        // print out component contents for debugigng
+        Log.Debug(
+            $"Spawned entity with components: {string.Join(", ", components.Select(c => c.GetType().Name))}"
+        );
+    }
+
+    public void Spawn(string entityName, EntityDefinition entityDefinitionOverride = null)
+    {
         // Find the entity definition in the list matching entityName
-        EntityDefinition def = _entityDefs.FirstOrDefault(e => e.TypeName == entityName);
+        EntityDefinition def = _entityDefs.TryGetValue(entityName, out var value) ? value : null;
+
         if (def == null)
         {
             Log.Info($"Entity definition '{entityName}' not found.");
             return;
         }
 
-        var entity = _world.Create();
+        // If an override definition is provided, merge it with the found definition
+        if (entityDefinitionOverride != null)
+        {
+            def = def.Merge(entityDefinitionOverride);
+        }
 
-        // Get list of components
-        object[] comps = def
-            .Components.Select(cd =>
-                (object)
-                    ComponentFactory.Create(
-                        cd,
-                        overrides.TryGetValue(cd.TypeName, out var value) ? value : null
-                    )
-            )
-            .ToArray();
-
-        _world.AddRange(entity, comps.AsSpan());
-
-        // print out component contents for debugigng
-        Log.Debug(
-            $"Spawned entity '{entityName}' with components: {string.Join(", ", comps.Select(c => c.GetType().Name))}"
-        );
+        Spawn(def);
     }
 }
