@@ -11,6 +11,46 @@ public class ComponentDefinition
     public string TypeName { get; set; }
 
     public Dictionary<string, string> Properties { get; } = new();
+
+    public string this[string property]
+    {
+        get => Properties.TryGetValue(property, out var value) ? value : null;
+        set => Properties[property] = value;
+    }
+
+    public bool TryGet(string property, out string value)
+    {
+        return Properties.TryGetValue(property, out value);
+    }
+
+    public ComponentDefinition(string typeName)
+    {
+        TypeName = typeName;
+    }
+
+    public ComponentDefinition(string typeName, Dictionary<string, string> properties)
+        : this(typeName)
+    {
+        foreach (var kvp in properties)
+            Properties[kvp.Key] = kvp.Value;
+    }
+
+    public ComponentDefinition Add(string property, string value)
+    {
+        Properties[property] = value;
+        return this;
+    }
+
+    public ComponentDefinition Merge(ComponentDefinition other)
+    {
+        if (other == null)
+            return this;
+
+        foreach (var kvp in other.Properties)
+            Properties[kvp.Key] = kvp.Value;
+
+        return this;
+    }
 }
 
 public static class ComponentFactory
@@ -27,10 +67,7 @@ public static class ComponentFactory
     }
 
     // Create a component from its definition object
-    public static Component Create(
-        ComponentDefinition def,
-        Dictionary<string, string> overrides = null
-    )
+    public static Component Create(ComponentDefinition def)
     {
         if (!_componentTypes.TryGetValue(def.TypeName, out var type))
             throw new Exception($"Unkown component type: {def.TypeName}");
@@ -38,11 +75,7 @@ public static class ComponentFactory
         // type is a Type from the Types list
         var instance = (Component)Activator.CreateInstance(type);
 
-        // apply overrides
         var props = new Dictionary<string, string>(def.Properties);
-        if (overrides != null)
-            foreach (var kv in overrides)
-                props[kv.Key] = kv.Value;
 
         // set properties via reflection
         foreach (var kv in props)

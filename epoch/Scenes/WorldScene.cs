@@ -95,16 +95,37 @@ public class WorldScene : Scene
 
         // Spawn entities
         _entityManager.Spawn("grass");
+
         _entityManager.Spawn(
             "tree",
-            new Dictionary<string, Dictionary<string, string>>
-            {
-                {
-                    "Position",
-                    new Dictionary<string, string> { { "vec2", "100,0" } }
-                },
-            }
+            new EntityDefinition(new ComponentDefinition("Position").Add("vec2", "100,0"))
         );
+
+        for (int i = 0; i < 10000; i += 50)
+        {
+            for (int j = 0; j < 10000; j += 50)
+            {
+                string coord = $"{i},{j}";
+                Log.Info(coord);
+                _entityManager.Spawn(
+                    "grass",
+                    new EntityDefinition(new ComponentDefinition("Position").Add("vec2", coord))
+                );
+            }
+        }
+
+        // Old:
+        // _entityManager.Spawn(
+        //     "tree",
+        //     new Dictionary<string, Dictionary<string, string>>
+        //     {
+        //         {
+        //             "Position",
+        //             new Dictionary<string, string> { { "vec2", "100,0" } }
+        //         },
+        //     }
+        // );
+
         // _entityManager.Spawn("tree");
     }
 
