@@ -36,6 +36,10 @@ public class WorldScene : Scene
 
     private EntityManager _entityManager;
 
+    private GlobalSettings _globalSettings;
+
+    private int _currentZLevel = 0;
+
     public override void Initialize()
     {
         base.Initialize();
@@ -47,6 +51,10 @@ public class WorldScene : Scene
             720
         );
         _camera = new OrthographicCamera(viewportAdapter);
+
+        _globalSettings = new GlobalSettings();
+
+        _currentZLevel = 0;
     }
 
     public override void LoadContent()
@@ -92,8 +100,6 @@ public class WorldScene : Scene
         // Create systems
         _drawSystem = new DrawSystem(_world, _tileManager);
 
-        _world.Create(new GlobalSettings { GlobalScale = 8.0f });
-
         // Spawn entities
         _entityManager.Spawn("grass");
 
@@ -107,14 +113,20 @@ public class WorldScene : Scene
         );
 
         var sw = Stopwatch.StartNew();
-        for (int i = 0; i < 10000; i += 50)
+        for (int i = 0; i < 2; i++)
         {
-            for (int j = 0; j < 10000; j += 50)
+            for (int j = 0; j < 2; j++)
             {
-                // string coord = $"{i},{j}";
-                string coord = string.Concat(i, ",", j);
+                for (int k = 0; k < 2; k++)
+                {
+                    // 3D coordinate string
+                    string coord3D = string.Concat(i, ",", j, ",", k);
 
-                _entityManager.Spawn("grass", entityDefinition.Add("Position", "vec2", coord));
+                    _entityManager.Spawn(
+                        "grass",
+                        entityDefinition.Add("Position", "WorldCoordinate", coord3D)
+                    );
+                }
             }
         }
         sw.Stop();
@@ -125,19 +137,19 @@ public class WorldScene : Scene
     {
         var movementDirection = Vector2.Zero;
 
-        if (GameController.MoveDown())
+        if (GameController.MoveDownHeld())
         {
             movementDirection += Vector2.UnitY;
         }
-        if (GameController.MoveUp())
+        if (GameController.MoveUpHeld())
         {
             movementDirection -= Vector2.UnitY;
         }
-        if (GameController.MoveLeft())
+        if (GameController.MoveLeftHeld())
         {
             movementDirection -= Vector2.UnitX;
         }
-        if (GameController.MoveRight())
+        if (GameController.MoveRightHeld())
         {
             movementDirection += Vector2.UnitX;
         }
@@ -159,12 +171,28 @@ public class WorldScene : Scene
         }
     }
 
+    private void AdjustZLevel()
+    {
+        if (GameController.FDown())
+        {
+            // Move down a level
+            _currentZLevel--;
+        }
+        if (GameController.RDown())
+        {
+            // Move up a level
+            _currentZLevel++;
+        }
+    }
+
     public override void Update(GameTime gameTime)
     {
         const float movementSpeed = 1000;
         _camera.Move(GetMovementDirection() * movementSpeed * gameTime.GetElapsedSeconds());
 
         AdjustZoom();
+
+        AdjustZLevel();
     }
 
     public override void Draw(GameTime gameTime)
@@ -178,7 +206,12 @@ public class WorldScene : Scene
             transformMatrix: transformMatrix
         );
 
-        _drawSystem.Update(in gameTime);
+        DrawContext drawContext = new DrawContext(
+            gameTime,
+            _currentZLevel,
+            _globalSettings.GlobalScale
+        );
+        _drawSystem.Update(in drawContext);
 
         Core.SpriteBatch.End();
     }
