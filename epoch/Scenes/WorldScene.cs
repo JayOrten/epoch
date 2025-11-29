@@ -101,29 +101,28 @@ public class WorldScene : Scene
         _drawSystem = new DrawSystem(_world, _tileManager);
 
         // Spawn entities
-        _entityManager.Spawn("grass");
-
-        _entityManager.Spawn(
-            "tree",
-            new EntityDefinition(new ComponentDefinition("Position").Add("vec2", "100,0"))
-        );
 
         EntityDefinition entityDefinition = new EntityDefinition(
             new ComponentDefinition("Position")
         );
+        List<string> comps = ["empty", "grass", "tree", "dirt", "water"];
+        Random RandomUtil = new Random();
 
         var sw = Stopwatch.StartNew();
-        for (int i = 0; i < 2; i++)
+        for (int i = 0; i < 192; i++)
         {
-            for (int j = 0; j < 2; j++)
+            for (int j = 0; j < 192; j++)
             {
-                for (int k = 0; k < 2; k++)
+                for (int k = 0; k < 12; k++)
                 {
                     // 3D coordinate string
                     string coord3D = string.Concat(i, ",", j, ",", k);
 
+                    // pick a random component to add
+                    string compToAdd = comps[RandomUtil.Next(0, comps.Count)];
+
                     _entityManager.Spawn(
-                        "grass",
+                        compToAdd,
                         entityDefinition.Add("Position", "WorldCoordinate", coord3D)
                     );
                 }
