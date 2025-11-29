@@ -10,7 +10,7 @@ namespace epoch.Engine.Graphics;
 public record Tile(
     int Id,
     string Name,
-    char AsciiTileIndex,
+    int AsciiTileIndex,
     string ColorString,
     [property: JsonIgnore] Color Color,
     int GraphicalTileIndex

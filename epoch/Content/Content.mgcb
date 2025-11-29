@@ -32,6 +32,18 @@
 #begin config/tilemap-definition.xml
 /copy:config/tilemap-definition.xml
 
+#begin images/Anikki_square_20x20.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:images/Anikki_square_20x20.png
+
 #begin images/Terbert_7x7.png
 /importer:TextureImporter
 /processor:TextureProcessor
