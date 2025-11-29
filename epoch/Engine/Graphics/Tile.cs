@@ -19,14 +19,8 @@ public record Tile(
 /// <summary>
 /// Holds the rendering information for a tile in the tilemap.
 /// This is mostly a utility struct for passing the render information elegantly from the tile manager.
-public struct TileRenderInfo
+public readonly record struct TileRenderInfo(TextureRegion TextureRegion, Color Color)
 {
-    public TextureRegion TextureRegion;
-    public Color Color;
-
-    public TileRenderInfo(TextureRegion textureRegion, Color color)
-    {
-        TextureRegion = textureRegion;
-        Color = color;
-    }
+    public int TileWidth => TextureRegion.Width;
+    public int TileHeight => TextureRegion.Height;
 }
