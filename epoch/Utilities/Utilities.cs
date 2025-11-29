@@ -52,6 +52,13 @@ public static class Utils
             return new Vector2(float.Parse(parts[0]), float.Parse(parts[1]));
         }
 
+        if (targetType == typeof(Vector3))
+        {
+            // Expect "x,y,z"
+            var parts = value.Split(',');
+            return new Vector3(float.Parse(parts[0]), float.Parse(parts[1]), float.Parse(parts[2]));
+        }
+
         if (targetType == typeof(Color))
         {
             if (value.StartsWith("#"))

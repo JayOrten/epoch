@@ -2,7 +2,6 @@ using Arch.Core;
 using epoch.Components;
 using epoch.Engine;
 using epoch.Engine.Graphics;
-using epoch.Utilities;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -40,7 +39,7 @@ public abstract class SystemBase<T>
 ///     The <see cref="DrawSystem"/> class
 ///     ensures that all <see cref="Entity"/>s are drawn to the screen.
 /// </summary>
-public sealed class DrawSystem : SystemBase<GameTime>
+public sealed class DrawSystem : SystemBase<DrawContext>
 {
     private readonly QueryDescription _globalSettingsQuery =
         new QueryDescription().WithAll<GlobalSettings>();
@@ -69,19 +68,9 @@ public sealed class DrawSystem : SystemBase<GameTime>
     ///     Gets called to execute the draw systems logic and to draw the <see cref="Entity"/>s.
     /// </summary>
     /// <param name="time">The <see cref="GameTime"/> being passed from outside the system.</param>
-    public override void Update(in GameTime time)
+    public override void Update(in DrawContext drawContext)
     {
         // Log.Debug("DrawSystem Update started.");
-        // Get global scale from GlobalSettings singleton
-        float globalScale = 1.0f;
-        World.Query(
-            in _globalSettingsQuery,
-            (ref GlobalSettings settings) =>
-            {
-                globalScale = settings.GlobalScale;
-            }
-        );
-        // Log.Debug("Global scale is {0}", globalScale);
 
         // Get query for the description, targets all entities with "Positions" and "Sprite".
         var query = World.Query(in _entitiesToDraw);
@@ -101,6 +90,12 @@ public sealed class DrawSystem : SystemBase<GameTime>
                 // ref var graphicalTile = ref graphicalTiles[index]; // IS POSITION OBJ
                 var position = positions[index];
                 var graphicalTile = graphicalTiles[index];
+
+                // Only draw if the tile is on the current level.
+                if (position.WorldCoordinate.Z != drawContext.ZLevel)
+                {
+                    continue;
+                }
                 // graphicalTile contains a name, referencing a tile in the TileManager,
                 // and a color
                 // Log.Debug("Drawing tile {0} at position {1}", graphicalTile.Name, position.Vec2);
@@ -110,13 +105,24 @@ public sealed class DrawSystem : SystemBase<GameTime>
                 // If tileInfo is null, skip drawing
                 if (tileInfo != null)
                 {
+                    Vector2 drawPosition = new Vector2(
+                        position.WorldCoordinate.X
+                            * tileInfo.Value.TileWidth
+                            * graphicalTile.Scale
+                            * drawContext.GlobalScale,
+                        position.WorldCoordinate.Y
+                            * tileInfo.Value.TileHeight
+                            * graphicalTile.Scale
+                            * drawContext.GlobalScale
+                    );
+
                     tileInfo.Value.TextureRegion.Draw(
                         _batch,
-                        position.Vec2,
+                        drawPosition,
                         graphicalTile.Color,
                         0.0f,
                         Vector2.Zero,
-                        graphicalTile.Scale * globalScale,
+                        graphicalTile.Scale * drawContext.GlobalScale,
                         SpriteEffects.None,
                         0.0f
                     );

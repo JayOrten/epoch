@@ -4,11 +4,6 @@ namespace epoch.Components;
 
 public abstract class Component { }
 
-public class GlobalSettings : Component
-{
-    public float GlobalScale { get; set; } = 8.0f;
-}
-
 public class GraphicalTile : Component
 {
     public required string Name { get; set; }
@@ -18,5 +13,5 @@ public class GraphicalTile : Component
 
 public class Position : Component
 {
-    public Vector2 Vec2 { get; set; } = Vector2.Zero;
+    public Vector3 WorldCoordinate { get; set; } = Vector3.Zero;
 }
