@@ -26,6 +26,17 @@ public static class GameController
     }
 
     /// <summary>
+    /// Returns true if the player has triggered the "move up" action.
+    /// </summary>
+    public static bool MoveUpHeld()
+    {
+        return s_keyboard.IsKeyDown(Keys.Up)
+            || s_keyboard.IsKeyDown(Keys.W)
+            || s_gamePad.IsButtonDown(Buttons.DPadUp)
+            || s_gamePad.IsButtonDown(Buttons.LeftThumbstickUp);
+    }
+
+    /// <summary>
     /// Returns true if the player has triggered the "move down" action.
     /// </summary>
     public static bool MoveDown()
@@ -34,6 +45,17 @@ public static class GameController
             || s_keyboard.WasKeyJustPressed(Keys.S)
             || s_gamePad.WasButtonJustPressed(Buttons.DPadDown)
             || s_gamePad.WasButtonJustPressed(Buttons.LeftThumbstickDown);
+    }
+
+    /// <summary>
+    /// Returns true if the player has triggered the "move down" action.
+    /// </summary>
+    public static bool MoveDownHeld()
+    {
+        return s_keyboard.IsKeyDown(Keys.Down)
+            || s_keyboard.IsKeyDown(Keys.S)
+            || s_gamePad.IsButtonDown(Buttons.DPadDown)
+            || s_gamePad.IsButtonDown(Buttons.LeftThumbstickDown);
     }
 
     /// <summary>
@@ -48,6 +70,17 @@ public static class GameController
     }
 
     /// <summary>
+    /// Returns true if the player has triggered the "move left" action.
+    /// </summary>
+    public static bool MoveLeftHeld()
+    {
+        return s_keyboard.IsKeyDown(Keys.Left)
+            || s_keyboard.IsKeyDown(Keys.A)
+            || s_gamePad.IsButtonDown(Buttons.DPadLeft)
+            || s_gamePad.IsButtonDown(Buttons.LeftThumbstickLeft);
+    }
+
+    /// <summary>
     /// Returns true if the player has triggered the "move right" action.
     /// </summary>
     public static bool MoveRight()
@@ -56,6 +89,27 @@ public static class GameController
             || s_keyboard.WasKeyJustPressed(Keys.D)
             || s_gamePad.WasButtonJustPressed(Buttons.DPadRight)
             || s_gamePad.WasButtonJustPressed(Buttons.LeftThumbstickRight);
+    }
+
+    /// <summary>
+    /// Returns true if the player has triggered the "move right" action.
+    /// </summary>
+    public static bool MoveRightHeld()
+    {
+        return s_keyboard.IsKeyDown(Keys.Right)
+            || s_keyboard.IsKeyDown(Keys.D)
+            || s_gamePad.IsButtonDown(Buttons.DPadRight)
+            || s_gamePad.IsButtonDown(Buttons.LeftThumbstickRight);
+    }
+
+    public static bool FDown()
+    {
+        return s_keyboard.WasKeyJustPressed(Keys.F);
+    }
+
+    public static bool RDown()
+    {
+        return s_keyboard.WasKeyJustPressed(Keys.R);
     }
 
     /// <summary>
