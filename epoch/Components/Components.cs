@@ -6,7 +6,7 @@ public abstract class Component { }
 
 public class GraphicalTile : Component
 {
-    public required string Name { get; set; }
+    public required int TileId { get; set; }
     public float Scale { get; set; } = 1.0f;
 
     // You can use this as an override for the color in the tile definition,

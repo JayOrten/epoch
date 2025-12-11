@@ -97,7 +97,7 @@ public sealed class DrawSystem : SystemBase<DrawContext>
                 // and a color
                 // Log.Debug("Drawing tile {0} at position {1}", graphicalTile.Name, position.Vec2);
 
-                TileRenderInfo? tileInfo = _tileManager.GetTile(graphicalTile.Name);
+                TileRenderInfo? tileInfo = _tileManager.GetTile(graphicalTile.TileId);
                 // tileInfo contains a TextureRegion and color string
                 // If tileInfo is null, skip drawing
                 if (tileInfo != null)
