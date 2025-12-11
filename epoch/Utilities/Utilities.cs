@@ -59,12 +59,21 @@ public static class Utils
             return new Vector3(float.Parse(parts[0]), float.Parse(parts[1]), float.Parse(parts[2]));
         }
 
-        if (targetType == typeof(Color))
+        if (targetType == typeof(Color?))
         {
             if (value.StartsWith("#"))
                 return FromHex(value);
             else
                 throw new ArgumentException("Color string must be in hex format starting with #");
+        }
+
+        if (targetType == null)
+        {
+            Log.Error(
+                "Someone did an oopsie! Trying to convert value {0} to targetType {1}",
+                value,
+                targetType
+            );
         }
 
         // Fallback: try Convert.ChangeType for simple convertible types

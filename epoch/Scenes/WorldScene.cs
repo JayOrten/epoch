@@ -89,10 +89,6 @@ public class WorldScene : Scene
         // TODO: load in the entity map
     }
 
-    public record struct Position(float X, float Y);
-
-    public record struct Velocity(float Dx, float Dy);
-
     public override void BeginRun()
     {
         base.BeginRun();
@@ -102,34 +98,39 @@ public class WorldScene : Scene
 
         // Spawn entities
 
-        EntityDefinition entityDefinition = new EntityDefinition(
-            new ComponentDefinition("Position")
-        );
-        List<string> comps = ["empty", "grass", "tree", "dirt", "water"];
-        Random RandomUtil = new Random();
+        // Load tilemap
+        string tileMapPath = ContentPaths.Config("tilemap");
+        TileMap.LoadTileMap(tileMapPath, _world);
 
-        var sw = Stopwatch.StartNew();
-        for (int i = 0; i < 192; i++)
-        {
-            for (int j = 0; j < 192; j++)
-            {
-                for (int k = 0; k < 12; k++)
-                {
-                    // 3D coordinate string
-                    string coord3D = string.Concat(i, ",", j, ",", k);
+        // random map generation:
+        // EntityDefinition entityDefinition = new EntityDefinition(
+        //     new ComponentDefinition("Position")
+        // );
+        // List<string> comps = ["empty", "grass", "tree", "dirt", "water"];
+        // Random RandomUtil = new Random();
 
-                    // pick a random component to add
-                    string compToAdd = comps[RandomUtil.Next(0, comps.Count)];
+        // var sw = Stopwatch.StartNew();
+        // for (int i = 0; i < 12; i++)
+        // {
+        //     for (int j = 0; j < 12; j++)
+        //     {
+        //         for (int k = 0; k < 1; k++)
+        //         {
+        //             // 3D coordinate string
+        //             string coord3D = string.Concat(i, ",", j, ",", k);
 
-                    _entityManager.Spawn(
-                        compToAdd,
-                        entityDefinition.Add("Position", "WorldCoordinate", coord3D)
-                    );
-                }
-            }
-        }
-        sw.Stop();
-        Log.Info($"Spawned grass in {sw.ElapsedMilliseconds} ms");
+        //             // pick a random component to add
+        //             string compToAdd = comps[RandomUtil.Next(0, comps.Count)];
+
+        //             _entityManager.Spawn(
+        //                 compToAdd,
+        //                 entityDefinition.Add("Position", "WorldCoordinate", coord3D)
+        //             );
+        //         }
+        //     }
+        // }
+        // sw.Stop();
+        // Log.Info($"Spawned grass in {sw.ElapsedMilliseconds} ms");
     }
 
     private Vector2 GetMovementDirection()
@@ -210,6 +211,7 @@ public class WorldScene : Scene
             _currentZLevel,
             _globalSettings.GlobalScale
         );
+
         _drawSystem.Update(in drawContext);
 
         Core.SpriteBatch.End();
