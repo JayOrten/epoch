@@ -41,9 +41,6 @@ public abstract class SystemBase<T>
 /// </summary>
 public sealed class DrawSystem : SystemBase<DrawContext>
 {
-    private readonly QueryDescription _globalSettingsQuery =
-        new QueryDescription().WithAll<GlobalSettings>();
-
     private readonly QueryDescription _entitiesToDraw = new QueryDescription().WithAll<
         Position,
         GraphicalTile
@@ -116,10 +113,13 @@ public sealed class DrawSystem : SystemBase<DrawContext>
                             * drawContext.GlobalScale
                     );
 
+                    // Color should be the default in the tile definition, unless the GraphicalTile object holds an override
+                    Color color = graphicalTile.Color ?? tileInfo.Value.Color;
+
                     tileInfo.Value.TextureRegion.Draw(
                         _batch,
                         drawPosition,
-                        graphicalTile.Color,
+                        color,
                         0.0f,
                         Vector2.Zero,
                         graphicalTile.Scale * drawContext.GlobalScale,

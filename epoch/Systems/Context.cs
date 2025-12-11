@@ -6,7 +6,7 @@ public struct GlobalSettings
 
     public GlobalSettings()
     {
-        GlobalScale = 8.0f;
+        GlobalScale = 4.0f;
     }
 
     public GlobalSettings(float globalScale)

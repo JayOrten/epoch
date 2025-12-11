@@ -19,6 +19,8 @@ public record Tile(
 /// <summary>
 /// Holds the rendering information for a tile in the tilemap.
 /// This is mostly a utility struct for passing the render information elegantly from the tile manager.
+/// I seem to need this because I need a way to pass the actual TextureRegion (and I don't want to hold it in the main tile object?)
+/// One reason I can't just keep the textureregion in Tile is because I want to pull tiles or ascii dynamically
 public readonly record struct TileRenderInfo(TextureRegion TextureRegion, Color Color)
 {
     public int TileWidth => TextureRegion.Width;

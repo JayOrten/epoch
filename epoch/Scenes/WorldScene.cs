@@ -89,10 +89,6 @@ public class WorldScene : Scene
         // TODO: load in the entity map
     }
 
-    public record struct Position(float X, float Y);
-
-    public record struct Velocity(float Dx, float Dy);
-
     public override void BeginRun()
     {
         base.BeginRun();
@@ -109,11 +105,11 @@ public class WorldScene : Scene
         Random RandomUtil = new Random();
 
         var sw = Stopwatch.StartNew();
-        for (int i = 0; i < 192; i++)
+        for (int i = 0; i < 12; i++)
         {
-            for (int j = 0; j < 192; j++)
+            for (int j = 0; j < 12; j++)
             {
-                for (int k = 0; k < 12; k++)
+                for (int k = 0; k < 1; k++)
                 {
                     // 3D coordinate string
                     string coord3D = string.Concat(i, ",", j, ",", k);
@@ -210,6 +206,7 @@ public class WorldScene : Scene
             _currentZLevel,
             _globalSettings.GlobalScale
         );
+
         _drawSystem.Update(in drawContext);
 
         Core.SpriteBatch.End();

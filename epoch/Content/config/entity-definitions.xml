@@ -1,27 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <entityDefinitions>
     <entity name="empty">
-      <component component_name="GraphicalTile" name="empty" color="#303030"/>
+      <component component_name="GraphicalTile" name="empty"/>
       <component component_name="Position" vec2="0,0"/>
     </entity>
     <entity name="player">
-      <component component_name="GraphicalTile" name="player" color="#960000"/>
+      <component component_name="GraphicalTile" name="player"/>
       <component component_name="Position" vec2="0,0"/>
     </entity>
     <entity name="grass">
-      <component component_name="GraphicalTile" name="grass" color="#0b4001"/>
+      <component component_name="GraphicalTile" name="grass"/>
       <component component_name="Position" vec2="0,0"/>
     </entity>
     <entity name="tree">
-      <component component_name="GraphicalTile" name="tree" color="#5c3200"/>
-      <component component_name="Position" vec2="5,5"/>
+      <component component_name="GraphicalTile" name="tree"/>
+      <component component_name="Position" vec2="0,0"/>
     </entity>
     <entity name="dirt">
-      <component component_name="GraphicalTile" name="dirt" color="#1c0f00"/>
+      <component component_name="GraphicalTile" name="dirt"/>
       <component component_name="Position" vec2="0,0"/>
     </entity>
     <entity name="water">
-      <component component_name="GraphicalTile" name="water" color="#000745"/>
+      <component component_name="GraphicalTile" name="water" color="#ff0000"/>
       <component component_name="Position" vec2="0,0"/>
     </entity>
 </entityDefinitions>

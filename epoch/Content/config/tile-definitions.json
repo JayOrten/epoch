@@ -3,42 +3,42 @@
         "id": 0,
         "name": "empty",
         "asciiTileIndex": 249,
-        "asciiColor": "#303030",
+        "colorString": "#303030",
         "graphicalTileIndex": 0
     },
     {
         "id": 1,
         "name": "player",
         "asciiTileIndex": 64,
-        "asciiColor": "#960000",
+        "colorString": "#960000",
         "graphicalTileIndex": 0
     },
     {
         "id": 2,
         "name": "grass",
         "asciiTileIndex": 119,
-        "asciiColor": "#0b4001",
+        "colorString": "#0b4001",
         "graphicalTileIndex": 0
     },
     {
         "id": 3,
         "name": "tree",
         "asciiTileIndex": 244,
-        "asciiColor": "#5c3200",
+        "colorString": "#5c3200",
         "graphicalTileIndex": 0
     },
     {
         "id": 4,
         "name": "dirt",
         "asciiTileIndex": 126,
-        "asciiColor": "#1c0f00",
+        "colorString": "#1c0f00",
         "graphicalTileIndex": 0
     },
     {
         "id": 5,
         "name": "water",
         "asciiTileIndex": 177,
-        "asciiColor": "#000745",
+        "colorString": "#000745",
         "graphicalTileIndex": 0
     }
 ]
