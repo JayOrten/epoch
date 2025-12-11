@@ -2,8 +2,8 @@
     {
         "id": 0,
         "name": "empty",
-        "asciiTileIndex": 249,
-        "colorString": "#303030",
+        "asciiTileIndex": 46,
+        "colorString": "#ffffff",
         "graphicalTileIndex": 0
     },
     {
@@ -39,6 +39,27 @@
         "name": "water",
         "asciiTileIndex": 177,
         "colorString": "#000745",
+        "graphicalTileIndex": 0
+    },
+    {
+        "id": 6,
+        "name": "hashtag",
+        "asciiTileIndex": 35,
+        "colorString": "#ffffff",
+        "graphicalTileIndex": 0
+    },
+    {
+        "id": 7,
+        "name": "circle",
+        "asciiTileIndex": 9,
+        "colorString": "#ffffff",
+        "graphicalTileIndex": 0
+    },
+    {
+        "id": 8,
+        "name": "plus",
+        "asciiTileIndex": 43,
+        "colorString": "#ffffff",
         "graphicalTileIndex": 0
     }
 ]

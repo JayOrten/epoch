@@ -11,7 +11,7 @@ public static class ContentPaths
     private static readonly Dictionary<string, string[]> _extensions = new()
     {
         { "images", new[] { ".png", ".jpg" } },
-        { "config", new[] { ".json", ".xml" } },
+        { "config", new[] { ".json", ".xml", ".txt" } },
         { "audio", new[] { ".ogg", ".wav", ".mp3" } },
     };
 
