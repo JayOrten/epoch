@@ -187,7 +187,7 @@ public class WorldScene : Scene
 
     public override void Update(GameTime gameTime)
     {
-        const float movementSpeed = 1000;
+        const float movementSpeed = 250;
         _camera.Move(GetMovementDirection() * movementSpeed * gameTime.GetElapsedSeconds());
 
         AdjustZoom();
@@ -209,7 +209,8 @@ public class WorldScene : Scene
         DrawContext drawContext = new DrawContext(
             gameTime,
             _currentZLevel,
-            _globalSettings.GlobalScale
+            _globalSettings.GlobalScale,
+            _camera.Center
         );
 
         _drawSystem.Update(in drawContext);
