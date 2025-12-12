@@ -1,13 +1,13 @@
 {
-    "file": "images/Anikki_square_20x20",
+    "file": "images/Terbert_7x7",
     "region": {
         "x": 0,
         "y": 0,
-        "width": 320,
-        "height": 320
+        "width": 112,
+        "height": 112
     },
-    "tile_width": 20,
-    "tile_height": 20,
+    "tile_width": 7,
+    "tile_height": 7,
     "padding": 0
 }
 

@@ -20,11 +20,13 @@ public readonly struct DrawContext
     public readonly GameTime GameTime;
     public readonly float ZLevel;
     public readonly float GlobalScale;
+    public readonly Vector2 Center;
 
-    public DrawContext(GameTime gameTime, float zLevel, float globalScale)
+    public DrawContext(GameTime gameTime, float zLevel, float globalScale, Vector2 center)
     {
         GameTime = gameTime;
         ZLevel = zLevel;
         GlobalScale = globalScale;
+        Center = center;
     }
 }

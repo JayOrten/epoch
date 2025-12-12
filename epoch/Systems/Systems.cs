@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using Arch.Core;
 using epoch.Components;
 using epoch.Engine;
@@ -67,7 +69,9 @@ public sealed class DrawSystem : SystemBase<DrawContext>
     /// <param name="time">The <see cref="GameTime"/> being passed from outside the system.</param>
     public override void Update(in DrawContext drawContext)
     {
+        // First, query all components, and collect them, seperated by layers
         // Log.Debug("DrawSystem Update started.");
+        Dictionary<float, List<(Position, GraphicalTile)>> layerTiles = new();
 
         // Get query for the description, targets all entities with "Positions" and "Sprite".
         var query = World.Query(in _entitiesToDraw);
@@ -88,11 +92,30 @@ public sealed class DrawSystem : SystemBase<DrawContext>
                 var position = positions[index];
                 var graphicalTile = graphicalTiles[index];
 
-                // Only draw if the tile is on the current level.
-                if (position.WorldCoordinate.Z != drawContext.ZLevel)
+                float key = position.WorldCoordinate.Z;
+
+                if (!layerTiles.ContainsKey(key))
                 {
-                    continue;
+                    layerTiles[key] = new List<(Position, GraphicalTile)>();
                 }
+
+                layerTiles[key].Add((position, graphicalTile));
+            }
+        }
+
+        float minLevel = layerTiles.Keys.Min();
+        float maxLevel = layerTiles.Keys.Max();
+
+        // Iterate through all collected tiles and draw in order of layer
+        for (float i = minLevel; i <= maxLevel; i++)
+        {
+            foreach ((Position position, GraphicalTile graphicalTile) in layerTiles[i])
+            {
+                // Only draw if the tile is on the current level.
+                // if (position.WorldCoordinate.Z != drawContext.ZLevel)
+                // {
+                //     continue;
+                // }
                 // graphicalTile contains a name, referencing a tile in the TileManager,
                 // and a color
                 // Log.Debug("Drawing tile {0} at position {1}", graphicalTile.Name, position.Vec2);
@@ -102,32 +125,67 @@ public sealed class DrawSystem : SystemBase<DrawContext>
                 // If tileInfo is null, skip drawing
                 if (tileInfo != null)
                 {
-                    Vector2 drawPosition = new Vector2(
+                    float xPosition =
                         position.WorldCoordinate.X
-                            * tileInfo.Value.TileWidth
-                            * graphicalTile.Scale
-                            * drawContext.GlobalScale,
+                        * tileInfo.Value.TileWidth
+                        * graphicalTile.Scale
+                        * drawContext.GlobalScale;
+
+                    float yPosition =
                         position.WorldCoordinate.Y
-                            * tileInfo.Value.TileHeight
-                            * graphicalTile.Scale
-                            * drawContext.GlobalScale
-                    );
+                        * tileInfo.Value.TileHeight
+                        * graphicalTile.Scale
+                        * drawContext.GlobalScale;
+
+                    float depthStrength = 0.04f;
+                    Vector2 vanishingPoint = drawContext.Center;
+
+                    float dx = xPosition - vanishingPoint.X;
+                    float dy = yPosition - vanishingPoint.Y;
+
+                    float perspectiveScale = 1.0f + (position.WorldCoordinate.Z * depthStrength);
+
+                    float finalX = vanishingPoint.X + (dx * perspectiveScale);
+                    float finalY = vanishingPoint.Y + (dy * perspectiveScale);
+
+                    Vector2 finalPosition = new Vector2(finalX, finalY);
 
                     // Color should be the default in the tile definition, unless the GraphicalTile object holds an override
                     Color color = graphicalTile.Color ?? tileInfo.Value.Color;
 
+                    // Scale color by layer: lower layers should be darker
+                    color = XnaColorExtensions.Darken(
+                        color,
+                        1 - (1.0f / (maxLevel + 1 - position.WorldCoordinate.Z))
+                    );
+
                     tileInfo.Value.TextureRegion.Draw(
                         _batch,
-                        drawPosition,
+                        finalPosition,
                         color,
                         0.0f,
                         Vector2.Zero,
-                        graphicalTile.Scale * drawContext.GlobalScale,
+                        graphicalTile.Scale * drawContext.GlobalScale * perspectiveScale,
                         SpriteEffects.None,
                         0.0f
                     );
                 }
             }
         }
+    }
+}
+
+public static class XnaColorExtensions
+{
+    public static Color Lighten(this Color color, float amount)
+    {
+        // 0.0f = no change, 1.0f = completey white
+        return Color.Lerp(color, Color.White, amount);
+    }
+
+    public static Color Darken(this Color color, float amount)
+    {
+        // 0.0f = no change, 1.0f = completely black
+        return Color.Lerp(color, Color.Black, amount);
     }
 }
