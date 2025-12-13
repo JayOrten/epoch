@@ -6,10 +6,9 @@ using System.Xml.Linq;
 using Arch.Core;
 using Arch.Core.Extensions;
 using epoch;
-using epoch.Components;
-using epoch.Utilities.Logging;
+using epoch.Generated;
 
-namespace epoch.Entities;
+namespace epoch.ECS;
 
 /// <summary>
 /// Represents a flexible definition of an entity, consisting of a type name and a collection of components.
@@ -134,8 +133,6 @@ public class EntityManager
 
     public EntityManager(World world, string xmlPath)
     {
-        ComponentFactory.Initialize(Assembly.GetExecutingAssembly());
-
         _entityDefs = Parse(xmlPath);
 
         _world = world;
@@ -167,14 +164,26 @@ public class EntityManager
 
     public void Spawn(EntityDefinition entityDefinition)
     {
-        var entity = _world.Create();
+        var componentTypes = new ComponentType[entityDefinition.Components.Count];
+        for (int i = 0; i < entityDefinition.Components.Count; i++)
+        {
+            componentTypes[i] = ComponentFactory.GetArchType(
+                entityDefinition.Components.Values.ToList()[i].TypeName
+            );
+        }
+        var entity = _world.Create(componentTypes);
+
+        foreach (var componentDefinition in entityDefinition.Components.Values.ToList())
+        {
+            entity.SetOnEntity(_world, componentDefinition);
+        }
 
         // Get list of components
-        object[] components = entityDefinition
-            .Components.Values.Select(component => (object)ComponentFactory.Create(component))
-            .ToArray();
+        // object[] components = entityDefinition
+        //     .Components.Values.Select(component => (object)ComponentFactory.Create(component))
+        //     .ToArray();
 
-        _world.AddRange(entity, components.AsSpan());
+        // _world.AddRange(entity, components.AsSpan());
 
         // print out component contents for debugigng
         // Log.Debug(

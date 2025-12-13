@@ -1,6 +1,6 @@
 using System.IO;
 using Arch.Core;
-using epoch.Components;
+using epoch.ECS;
 using Microsoft.Xna.Framework;
 
 namespace epoch.Engine.Graphics;

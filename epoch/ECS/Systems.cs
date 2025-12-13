@@ -1,13 +1,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using Arch.Core;
-using epoch.Components;
 using epoch.Engine;
 using epoch.Engine.Graphics;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace epoch.Systems;
+namespace epoch.ECS;
 
 /// <summary>
 ///     The <see cref="SystemBase{T}"/> class

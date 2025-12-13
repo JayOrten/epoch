@@ -80,3 +80,36 @@ public static class Utils
         return System.Convert.ChangeType(value, targetType);
     }
 }
+
+public static class ComponentParsers
+{
+    public static int ParseInt(string value) => int.Parse(value, CultureInfo.InvariantCulture);
+
+    public static float ParseFloat(string value) =>
+        float.Parse(value, CultureInfo.InvariantCulture);
+
+    public static bool ParseBool(string value) => bool.Parse(value);
+
+    public static string ParseString(string value) => value;
+
+    // Custom parsing for your Vector3 format (e.g. "1.0,2.5,0")
+    public static Vector3 ParseVector3(string value)
+    {
+        var parts = value.Split(',');
+        return new Vector3(
+            float.Parse(parts[0], CultureInfo.InvariantCulture),
+            float.Parse(parts[1], CultureInfo.InvariantCulture),
+            float.Parse(parts[2], CultureInfo.InvariantCulture)
+        );
+    }
+
+    // Handle Nullable types by returning the value type (assignment to Nullable works automatically)
+    public static Color ParseColor(string value)
+    {
+        // Simple implementation: Assume Hex or Named color
+        var prop = typeof(Color).GetProperty(value);
+        if (prop != null)
+            return (Color)prop.GetValue(null);
+        return Color.White;
+    }
+}

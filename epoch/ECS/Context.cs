@@ -1,5 +1,7 @@
 using Microsoft.Xna.Framework;
 
+namespace epoch.ECS;
+
 public struct GlobalSettings
 {
     public float GlobalScale { get; set; }
