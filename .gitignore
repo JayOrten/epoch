@@ -4,6 +4,7 @@ bin/
 obj/
 Content/bin
 Content/obj
+Generated/
 # Ignore user-specific files
 *.user
 *.suo
@@ -15,3 +16,4 @@ pipeline-references/
 
 .config
 .vscode
+
