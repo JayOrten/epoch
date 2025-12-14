@@ -79,6 +79,18 @@ public static class Utils
         // Fallback: try Convert.ChangeType for simple convertible types
         return System.Convert.ChangeType(value, targetType);
     }
+
+    public static Vector2 ConvertGridToWorldCoordinate(
+        Vector2 gridCoordinate,
+        int tileWidth,
+        int tileHeight
+    )
+    {
+        // Converts unit grid position to center of tile in world coordinates (pixels)
+        Vector2 tileSize = new Vector2(tileWidth, tileHeight);
+
+        return (gridCoordinate * tileSize) + (tileSize * 0.5f);
+    }
 }
 
 public static class ComponentParsers
@@ -91,6 +103,15 @@ public static class ComponentParsers
     public static bool ParseBool(string value) => bool.Parse(value);
 
     public static string ParseString(string value) => value;
+
+    public static Vector2 ParseVector2(string value)
+    {
+        var parts = value.Split(',');
+        return new Vector2(
+            float.Parse(parts[0], CultureInfo.InvariantCulture),
+            float.Parse(parts[1], CultureInfo.InvariantCulture)
+        );
+    }
 
     // Custom parsing for your Vector3 format (e.g. "1.0,2.5,0")
     public static Vector3 ParseVector3(string value)

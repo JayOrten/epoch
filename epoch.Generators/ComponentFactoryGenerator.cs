@@ -182,6 +182,7 @@ public class ComponentFactoryGenerator : IIncrementalGenerator
             "Single" => "ParseFloat",
             "Boolean" => "ParseBool",
             "String" => "ParseString",
+            "Vector2" => "ParseVector2",
             "Vector3" => "ParseVector3",
             "Color" => "ParseColor",
             _ => "ParseString",

@@ -97,40 +97,61 @@ public class WorldScene : Scene
         // Spawn entities
 
         // Load tilemap
-        // string tileMapPath = ContentPaths.Config("tilemap");
-        // TileMap.LoadTileMap(tileMapPath, _world);
+        string tileMapPath = ContentPaths.Config("tilemap");
+        TileMap.LoadTileMap(tileMapPath, _world);
 
         // Spawn Player
 
-        // random map generation:
-        EntityDefinition entityDefinition = new EntityDefinition(
-            new ComponentDefinition("Position")
+        // Create entity with desired position
+        EntityDefinition spawnPosition = new EntityDefinition(
+            new ComponentDefinition(
+                "Position",
+                new Dictionary<string, string> { { "WorldCoordinate", "1,1,0" } }
+            )
         );
-        List<string> comps = ["empty", "grass", "tree", "dirt", "water"];
-        Random RandomUtil = new Random();
 
-        var sw = Stopwatch.StartNew();
-        for (int i = 0; i < 9; i++)
-        {
-            for (int j = 0; j < 9; j++)
-            {
-                for (int k = 0; k < 1; k++)
-                {
-                    // 3D coordinate string
-                    string coord3D = string.Concat(i, ",", j, ",", k);
+        _entityManager.Spawn("player", spawnPosition);
 
-                    // pick a random component to add
-                    string compToAdd = comps[RandomUtil.Next(0, comps.Count)];
+        // Center camera on player
+        _camera.LookAt(
+            Utils.ConvertGridToWorldCoordinate(
+                new Vector2(1, 1),
+                _tileManager.TileWidth,
+                _tileManager.TileHeight
+            )
+        );
 
-                    _entityManager.Spawn(
-                        compToAdd,
-                        entityDefinition.Add("Position", "WorldCoordinate", coord3D)
-                    );
-                }
-            }
-        }
-        sw.Stop();
-        Log.Info($"Spawned grass in {sw.ElapsedMilliseconds} ms");
+        // Center the camera on the player
+
+        // random map generation:
+        // EntityDefinition entityDefinition = new EntityDefinition(
+        //     new ComponentDefinition("Position")
+        // );
+        // List<string> comps = ["empty", "grass", "tree", "dirt", "water"];
+        // Random RandomUtil = new Random();
+
+        // var sw = Stopwatch.StartNew();
+        // for (int i = 0; i < 9; i++)
+        // {
+        //     for (int j = 0; j < 9; j++)
+        //     {
+        //         for (int k = 0; k < 1; k++)
+        //         {
+        //             // 3D coordinate string
+        //             string coord3D = string.Concat(i, ",", j, ",", k);
+
+        //             // pick a random component to add
+        //             string compToAdd = comps[RandomUtil.Next(0, comps.Count)];
+
+        //             _entityManager.Spawn(
+        //                 compToAdd,
+        //                 entityDefinition.Add("Position", "WorldCoordinate", coord3D)
+        //             );
+        //         }
+        //     }
+        // }
+        // sw.Stop();
+        // Log.Info($"Spawned grass in {sw.ElapsedMilliseconds} ms");
     }
 
     private Vector2 GetMovementDirection()
@@ -188,7 +209,17 @@ public class WorldScene : Scene
     public override void Update(GameTime gameTime)
     {
         const float movementSpeed = 250;
-        _camera.Move(GetMovementDirection() * movementSpeed * gameTime.GetElapsedSeconds());
+
+        Vector2 moveDirection =
+            GetMovementDirection() * movementSpeed * gameTime.GetElapsedSeconds();
+
+        // Move camera
+        _camera.Move(moveDirection);
+
+        // Move player
+        // should set the movement vector on the player here
+        // to determine: what should the movement vector represent? How to "bin" it on the grid?
+        // to start, assume moveDirection is actual pixel values
 
         AdjustZoom();
 

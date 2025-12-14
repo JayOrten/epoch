@@ -54,6 +54,11 @@ public class ComponentDefinition
 [AttributeUsage(AttributeTargets.Struct)]
 public class ComponentAttribute : Attribute { }
 
+// Tag Components
+[Component]
+public struct PlayerTag { }
+
+// Regular Components
 [Component]
 public struct GraphicalTile
 {
@@ -72,4 +77,10 @@ public struct GraphicalTile
 public struct Position
 {
     public Vector3 WorldCoordinate { get; set; }
+}
+
+[Component]
+public struct Movement
+{
+    public Vector2 MoveVector { get; set; }
 }
