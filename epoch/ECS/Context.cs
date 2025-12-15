@@ -32,3 +32,15 @@ public readonly struct DrawContext
         Center = center;
     }
 }
+
+public readonly struct PlayerMovementContext
+{
+    public readonly GameTime GameTime;
+    public readonly float TileScaleModifier;
+
+    public PlayerMovementContext(GameTime gameTime, float tileScaleModifier)
+    {
+        GameTime = gameTime;
+        TileScaleModifier = tileScaleModifier;
+    }
+}

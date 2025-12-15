@@ -1,10 +1,15 @@
 using System.Collections.Generic;
 using System.Linq;
 using Arch.Core;
+using Arch.Core.Extensions;
 using epoch.Engine;
 using epoch.Engine.Graphics;
+using epoch.Utilities;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
+using MonoGame.Extended;
+using MonoGame.Extended.ViewportAdapters;
 
 namespace epoch.ECS;
 
@@ -65,7 +70,6 @@ public sealed class DrawSystem : SystemBase<DrawContext>
     /// <summary>
     ///     Gets called to execute the draw systems logic and to draw the <see cref="Entity"/>s.
     /// </summary>
-    /// <param name="time">The <see cref="GameTime"/> being passed from outside the system.</param>
     public override void Update(in DrawContext drawContext)
     {
         // First, query all components, and collect them, seperated by layers
@@ -171,6 +175,99 @@ public sealed class DrawSystem : SystemBase<DrawContext>
                 }
             }
         }
+    }
+}
+
+public sealed class PlayerMovementSystem : SystemBase<PlayerMovementContext>
+{
+    private OrthographicCamera _camera;
+
+    private Entity _playerEntity;
+
+    private float _moveDelay = 0.20f;
+    private float smoothTime = 0.20f;
+
+    private float _currentTimer = 0f;
+
+    private Vector2 _camVelocity;
+
+    // TODO: don't love this here, need a seperate input system?
+    private Vector2 GetMovementDirection()
+    {
+        var movementDirection = Vector2.Zero;
+
+        if (GameController.MoveDownHeld())
+        {
+            movementDirection += Vector2.UnitY;
+        }
+        if (GameController.MoveUpHeld())
+        {
+            movementDirection -= Vector2.UnitY;
+        }
+        if (GameController.MoveLeftHeld())
+        {
+            movementDirection -= Vector2.UnitX;
+        }
+        if (GameController.MoveRightHeld())
+        {
+            movementDirection += Vector2.UnitX;
+        }
+
+        return movementDirection;
+    }
+
+    public PlayerMovementSystem(World world, OrthographicCamera camera, Entity playerEntity)
+        : base(world)
+    {
+        _camera = camera;
+        _playerEntity = playerEntity;
+    }
+
+    public override void Update(in PlayerMovementContext playerMovementContext)
+    {
+        float delta = playerMovementContext.GameTime.GetElapsedSeconds();
+        if (_currentTimer > 0)
+        {
+            _currentTimer -= delta;
+        }
+
+        if (_currentTimer <= 0)
+        {
+            Vector2 movementDirection = GetMovementDirection();
+
+            if (movementDirection != Vector2.Zero)
+            {
+                ref var pos = ref _playerEntity.Get<Position>();
+                var coord = pos.WorldCoordinate;
+                coord.X += movementDirection.X;
+                coord.Y += movementDirection.Y;
+                pos.WorldCoordinate = coord;
+
+                _currentTimer = _moveDelay;
+            }
+        }
+
+        Vector3 playerPosition = _playerEntity.Get<Position>().WorldCoordinate;
+
+        Vector2 playerPosition2D =
+            new Vector2(playerPosition.X, playerPosition.Y)
+            * playerMovementContext.TileScaleModifier;
+
+        Vector2 targetPosition =
+            playerPosition2D
+            - new Vector2(
+                Core.Graphics.PreferredBackBufferWidth / 2,
+                Core.Graphics.PreferredBackBufferHeight / 2
+            );
+
+        _camera.Position = CameraUtils.SmoothDamp(
+            _camera.Position,
+            targetPosition,
+            ref _camVelocity,
+            smoothTime,
+            float.MaxValue,
+            delta
+        );
     }
 }
 

@@ -82,14 +82,16 @@ public static class Utils
 
     public static Vector2 ConvertGridToWorldCoordinate(
         Vector2 gridCoordinate,
-        int tileWidth,
-        int tileHeight
+        float tileWidth,
+        float tileHeight
     )
     {
         // Converts unit grid position to center of tile in world coordinates (pixels)
         Vector2 tileSize = new Vector2(tileWidth, tileHeight);
 
-        return (gridCoordinate * tileSize) + (tileSize * 0.5f);
+        Vector2 worldCoordinate = (gridCoordinate * tileSize) + (tileSize * 0.5f);
+
+        return worldCoordinate;
     }
 }
 
@@ -132,5 +134,50 @@ public static class ComponentParsers
         if (prop != null)
             return (Color)prop.GetValue(null);
         return Color.White;
+    }
+}
+
+public static class CameraUtils
+{
+    public static Vector2 SmoothDamp(
+        Vector2 current,
+        Vector2 target,
+        ref Vector2 currentVelocity,
+        float smoothTime,
+        float maxSpeed,
+        float deltaTime
+    )
+    {
+        smoothTime = Math.Max(0.0001f, smoothTime);
+        float num = 2f / smoothTime;
+        float num2 = num * deltaTime;
+        float num3 = 1f / (1f + num2 + 0.48f * num2 * num2 + 0.235f * num2 * num2 * num2);
+
+        Vector2 change = current - target;
+        Vector2 originalTo = target;
+
+        // Clamp maximum speed
+        float maxChange = maxSpeed * smoothTime;
+        float sqrMag = change.LengthSquared();
+        if (sqrMag > maxChange * maxChange)
+        {
+            float mag = (float)Math.Sqrt(sqrMag);
+            change = change / mag * maxChange;
+        }
+
+        target = current - change;
+
+        Vector2 temp = (currentVelocity + num * change) * deltaTime;
+        currentVelocity = (currentVelocity - num * temp) * num3;
+        Vector2 output = target + (change + temp) * num3;
+
+        // Prevent overshooting
+        if (Vector2.Dot(originalTo - current, output - originalTo) > 0f)
+        {
+            output = originalTo;
+            currentVelocity = (output - originalTo) / deltaTime;
+        }
+
+        return output;
     }
 }
