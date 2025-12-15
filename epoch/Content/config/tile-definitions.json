@@ -10,7 +10,7 @@
         "id": 1,
         "name": "player",
         "asciiTileIndex": 64,
-        "colorString": "#960000",
+        "colorString": "#00ffff",
         "graphicalTileIndex": 0
     },
     {
