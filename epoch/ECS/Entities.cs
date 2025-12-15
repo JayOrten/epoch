@@ -162,7 +162,7 @@ public class EntityManager
         return entities;
     }
 
-    public void Spawn(EntityDefinition entityDefinition)
+    public Entity Spawn(EntityDefinition entityDefinition)
     {
         var componentTypes = new ComponentType[entityDefinition.Components.Count];
         for (int i = 0; i < entityDefinition.Components.Count; i++)
@@ -178,6 +178,8 @@ public class EntityManager
             entity.SetOnEntity(_world, componentDefinition);
         }
 
+        return entity;
+
         // Get list of components
         // object[] components = entityDefinition
         //     .Components.Values.Select(component => (object)ComponentFactory.Create(component))
@@ -191,15 +193,16 @@ public class EntityManager
         // );
     }
 
-    public void Spawn(string entityName, EntityDefinition entityDefinitionOverride = null)
+    public Entity Spawn(string entityName, EntityDefinition entityDefinitionOverride = null)
     {
         // Find the entity definition in the list matching entityName
         EntityDefinition def = _entityDefs.TryGetValue(entityName, out var value) ? value : null;
 
         if (def == null)
         {
-            Log.Info($"Entity definition '{entityName}' not found.");
-            return;
+            Log.Info($"Entity definition '{entityName}' not found.", entityName);
+            var ex = new InvalidOperationException("Entity definition not found");
+            throw ex;
         }
 
         // If an override definition is provided, merge it with the found definition
@@ -208,6 +211,8 @@ public class EntityManager
             def = def.Merge(entityDefinitionOverride);
         }
 
-        Spawn(def);
+        Entity entity = Spawn(def);
+
+        return entity;
     }
 }
