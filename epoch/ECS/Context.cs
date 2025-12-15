@@ -1,5 +1,7 @@
 using Microsoft.Xna.Framework;
 
+namespace epoch.ECS;
+
 public struct GlobalSettings
 {
     public float GlobalScale { get; set; }
@@ -28,5 +30,17 @@ public readonly struct DrawContext
         ZLevel = zLevel;
         GlobalScale = globalScale;
         Center = center;
+    }
+}
+
+public readonly struct PlayerMovementContext
+{
+    public readonly GameTime GameTime;
+    public readonly float TileScaleModifier;
+
+    public PlayerMovementContext(GameTime gameTime, float tileScaleModifier)
+    {
+        GameTime = gameTime;
+        TileScaleModifier = tileScaleModifier;
     }
 }

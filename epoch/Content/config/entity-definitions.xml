@@ -1,27 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <entityDefinitions>
     <entity name="empty">
-      <component component_name="GraphicalTile" tileId="0"/>
-      <component component_name="Position" vec2="0,0"/>
+      <component component_name="GraphicalTile" TileId="0"/>
+      <component component_name="Position" WorldCoordinate="0,0,0"/>
     </entity>
     <entity name="player">
-      <component component_name="GraphicalTile" tileId="1"/>
-      <component component_name="Position" vec2="0,0"/>
+      <component component_name="GraphicalTile" TileId="1"/>
+      <component component_name="Position" WorldCoordinate="0,0,0"/>
+      <component component_name="PlayerTag"/>
+      <component component_name="Movement" MoveVector="0,0"/>
     </entity>
     <entity name="grass">
-      <component component_name="GraphicalTile" tileId="2"/>
-      <component component_name="Position" vec2="0,0"/>
+      <component component_name="GraphicalTile" TileId="2"/>
+      <component component_name="Position" WorldCoordinate="0,0,0"/>
     </entity>
     <entity name="tree">
-      <component component_name="GraphicalTile" tileId="3"/>
-      <component component_name="Position" vec2="0,0"/>
+      <component component_name="GraphicalTile" TileId="3"/>
+      <component component_name="Position" WorldCoordinate="0,0,0"/>
     </entity>
     <entity name="dirt">
-      <component component_name="GraphicalTile" tileId="4"/>
-      <component component_name="Position" vec2="0,0"/>
+      <component component_name="GraphicalTile" TileId="4"/>
+      <component component_name="Position" WorldCoordinate="0,0,0"/>
     </entity>
     <entity name="water">
-      <component component_name="GraphicalTile" tileId="5" color="#ff0000"/>
-      <component component_name="Position" vec2="0,0"/>
+      <component component_name="GraphicalTile" TileId="5" color="#ff0000"/>
+      <component component_name="Position" WorldCoordinate="0,0,0"/>
     </entity>
 </entityDefinitions>

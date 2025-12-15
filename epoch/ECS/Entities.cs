@@ -6,10 +6,9 @@ using System.Xml.Linq;
 using Arch.Core;
 using Arch.Core.Extensions;
 using epoch;
-using epoch.Components;
-using epoch.Utilities.Logging;
+using epoch.Generated;
 
-namespace epoch.Entities;
+namespace epoch.ECS;
 
 /// <summary>
 /// Represents a flexible definition of an entity, consisting of a type name and a collection of components.
@@ -134,8 +133,6 @@ public class EntityManager
 
     public EntityManager(World world, string xmlPath)
     {
-        ComponentFactory.Initialize(Assembly.GetExecutingAssembly());
-
         _entityDefs = Parse(xmlPath);
 
         _world = world;
@@ -165,16 +162,30 @@ public class EntityManager
         return entities;
     }
 
-    public void Spawn(EntityDefinition entityDefinition)
+    public Entity Spawn(EntityDefinition entityDefinition)
     {
-        var entity = _world.Create();
+        var componentTypes = new ComponentType[entityDefinition.Components.Count];
+        for (int i = 0; i < entityDefinition.Components.Count; i++)
+        {
+            componentTypes[i] = ComponentFactory.GetArchType(
+                entityDefinition.Components.Values.ToList()[i].TypeName
+            );
+        }
+        var entity = _world.Create(componentTypes);
+
+        foreach (var componentDefinition in entityDefinition.Components.Values.ToList())
+        {
+            entity.SetOnEntity(_world, componentDefinition);
+        }
+
+        return entity;
 
         // Get list of components
-        object[] components = entityDefinition
-            .Components.Values.Select(component => (object)ComponentFactory.Create(component))
-            .ToArray();
+        // object[] components = entityDefinition
+        //     .Components.Values.Select(component => (object)ComponentFactory.Create(component))
+        //     .ToArray();
 
-        _world.AddRange(entity, components.AsSpan());
+        // _world.AddRange(entity, components.AsSpan());
 
         // print out component contents for debugigng
         // Log.Debug(
@@ -182,15 +193,16 @@ public class EntityManager
         // );
     }
 
-    public void Spawn(string entityName, EntityDefinition entityDefinitionOverride = null)
+    public Entity Spawn(string entityName, EntityDefinition entityDefinitionOverride = null)
     {
         // Find the entity definition in the list matching entityName
         EntityDefinition def = _entityDefs.TryGetValue(entityName, out var value) ? value : null;
 
         if (def == null)
         {
-            Log.Info($"Entity definition '{entityName}' not found.");
-            return;
+            Log.Info($"Entity definition '{entityName}' not found.", entityName);
+            var ex = new InvalidOperationException("Entity definition not found");
+            throw ex;
         }
 
         // If an override definition is provided, merge it with the found definition
@@ -199,6 +211,8 @@ public class EntityManager
             def = def.Merge(entityDefinitionOverride);
         }
 
-        Spawn(def);
+        Entity entity = Spawn(def);
+
+        return entity;
     }
 }
