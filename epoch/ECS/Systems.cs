@@ -57,7 +57,7 @@ public sealed class DrawSystem : SystemBase<DrawContext>
     private readonly Entity _playerEntity;
     private readonly OrthographicCamera _camera;
 
-    private float smoothTime = 4000.00f;
+    private float smoothTime = 1500.00f;
     private Vector2 _currentVanishingPoint;
     private Vector2 _vanishingPointVelocity;
 
@@ -157,9 +157,21 @@ public sealed class DrawSystem : SystemBase<DrawContext>
 
                     float depthStrength = 0.02f;
 
-                    // Find vanishing point
-                    Vector2 finalVanishingPoint =
-                        _camera.Center + (400 * -1 * _playerEntity.Get<Direction>().FaceDirection);
+                    // Find vanishing point, based on direction
+                    // Vector2 finalVanishingPoint =
+                    //     _camera.Center + (400 * -1 * _playerEntity.Get<Direction>().FaceDirection);
+
+                    // Find vanishing point, based on where pointer is
+                    // 1. Get the mouse position in World Space immediately
+                    Vector2 mouseWorld = _camera.ScreenToWorld(
+                        GameController.MousePosition().ToVector2()
+                    );
+
+                    // 2. Calculate the vector from the Camera Center to the Mouse
+                    Vector2 direction = mouseWorld - _camera.Center;
+
+                    // 3. Invert (-1) and scale (1.5) the direction from the center
+                    Vector2 finalVanishingPoint = _camera.Center - (direction * 1.5f);
 
                     // Calculate where the intermediate vanishing point is for this frame,
                     // based on where it currently is and where it should be.

@@ -13,6 +13,12 @@ public static class GameController
 {
     private static KeyboardInfo s_keyboard => Core.Input.Keyboard;
     private static GamePadInfo s_gamePad => Core.Input.GamePads[(int)PlayerIndex.One];
+    private static MouseInfo s_mouse => Core.Input.Mouse;
+
+    public static Point MousePosition()
+    {
+        return s_mouse.Position;
+    }
 
     /// <summary>
     /// Returns true if the player has triggered the "move up" action.
