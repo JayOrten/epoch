@@ -101,7 +101,7 @@ public class WorldScene : Scene
 
         // Spawn Player
 
-        // Create entity with desired positio
+        // Create entity with desired position
         EntityDefinition spawnPosition = new EntityDefinition(
             new ComponentDefinition(
                 "Position",
@@ -123,7 +123,7 @@ public class WorldScene : Scene
         );
 
         // Create systems
-        _drawSystem = new DrawSystem(_world, _tileManager);
+        _drawSystem = new DrawSystem(_world, _tileManager, _playerEntity, _camera);
 
         _playerMovementSystem = new PlayerMovementSystem(_world, _camera, _playerEntity);
 
@@ -223,8 +223,7 @@ public class WorldScene : Scene
         DrawContext drawContext = new DrawContext(
             gameTime,
             _currentZLevel,
-            _globalSettings.GlobalScale,
-            _camera.Center
+            _globalSettings.GlobalScale
         );
 
         _drawSystem.Update(in drawContext);
