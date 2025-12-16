@@ -54,17 +54,32 @@ public sealed class DrawSystem : SystemBase<DrawContext>
 
     private readonly SpriteBatch _batch;
     private readonly TileManager _tileManager;
+    private readonly Entity _playerEntity;
+    private readonly OrthographicCamera _camera;
+
+    private float smoothTime = 1500.00f;
+    private Vector2 _currentVanishingPoint;
+    private Vector2 _vanishingPointVelocity;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="DrawSystem"/> class.
     /// </summary>
     /// <param name="world">Its <see cref="World"/>.</param>
     /// <param name="batch">The <see cref="SpriteBatch"/> used to draw all <see cref="Entity"/>s.</param>
-    public DrawSystem(World world, TileManager tileManager)
+    public DrawSystem(
+        World world,
+        TileManager tileManager,
+        Entity playerEntity,
+        OrthographicCamera camera
+    )
         : base(world)
     {
         _batch = Core.SpriteBatch;
         _tileManager = tileManager;
+        _playerEntity = playerEntity;
+        _camera = camera;
+
+        _currentVanishingPoint = _camera.Center;
     }
 
     /// <summary>
@@ -140,16 +155,48 @@ public sealed class DrawSystem : SystemBase<DrawContext>
                         * graphicalTile.Scale
                         * drawContext.GlobalScale;
 
-                    float depthStrength = 0.04f;
-                    Vector2 vanishingPoint = drawContext.Center;
+                    float depthStrength = 0.02f;
 
-                    float dx = xPosition - vanishingPoint.X;
-                    float dy = yPosition - vanishingPoint.Y;
+                    // Find vanishing point, based on direction
+                    // Vector2 finalVanishingPoint =
+                    //     _camera.Center + (400 * -1 * _playerEntity.Get<Direction>().FaceDirection);
+
+                    // Find vanishing point, based on where pointer is
+                    // 1. Get the mouse position in World Space immediately
+                    Vector2 mouseWorld = _camera.ScreenToWorld(
+                        GameController.MousePosition().ToVector2()
+                    );
+
+                    // 2. Calculate the vector from the Camera Center to the Mouse
+                    Vector2 direction = mouseWorld - _camera.Center;
+
+                    // 3. Invert (-1) and scale (1.5) the direction from the center
+                    Vector2 finalVanishingPoint = _camera.Center - (direction * 1.5f);
+
+                    // Calculate where the intermediate vanishing point is for this frame,
+                    // based on where it currently is and where it should be.
+                    // _currentVanishingPoint = Vector2.Lerp(
+                    //     _currentVanishingPoint,
+                    //     finalVanishingPoint,
+                    //     0.000005f // fixed 10% movement per frame
+                    // );
+
+                    _currentVanishingPoint = CameraUtils.SmoothDamp(
+                        _currentVanishingPoint,
+                        finalVanishingPoint,
+                        ref _vanishingPointVelocity,
+                        smoothTime,
+                        float.MaxValue,
+                        drawContext.GameTime.GetElapsedSeconds()
+                    );
+
+                    float dx = xPosition - _currentVanishingPoint.X;
+                    float dy = yPosition - _currentVanishingPoint.Y;
 
                     float perspectiveScale = 1.0f + (position.WorldCoordinate.Z * depthStrength);
 
-                    float finalX = vanishingPoint.X + (dx * perspectiveScale);
-                    float finalY = vanishingPoint.Y + (dy * perspectiveScale);
+                    float finalX = _currentVanishingPoint.X + (dx * perspectiveScale);
+                    float finalY = _currentVanishingPoint.Y + (dy * perspectiveScale);
 
                     Vector2 finalPosition = new Vector2(finalX, finalY);
 
@@ -244,6 +291,10 @@ public sealed class PlayerMovementSystem : SystemBase<PlayerMovementContext>
                 pos.WorldCoordinate = coord;
 
                 _currentTimer = _moveDelay;
+
+                // If movementDirection is not 0, set faceDirection equal to it.
+                // Otherwise, faceDirection stays the same
+                _playerEntity.Get<Direction>().FaceDirection = movementDirection;
             }
         }
 

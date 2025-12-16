@@ -7,6 +7,8 @@ public static class Log
     private static ILoggerFactory? _factory;
     private static ILogger? _logger;
 
+    private static int count = 0;
+
     public static void Initialize()
     {
         _factory = LoggerFactory.Create(builder =>
@@ -28,4 +30,13 @@ public static class Log
 
     public static void Debug(string message, params object[] args) =>
         _logger?.LogDebug(message, args);
+
+    public static void Limited(string message, params object[] args)
+    {
+        if (count < 50)
+        {
+            _logger?.LogDebug(message, args);
+            count++;
+        }
+    }
 }

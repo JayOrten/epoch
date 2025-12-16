@@ -80,7 +80,7 @@ public struct Position
 }
 
 [Component]
-public struct Movement
+public struct Direction
 {
-    public Vector2 MoveVector { get; set; }
+    public Vector2 FaceDirection { get; set; }
 }
