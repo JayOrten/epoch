@@ -1,4 +1,4 @@
-namespace epoch.Engine.Graphics;
+namespace epoch.Engine.Graphics.Tiles;
 
 public enum TileMode
 {

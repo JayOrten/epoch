@@ -3,7 +3,7 @@
         "id": 0,
         "name": "empty",
         "asciiTileIndex": 46,
-        "colorString": "#ffffff",
+        "colorString": "#aab1b5",
         "graphicalTileIndex": 0
     },
     {
@@ -45,7 +45,7 @@
         "id": 6,
         "name": "hashtag",
         "asciiTileIndex": 35,
-        "colorString": "#ffffff",
+        "colorString": "#6b6b6b",
         "graphicalTileIndex": 0
     },
     {

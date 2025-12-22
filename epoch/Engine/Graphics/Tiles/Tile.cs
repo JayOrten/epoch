@@ -1,7 +1,7 @@
 using System.Text.Json.Serialization;
 using Microsoft.Xna.Framework;
 
-namespace epoch.Engine.Graphics;
+namespace epoch.Engine.Graphics.Tiles;
 
 /// <summary>
 /// Represents a single tile definition.

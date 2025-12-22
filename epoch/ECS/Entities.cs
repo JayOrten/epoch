@@ -7,6 +7,7 @@ using Arch.Core;
 using Arch.Core.Extensions;
 using epoch;
 using epoch.Generated;
+using Microsoft.Xna.Framework;
 
 namespace epoch.ECS;
 
@@ -131,11 +132,15 @@ public class EntityManager
 
     private World _world;
 
-    public EntityManager(World world, string xmlPath)
+    private MapRegistry _mapRegistry;
+
+    public EntityManager(World world, MapRegistry mapRegistry, string xmlPath)
     {
         _entityDefs = Parse(xmlPath);
 
         _world = world;
+
+        _mapRegistry = mapRegistry;
     }
 
     public static Dictionary<string, EntityDefinition> Parse(string xmlPath)
@@ -176,6 +181,19 @@ public class EntityManager
         foreach (var componentDefinition in entityDefinition.Components.Values.ToList())
         {
             entity.SetOnEntity(_world, componentDefinition);
+        }
+
+        // Check if there is a Position component, to see if we need to register it
+        // TODO: only add if it's local? in a present chunk?
+        if (entity.Has<Position>())
+        {
+            var comp = entity.Get<Position>();
+
+            // Register entity in the map registry at the specified position.
+            _mapRegistry.Register(
+                new Vector3(comp.WorldCoordinate.X, comp.WorldCoordinate.Y, comp.zLevel),
+                entity
+            );
         }
 
         return entity;

@@ -5,7 +5,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace epoch.Engine.Graphics;
+namespace epoch.Engine.Graphics.Tiles;
 
 /// <summary>
 /// Represents a tileset, a collection of tiles extracted from a single texture region.
