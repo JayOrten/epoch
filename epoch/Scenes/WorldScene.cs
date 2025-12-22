@@ -1,24 +1,17 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using Arch;
 using Arch.Core;
 using Arch.Core.Extensions;
-using Arch.Core.Extensions.Dangerous;
-using Arch.Core.Utils;
 using epoch.ECS;
 using epoch.Engine;
-using epoch.Engine.Graphics;
-using epoch.Engine.Input;
+using epoch.Engine.Graphics.Tiles;
 using epoch.Engine.Scenes;
 using epoch.Utilities;
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using MonoGame.Extended;
 using MonoGame.Extended.ViewportAdapters;
-using Schedulers;
 
 namespace epoch.Scenes;
 
@@ -28,9 +21,13 @@ public class WorldScene : Scene
 
     private World _world;
 
+    private MapRegistry _mapRegistry;
+
     private DrawSystem _drawSystem;
 
     private PlayerMovementSystem _playerMovementSystem;
+
+    private TileAdjacencySystem _tileAdjacencySystem;
 
     private TileManager _tileManager;
 
@@ -41,6 +38,12 @@ public class WorldScene : Scene
     private int _currentZLevel = 0;
 
     private Entity _playerEntity;
+
+    private RenderTarget2D _renderTarget2D;
+
+    private Effect _screenEffect;
+
+    private Effect _uberShader;
 
     public override void Initialize()
     {
@@ -67,6 +70,14 @@ public class WorldScene : Scene
         // Create the tilemap from the XML file
         // _tilemap = Tilemap.FromFile(Content, "images/tilemap-definition.xml");
         // _tilemap.Scale = new Vector2(8.0f, 8.0f);
+        _screenEffect = Content.Load<Effect>("ScreenEffect");
+        _uberShader = Content.Load<Effect>("UberShader");
+
+        _renderTarget2D = new RenderTarget2D(
+            Core.GraphicsDevice,
+            Core.Graphics.PreferredBackBufferWidth,
+            Core.Graphics.PreferredBackBufferHeight
+        );
 
         TileMode mode = TileMode.Ascii;
         string tileDefinitionsPath = ContentPaths.Config("tile-definitions");
@@ -85,8 +96,11 @@ public class WorldScene : Scene
         // Create the world
         _world = World.Create();
 
+        // Create empty map registry
+        _mapRegistry = new MapRegistry();
+
         // Create the entity manager, loading in entity definitions from file
-        _entityManager = new EntityManager(_world, entityDefinitionsPath);
+        _entityManager = new EntityManager(_world, _mapRegistry, entityDefinitionsPath);
     }
 
     public override void BeginRun()
@@ -94,10 +108,9 @@ public class WorldScene : Scene
         base.BeginRun();
 
         // Spawn entities
-
         // Load tilemap
         string tileMapPath = ContentPaths.Config("tilemap");
-        TileMap.LoadTileMap(tileMapPath, _world);
+        TileMap.LoadTileMap(tileMapPath, _world, _mapRegistry);
 
         // Spawn Player
 
@@ -105,7 +118,12 @@ public class WorldScene : Scene
         EntityDefinition spawnPosition = new EntityDefinition(
             new ComponentDefinition(
                 "Position",
-                new Dictionary<string, string> { { "WorldCoordinate", "1,1,0" } }
+                new Dictionary<string, string>
+                {
+                    { "WorldCoordinate", "1,1" },
+                    { "zLevel", "0" },
+                    { "top", "0.9" },
+                }
             )
         );
 
@@ -116,19 +134,20 @@ public class WorldScene : Scene
 
         _camera.LookAt(
             Utils.ConvertGridToWorldCoordinate(
-                new Vector2(pos.WorldCoordinate.X, pos.WorldCoordinate.Y),
+                pos.WorldCoordinate,
                 _tileManager.TileWidth * _globalSettings.GlobalScale,
                 _tileManager.TileHeight * _globalSettings.GlobalScale
             )
         );
 
         // Create systems
-        _drawSystem = new DrawSystem(_world, _tileManager, _playerEntity, _camera);
+        _drawSystem = new DrawSystem(_world, _tileManager, _playerEntity, _camera, _mapRegistry);
 
         _playerMovementSystem = new PlayerMovementSystem(_world, _camera, _playerEntity);
 
-        // Center the camera on the player
+        _tileAdjacencySystem = new TileAdjacencySystem(_world, _mapRegistry);
 
+        // TODO: extract to example doc
         // random map generation:
         // EntityDefinition entityDefinition = new EntityDefinition(
         //     new ComponentDefinition("Position")
@@ -190,6 +209,8 @@ public class WorldScene : Scene
 
     public override void Update(GameTime gameTime)
     {
+        _tileAdjacencySystem.Update(gameTime);
+
         PlayerMovementContext playerMovementContext = new PlayerMovementContext(
             gameTime,
             _globalSettings.GlobalScale * _tileManager.TileHeight // assumption here that height equals width.
@@ -204,21 +225,51 @@ public class WorldScene : Scene
 
     public override void Draw(GameTime gameTime)
     {
-        Core.GraphicsDevice.Clear(Color.Black);
+        // -- Pass 1: render tiles to render target --
+        Core.GraphicsDevice.SetRenderTarget(_renderTarget2D);
 
-        var transformMatrix = _camera.GetViewMatrix();
+        Core.GraphicsDevice.Clear(new Color(24, 25, 38));
 
-        Core.SpriteBatch.Begin(
-            samplerState: SamplerState.PointClamp,
-            transformMatrix: transformMatrix
+        // get the transformation for world -> screen space
+        var viewMatrix = _camera.GetViewMatrix();
+
+        // Get projection matrix for projecting to CLIP space (-1 to 1)
+        var projectionMatrix = Matrix.CreateOrthographicOffCenter(
+            0,
+            Core.GraphicsDevice.Viewport.Width,
+            Core.GraphicsDevice.Viewport.Height,
+            0,
+            0,
+            -1
         );
 
-        // Eliminate potential shimmering
-        transformMatrix.Translation = new Vector3(
-            (int)Math.Round(transformMatrix.Translation.X),
-            (int)Math.Round(transformMatrix.Translation.Y),
-            0
+        // Combine them (Order matters: View * Projection)
+        var finalTransform = viewMatrix * projectionMatrix;
+
+        Core.TileBatch.Begin(
+            sortMode: SpriteSortMode.BackToFront,
+            effect: _uberShader,
+            samplerState: SamplerState.PointClamp
         );
+
+        var transformParam = _uberShader.Parameters["WorldViewProjection"];
+        var textureSizeParam = _uberShader.Parameters["TextureSize"];
+        var tileSizeParam = _uberShader.Parameters["TileSize"];
+        var cameraZoomParam = _uberShader.Parameters["CameraZoom"];
+        var viewportParam = _uberShader.Parameters["ViewportSize"];
+
+        if (transformParam != null)
+            transformParam.SetValue(finalTransform);
+        if (textureSizeParam != null)
+            textureSizeParam.SetValue(new Vector2(112, 112));
+        if (tileSizeParam != null)
+            tileSizeParam.SetValue(new Vector2(7, 7)); // Size of ONE
+        if (cameraZoomParam != null)
+            cameraZoomParam.SetValue(_camera.Zoom);
+        if (viewportParam != null)
+            viewportParam.SetValue(
+                new Vector2(Core.GraphicsDevice.Viewport.Width, Core.GraphicsDevice.Viewport.Height)
+            );
 
         DrawContext drawContext = new DrawContext(
             gameTime,
@@ -227,6 +278,29 @@ public class WorldScene : Scene
         );
 
         _drawSystem.Update(in drawContext);
+
+        Core.TileBatch.End();
+
+        // -- Pass 2: Render Target to Screen with post-processing shader --
+
+        Core.GraphicsDevice.SetRenderTarget(null);
+
+        Core.SpriteBatch.Begin(effect: _screenEffect);
+
+        var timeParam = _screenEffect.Parameters["Time"];
+        if (timeParam != null)
+            timeParam.SetValue((float)gameTime.TotalGameTime.TotalSeconds);
+
+        Core.SpriteBatch.Draw(
+            _renderTarget2D,
+            new Rectangle(
+                0,
+                0,
+                Core.Graphics.PreferredBackBufferWidth,
+                Core.Graphics.PreferredBackBufferHeight
+            ),
+            Color.White
+        );
 
         Core.SpriteBatch.End();
     }

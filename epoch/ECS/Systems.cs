@@ -1,17 +1,36 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using Arch.Core;
 using Arch.Core.Extensions;
 using epoch.Engine;
-using epoch.Engine.Graphics;
+using epoch.Engine.Graphics.Tiles;
+using epoch.Engine.Graphics.Tiles.TileBatches;
 using epoch.Utilities;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using Microsoft.Xna.Framework.Input;
 using MonoGame.Extended;
-using MonoGame.Extended.ViewportAdapters;
 
 namespace epoch.ECS;
+
+/// World map registry for directly accessing entities on the grid
+/// This is primarily useful for rendering, adjacency tests, directly talking to nearby entities, etc.
+/// Local interactions
+/// Need to figure out how to handle chunk loading/unloading, etc.
+public class MapRegistry
+{
+    private Dictionary<Vector3, Entity> _grid = new();
+
+    public void Register(Vector3 coord, Entity entity) => _grid[coord] = entity;
+
+    public bool TryGet(Vector3 coord, out Entity entity) => _grid.TryGetValue(coord, out entity);
+
+    public float GetMaxZLevel() => _grid.Keys.Max(v => v.Z);
+
+    public float GetMinZLevel() => _grid.Keys.Min(v => v.Z);
+
+    public float GetNumZLevels() => _grid.Keys.Select(v => v.Z).Distinct().Count();
+}
 
 /// <summary>
 ///     The <see cref="SystemBase{T}"/> class
@@ -52,12 +71,13 @@ public sealed class DrawSystem : SystemBase<DrawContext>
         GraphicalTile
     >();
 
-    private readonly SpriteBatch _batch;
+    private readonly TileBatch _batch;
     private readonly TileManager _tileManager;
     private readonly Entity _playerEntity;
     private readonly OrthographicCamera _camera;
+    private readonly MapRegistry _mapRegistry;
 
-    private float smoothTime = 1500.00f;
+    private float smoothTime = 100.00f;
     private Vector2 _currentVanishingPoint;
     private Vector2 _vanishingPointVelocity;
 
@@ -70,14 +90,16 @@ public sealed class DrawSystem : SystemBase<DrawContext>
         World world,
         TileManager tileManager,
         Entity playerEntity,
-        OrthographicCamera camera
+        OrthographicCamera camera,
+        MapRegistry mapRegistry
     )
         : base(world)
     {
-        _batch = Core.SpriteBatch;
+        _batch = Core.TileBatch;
         _tileManager = tileManager;
         _playerEntity = playerEntity;
         _camera = camera;
+        _mapRegistry = mapRegistry;
 
         _currentVanishingPoint = _camera.Center;
     }
@@ -87,9 +109,14 @@ public sealed class DrawSystem : SystemBase<DrawContext>
     /// </summary>
     public override void Update(in DrawContext drawContext)
     {
-        // First, query all components, and collect them, seperated by layers
         // Log.Debug("DrawSystem Update started.");
-        Dictionary<float, List<(Position, GraphicalTile)>> layerTiles = new();
+
+        // Get player z position
+        ref var pos = ref _playerEntity.Get<Position>();
+        float playerZLevel = pos.zLevel;
+
+        // Get num z levels:
+        float numZLevels = _mapRegistry.GetNumZLevels();
 
         // Get query for the description, targets all entities with "Positions" and "Sprite".
         var query = World.Query(in _entitiesToDraw);
@@ -110,25 +137,6 @@ public sealed class DrawSystem : SystemBase<DrawContext>
                 var position = positions[index];
                 var graphicalTile = graphicalTiles[index];
 
-                float key = position.WorldCoordinate.Z;
-
-                if (!layerTiles.ContainsKey(key))
-                {
-                    layerTiles[key] = new List<(Position, GraphicalTile)>();
-                }
-
-                layerTiles[key].Add((position, graphicalTile));
-            }
-        }
-
-        float minLevel = layerTiles.Keys.Min();
-        float maxLevel = layerTiles.Keys.Max();
-
-        // Iterate through all collected tiles and draw in order of layer
-        for (float i = minLevel; i <= maxLevel; i++)
-        {
-            foreach ((Position position, GraphicalTile graphicalTile) in layerTiles[i])
-            {
                 // Only draw if the tile is on the current level.
                 // if (position.WorldCoordinate.Z != drawContext.ZLevel)
                 // {
@@ -143,19 +151,15 @@ public sealed class DrawSystem : SystemBase<DrawContext>
                 // If tileInfo is null, skip drawing
                 if (tileInfo != null)
                 {
-                    float xPosition =
-                        position.WorldCoordinate.X
-                        * tileInfo.Value.TileWidth
+                    Vector2 basePosition =
+                        new Vector2(
+                            position.WorldCoordinate.X * tileInfo.Value.TileWidth,
+                            position.WorldCoordinate.Y * tileInfo.Value.TileHeight
+                        )
                         * graphicalTile.Scale
                         * drawContext.GlobalScale;
 
-                    float yPosition =
-                        position.WorldCoordinate.Y
-                        * tileInfo.Value.TileHeight
-                        * graphicalTile.Scale
-                        * drawContext.GlobalScale;
-
-                    float depthStrength = 0.02f;
+                    float depthStrength = 0.01f;
 
                     // Find vanishing point, based on direction
                     // Vector2 finalVanishingPoint =
@@ -190,24 +194,25 @@ public sealed class DrawSystem : SystemBase<DrawContext>
                         drawContext.GameTime.GetElapsedSeconds()
                     );
 
-                    float dx = xPosition - _currentVanishingPoint.X;
-                    float dy = yPosition - _currentVanishingPoint.Y;
+                    basePosition -= _currentVanishingPoint;
 
-                    float perspectiveScale = 1.0f + (position.WorldCoordinate.Z * depthStrength);
+                    float perspectiveScale = 1.0f + (position.zLevel * depthStrength);
 
-                    float finalX = _currentVanishingPoint.X + (dx * perspectiveScale);
-                    float finalY = _currentVanishingPoint.Y + (dy * perspectiveScale);
-
-                    Vector2 finalPosition = new Vector2(finalX, finalY);
+                    Vector2 finalPosition =
+                        _currentVanishingPoint + (basePosition * perspectiveScale);
 
                     // Color should be the default in the tile definition, unless the GraphicalTile object holds an override
-                    Color color = graphicalTile.Color ?? tileInfo.Value.Color;
+                    Color color = graphicalTile.SpriteColor ?? tileInfo.Value.Color;
 
                     // Scale color by layer: lower layers should be darker
-                    color = XnaColorExtensions.Darken(
-                        color,
-                        1 - (1.0f / (maxLevel + 1 - position.WorldCoordinate.Z))
-                    );
+                    // color = XnaColorExtensions.Darken(
+                    //     color,
+                    //     1 - (1.0f / (_mapRegistry.GetMaxZLevel() + 1 - position.zLevel))
+                    // );
+
+                    float sortingLevel = 1 - ((position.zLevel + position.top) / numZLevels);
+
+                    float layerDifference = position.zLevel - playerZLevel;
 
                     tileInfo.Value.TextureRegion.Draw(
                         _batch,
@@ -217,7 +222,12 @@ public sealed class DrawSystem : SystemBase<DrawContext>
                         Vector2.Zero,
                         graphicalTile.Scale * drawContext.GlobalScale * perspectiveScale,
                         SpriteEffects.None,
-                        0.0f
+                        sortingLevel,
+                        graphicalTile.BackgroundColor,
+                        graphicalTile.BorderColor,
+                        graphicalTile.BorderMask,
+                        graphicalTile.BorderWidth,
+                        layerDifference
                     );
                 }
             }
@@ -298,14 +308,12 @@ public sealed class PlayerMovementSystem : SystemBase<PlayerMovementContext>
             }
         }
 
-        Vector3 playerPosition = _playerEntity.Get<Position>().WorldCoordinate;
-
-        Vector2 playerPosition2D =
-            new Vector2(playerPosition.X, playerPosition.Y)
-            * playerMovementContext.TileScaleModifier;
+        // Move camera to follow player
+        Vector2 playerPosition =
+            _playerEntity.Get<Position>().WorldCoordinate * playerMovementContext.TileScaleModifier;
 
         Vector2 targetPosition =
-            playerPosition2D
+            playerPosition
             - new Vector2(
                 Core.Graphics.PreferredBackBufferWidth / 2,
                 Core.Graphics.PreferredBackBufferHeight / 2
@@ -319,6 +327,77 @@ public sealed class PlayerMovementSystem : SystemBase<PlayerMovementContext>
             float.MaxValue,
             delta
         );
+    }
+}
+
+/// Updates borderbuffer for dirty tiles
+/// TODO: consider incorporating into draw system?
+public sealed class TileAdjacencySystem : SystemBase<GameTime>
+{
+    private readonly QueryDescription _entitiesToUpdate = new QueryDescription().WithAll<
+        Position,
+        GraphicalTile
+    >();
+
+    private readonly MapRegistry _mapRegistry;
+
+    public TileAdjacencySystem(World world, MapRegistry mapRegistry)
+        : base(world)
+    {
+        _mapRegistry = mapRegistry;
+    }
+
+    public override void Update(in GameTime gameTime)
+    {
+        var query = World.Query(in _entitiesToUpdate);
+
+        foreach (ref var chunk in query.GetChunkIterator())
+        {
+            var references = chunk.GetFirst<Position, GraphicalTile>();
+
+            foreach (var entity in chunk)
+            {
+                ref var graphicalTile = ref Unsafe.Add(ref references.t1, entity);
+
+                // If the tile is marked as dirty, run check with adjacent tiles
+                // and update border buffer
+                if (graphicalTile.IsDirty)
+                {
+                    ref var position = ref Unsafe.Add(ref references.t0, entity);
+
+                    int mask = 0;
+
+                    // For each direction, check if it's empty. If it is, there should be a border there.
+                    // TODO: add logic for checking if the adjacent tile does not touch air. It it doesn't, we don't even render it, and there should also be a border here.
+                    Vector2 currentCoord = position.WorldCoordinate;
+                    Vector2[] directions = new Vector2[]
+                    {
+                        new Vector2(0, -1), // North
+                        new Vector2(1, 0), // East
+                        new Vector2(0, 1), // South
+                        new Vector2(-1, 0), // West
+                    };
+
+                    for (int i = 0; i < directions.Length; i++)
+                    {
+                        Vector2 adjacentCoord = currentCoord + directions[i];
+                        if (
+                            !_mapRegistry.TryGet(
+                                new Vector3(adjacentCoord.X, adjacentCoord.Y, position.zLevel),
+                                out Entity _
+                            )
+                        )
+                        {
+                            // No tile in this direction, set the corresponding bit in the mask
+                            mask |= (1 << i);
+                        }
+                    }
+
+                    graphicalTile.BorderMask = mask;
+                    graphicalTile.IsDirty = false;
+                }
+            }
+        }
     }
 }
 
