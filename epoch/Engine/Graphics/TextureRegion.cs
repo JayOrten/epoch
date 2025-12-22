@@ -1,3 +1,4 @@
+using epoch.Engine.Graphics.Tiles.TileBatches;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -70,19 +71,24 @@ public class TextureRegion
     /// <summary>
     /// Submit this texture region for drawing in the current batch.
     /// </summary>
-    /// <param name="spriteBatch">The spritebatch instance used for batching draw calls.</param>
+    /// <param name="tileBatch">The spritebatch instance used for batching draw calls.</param>
     /// <param name="position">The xy-coordinate location to draw this texture region on the screen.</param>
     /// <param name="color">The color mask to apply when drawing this texture region on screen.</param>
-    public void Draw(SpriteBatch spriteBatch, Vector2 position, Color color)
+    public void Draw(TileBatch tileBatch, Vector2 position, Color color)
     {
         Draw(
-            spriteBatch,
+            tileBatch,
             position,
             color,
             0.0f,
             Vector2.Zero,
             Vector2.One,
             SpriteEffects.None,
+            0.0f,
+            Color.Transparent,
+            Color.Transparent,
+            0.0f,
+            0.01f,
             0.0f
         );
     }
@@ -90,7 +96,7 @@ public class TextureRegion
     /// <summary>
     /// Submit this texture region for drawing in the current batch.
     /// </summary>
-    /// <param name="spriteBatch">The spritebatch instance used for batching draw calls.</param>
+    /// <param name="tileBatch">The spritebatch instance used for batching draw calls.</param>
     /// <param name="position">The xy-coordinate location to draw this texture region on the screen.</param>
     /// <param name="color">The color mask to apply when drawing this texture region on screen.</param>
     /// <param name="rotation">The amount of rotation, in radians, to apply when drawing this texture region on screen.</param>
@@ -99,7 +105,7 @@ public class TextureRegion
     /// <param name="effects">Specifies if this texture region should be flipped horizontally, vertically, or both when drawing on screen.</param>
     /// <param name="layerDepth">The depth of the layer to use when drawing this texture region on screen.</param>
     public void Draw(
-        SpriteBatch spriteBatch,
+        TileBatch tileBatch,
         Vector2 position,
         Color color,
         float rotation,
@@ -110,30 +116,35 @@ public class TextureRegion
     )
     {
         Draw(
-            spriteBatch,
+            tileBatch,
             position,
             color,
             rotation,
             origin,
             new Vector2(scale, scale),
             effects,
-            layerDepth
+            layerDepth,
+            Color.Transparent,
+            Color.Transparent,
+            0.0f,
+            0.01f,
+            0.0f
         );
     }
 
     /// <summary>
     /// Submit this texture region for drawing in the current batch.
     /// </summary>
-    /// <param name="spriteBatch">The spritebatch instance used for batching draw calls.</param>
+    /// <param name="tileBatch">The spritebatch instance used for batching draw calls.</param>
     /// <param name="position">The xy-coordinate location to draw this texture region on the screen.</param>
     /// <param name="color">The color mask to apply when drawing this texture region on screen.</param>
     /// <param name="rotation">The amount of rotation, in radians, to apply when drawing this texture region on screen.</param>
     /// <param name="origin">The center of rotation, scaling, and position when drawing this texture region on screen.</param>
-    /// <param name="scale">The amount of scaling to apply to the x- and y-axes when drawing this texture region on screen.</param>
+    /// <param name="scale">The scale factor to apply when drawing this texture region on screen.</param>
     /// <param name="effects">Specifies if this texture region should be flipped horizontally, vertically, or both when drawing on screen.</param>
     /// <param name="layerDepth">The depth of the layer to use when drawing this texture region on screen.</param>
     public void Draw(
-        SpriteBatch spriteBatch,
+        TileBatch tileBatch,
         Vector2 position,
         Color color,
         float rotation,
@@ -143,7 +154,95 @@ public class TextureRegion
         float layerDepth
     )
     {
-        spriteBatch.Draw(
+        Draw(
+            tileBatch,
+            position,
+            color,
+            rotation,
+            origin,
+            scale,
+            effects,
+            layerDepth,
+            Color.Transparent,
+            Color.Transparent,
+            0.0f,
+            0.01f,
+            0.0f
+        );
+    }
+
+    /// <summary>
+    /// Submit this texture region for drawing in the current batch.
+    /// </summary>
+    /// <param name="tileBatch">The spritebatch instance used for batching draw calls.</param>
+    /// <param name="position">The xy-coordinate location to draw this texture region on the screen.</param>
+    /// <param name="color">The color mask to apply when drawing this texture region on screen.</param>
+    /// <param name="rotation">The amount of rotation, in radians, to apply when drawing this texture region on screen.</param>
+    /// <param name="origin">The center of rotation, scaling, and position when drawing this texture region on screen.</param>
+    /// <param name="scale">The scale factor to apply when drawing this texture region on screen.</param>
+    /// <param name="effects">Specifies if this texture region should be flipped horizontally, vertically, or both when drawing on screen.</param>
+    /// <param name="layerDepth">The depth of the layer to use when drawing this texture region on screen.</param>
+    public void Draw(
+        TileBatch tileBatch,
+        Vector2 position,
+        Color color,
+        float rotation,
+        Vector2 origin,
+        float scale,
+        SpriteEffects effects,
+        float layerDepth,
+        Color bgColor,
+        Color borderColor,
+        float borderMask,
+        float borderWidth,
+        float layerDifference
+    )
+    {
+        Draw(
+            tileBatch,
+            position,
+            color,
+            rotation,
+            origin,
+            new Vector2(scale, scale),
+            effects,
+            layerDepth,
+            bgColor,
+            borderColor,
+            borderMask,
+            borderWidth,
+            layerDifference
+        );
+    }
+
+    /// <summary>
+    /// Submit this texture region for drawing in the current batch.
+    /// </summary>
+    /// <param name="tileBatch">The spritebatch instance used for batching draw calls.</param>
+    /// <param name="position">The xy-coordinate location to draw this texture region on the screen.</param>
+    /// <param name="color">The color mask to apply when drawing this texture region on screen.</param>
+    /// <param name="rotation">The amount of rotation, in radians, to apply when drawing this texture region on screen.</param>
+    /// <param name="origin">The center of rotation, scaling, and position when drawing this texture region on screen.</param>
+    /// <param name="scale">The amount of scaling to apply to the x- and y-axes when drawing this texture region on screen.</param>
+    /// <param name="effects">Specifies if this texture region should be flipped horizontally, vertically, or both when drawing on screen.</param>
+    /// <param name="layerDepth">The depth of the layer to use when drawing this texture region on screen.</param>
+    public void Draw(
+        TileBatch tileBatch,
+        Vector2 position,
+        Color color,
+        float rotation,
+        Vector2 origin,
+        Vector2 scale,
+        SpriteEffects effects,
+        float layerDepth,
+        Color bgColor,
+        Color borderColor,
+        float borderMask,
+        float borderWidth,
+        float layerDifference
+    )
+    {
+        tileBatch.Draw(
             Texture,
             position,
             SourceRectangle,
@@ -152,7 +251,12 @@ public class TextureRegion
             origin,
             scale,
             effects,
-            layerDepth
+            layerDepth,
+            bgColor,
+            borderColor,
+            borderMask,
+            borderWidth,
+            layerDifference
         );
     }
 }

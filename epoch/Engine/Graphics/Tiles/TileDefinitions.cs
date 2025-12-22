@@ -4,7 +4,7 @@ using System.Linq;
 using epoch.Utilities;
 using Microsoft.Xna.Framework;
 
-namespace epoch.Engine.Graphics;
+namespace epoch.Engine.Graphics.Tiles;
 
 public class TileDefinitions
 {

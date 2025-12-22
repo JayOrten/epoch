@@ -1,3 +1,4 @@
+using epoch.Engine.Graphics.Tiles.TileBatches;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -99,10 +100,10 @@ public class Sprite
     /// <summary>
     /// Submit this sprite for drawing to the current batch.
     /// </summary>
-    /// <param name="spriteBatch">The SpriteBatch instance used for batching draw calls.</param>
+    /// <param name="tileBatch">The SpriteBatch instance used for batching draw calls.</param>
     /// <param name="position">The xy-coordinate position to render this sprite at.</param>
-    public void Draw(SpriteBatch spriteBatch, Vector2 position)
+    public void Draw(TileBatch tileBatch, Vector2 position)
     {
-        Region.Draw(spriteBatch, position, Color, Rotation, Origin, Scale, Effects, LayerDepth);
+        Region.Draw(tileBatch, position, Color, Rotation, Origin, Scale, Effects, LayerDepth);
     }
 }
