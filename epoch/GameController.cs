@@ -20,6 +20,8 @@ public static class GameController
         return s_mouse.Position;
     }
 
+    // -- MOVEMENT --
+
     /// <summary>
     /// Returns true if the player has triggered the "move up" action.
     /// </summary>
@@ -106,6 +108,38 @@ public static class GameController
             || s_keyboard.IsKeyDown(Keys.D)
             || s_gamePad.IsButtonDown(Buttons.DPadRight)
             || s_gamePad.IsButtonDown(Buttons.LeftThumbstickRight);
+    }
+
+    // -- LOOK --
+
+    public static bool LookUpHeld()
+    {
+        return s_keyboard.IsKeyDown(Keys.U) || s_gamePad.IsButtonDown(Buttons.RightThumbstickUp);
+    }
+
+    public static bool LookDownHeld()
+    {
+        return s_keyboard.IsKeyDown(Keys.J) || s_gamePad.IsButtonDown(Buttons.RightThumbstickDown);
+    }
+
+    public static bool LookLeftHeld()
+    {
+        return s_keyboard.IsKeyDown(Keys.H) || s_gamePad.IsButtonDown(Buttons.RightThumbstickLeft);
+    }
+
+    public static bool LookRightHeld()
+    {
+        return s_keyboard.IsKeyDown(Keys.K) || s_gamePad.IsButtonDown(Buttons.RightThumbstickRight);
+    }
+
+    public static bool ZoomInHeld()
+    {
+        return s_keyboard.IsKeyDown(Keys.Z);
+    }
+
+    public static bool ZoomOutHeld()
+    {
+        return s_keyboard.IsKeyDown(Keys.X);
     }
 
     public static bool FDown()

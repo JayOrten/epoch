@@ -60,195 +60,11 @@ public abstract class SystemBase<T>
     public abstract void Update(in T state);
 }
 
-/// <summary>
-///     The <see cref="DrawSystem"/> class
-///     ensures that all <see cref="Entity"/>s are drawn to the screen.
-/// </summary>
-public sealed class DrawSystem : SystemBase<DrawContext>
+public sealed class InputSystem : SystemBase<GameTime>
 {
-    private readonly QueryDescription _entitiesToDraw = new QueryDescription().WithAll<
-        Position,
-        GraphicalTile
-    >();
+    public InputSystem(World world)
+        : base(world) { }
 
-    private readonly TileBatch _batch;
-    private readonly TileManager _tileManager;
-    private readonly Entity _playerEntity;
-    private readonly OrthographicCamera _camera;
-    private readonly MapRegistry _mapRegistry;
-
-    private float smoothTime = 100.00f;
-    private Vector2 _currentVanishingPoint;
-    private Vector2 _vanishingPointVelocity;
-
-    /// <summary>
-    ///     Initializes a new instance of the <see cref="DrawSystem"/> class.
-    /// </summary>
-    /// <param name="world">Its <see cref="World"/>.</param>
-    /// <param name="batch">The <see cref="SpriteBatch"/> used to draw all <see cref="Entity"/>s.</param>
-    public DrawSystem(
-        World world,
-        TileManager tileManager,
-        Entity playerEntity,
-        OrthographicCamera camera,
-        MapRegistry mapRegistry
-    )
-        : base(world)
-    {
-        _batch = Core.TileBatch;
-        _tileManager = tileManager;
-        _playerEntity = playerEntity;
-        _camera = camera;
-        _mapRegistry = mapRegistry;
-
-        _currentVanishingPoint = _camera.Center;
-    }
-
-    /// <summary>
-    ///     Gets called to execute the draw systems logic and to draw the <see cref="Entity"/>s.
-    /// </summary>
-    public override void Update(in DrawContext drawContext)
-    {
-        // Log.Debug("DrawSystem Update started.");
-
-        // Get player z position
-        ref var pos = ref _playerEntity.Get<Position>();
-        float playerZLevel = pos.zLevel;
-
-        // Get num z levels:
-        float numZLevels = _mapRegistry.GetNumZLevels();
-
-        // Get query for the description, targets all entities with "Positions" and "Sprite".
-        var query = World.Query(in _entitiesToDraw);
-        foreach (ref var chunk in query) // Iterate over each chunk that has entities that fit the query.
-        {
-            // Log.Debug("Processing chunk with {0} entities", chunk.Count);
-            // Receive raw arrays of positions and sprites from the chunk.
-            // chunk.GetArray<Position, GraphicalTile>(out var positions, out var graphicalTiles);
-            var positions = chunk.GetArray<Position>();
-            var graphicalTiles = chunk.GetArray<GraphicalTile>();
-
-            // Loop over the chunk
-            foreach (var index in chunk)
-            {
-                // Get refs to position and sprite.
-                // ref var position = ref positions[index]; // IS NULL
-                // ref var graphicalTile = ref graphicalTiles[index]; // IS POSITION OBJ
-                var position = positions[index];
-                var graphicalTile = graphicalTiles[index];
-
-                // Only draw if the tile is on the current level.
-                // if (position.WorldCoordinate.Z != drawContext.ZLevel)
-                // {
-                //     continue;
-                // }
-                // graphicalTile contains a name, referencing a tile in the TileManager,
-                // and a color
-                // Log.Debug("Drawing tile {0} at position {1}", graphicalTile.Name, position.Vec2);
-
-                TileRenderInfo? tileInfo = _tileManager.GetTile(graphicalTile.TileId);
-                // tileInfo contains a TextureRegion and color string
-                // If tileInfo is null, skip drawing
-                if (tileInfo != null)
-                {
-                    Vector2 basePosition =
-                        new Vector2(
-                            position.WorldCoordinate.X * tileInfo.Value.TileWidth,
-                            position.WorldCoordinate.Y * tileInfo.Value.TileHeight
-                        )
-                        * graphicalTile.Scale
-                        * drawContext.GlobalScale;
-
-                    float depthStrength = 0.01f;
-
-                    // Find vanishing point, based on direction
-                    // Vector2 finalVanishingPoint =
-                    //     _camera.Center + (400 * -1 * _playerEntity.Get<Direction>().FaceDirection);
-
-                    // Find vanishing point, based on where pointer is
-                    // 1. Get the mouse position in World Space immediately
-                    Vector2 mouseWorld = _camera.ScreenToWorld(
-                        GameController.MousePosition().ToVector2()
-                    );
-
-                    // 2. Calculate the vector from the Camera Center to the Mouse
-                    Vector2 direction = mouseWorld - _camera.Center;
-
-                    // 3. Invert (-1) and scale (1.5) the direction from the center
-                    Vector2 finalVanishingPoint = _camera.Center - (direction * 1.5f);
-
-                    // Calculate where the intermediate vanishing point is for this frame,
-                    // based on where it currently is and where it should be.
-                    // _currentVanishingPoint = Vector2.Lerp(
-                    //     _currentVanishingPoint,
-                    //     finalVanishingPoint,
-                    //     0.000005f // fixed 10% movement per frame
-                    // );
-
-                    _currentVanishingPoint = CameraUtils.SmoothDamp(
-                        _currentVanishingPoint,
-                        finalVanishingPoint,
-                        ref _vanishingPointVelocity,
-                        smoothTime,
-                        float.MaxValue,
-                        drawContext.GameTime.GetElapsedSeconds()
-                    );
-
-                    basePosition -= _currentVanishingPoint;
-
-                    float perspectiveScale = 1.0f + (position.zLevel * depthStrength);
-
-                    Vector2 finalPosition =
-                        _currentVanishingPoint + (basePosition * perspectiveScale);
-
-                    // Color should be the default in the tile definition, unless the GraphicalTile object holds an override
-                    Color color = graphicalTile.SpriteColor ?? tileInfo.Value.Color;
-
-                    // Scale color by layer: lower layers should be darker
-                    // color = XnaColorExtensions.Darken(
-                    //     color,
-                    //     1 - (1.0f / (_mapRegistry.GetMaxZLevel() + 1 - position.zLevel))
-                    // );
-
-                    float sortingLevel = 1 - ((position.zLevel + position.top) / numZLevels);
-
-                    float layerDifference = position.zLevel - playerZLevel;
-
-                    tileInfo.Value.TextureRegion.Draw(
-                        _batch,
-                        finalPosition,
-                        color,
-                        0.0f,
-                        Vector2.Zero,
-                        graphicalTile.Scale * drawContext.GlobalScale * perspectiveScale,
-                        SpriteEffects.None,
-                        sortingLevel,
-                        graphicalTile.BackgroundColor,
-                        graphicalTile.BorderColor,
-                        graphicalTile.BorderMask,
-                        graphicalTile.BorderWidth,
-                        layerDifference
-                    );
-                }
-            }
-        }
-    }
-}
-
-public sealed class PlayerMovementSystem : SystemBase<PlayerMovementContext>
-{
-    private OrthographicCamera _camera;
-
-    private Entity _playerEntity;
-
-    private float _moveDelay = 0.20f;
-    private float smoothTime = 0.20f;
-
-    private float _currentTimer = 0f;
-
-    private Vector2 _camVelocity;
-
-    // TODO: don't love this here, need a seperate input system?
     private Vector2 GetMovementDirection()
     {
         var movementDirection = Vector2.Zero;
@@ -273,44 +89,389 @@ public sealed class PlayerMovementSystem : SystemBase<PlayerMovementContext>
         return movementDirection;
     }
 
-    public PlayerMovementSystem(World world, OrthographicCamera camera, Entity playerEntity)
-        : base(world)
+    private Vector2 GetLookDirection()
     {
-        _camera = camera;
-        _playerEntity = playerEntity;
+        var lookDirection = Vector2.Zero;
+
+        if (GameController.LookDownHeld())
+        {
+            lookDirection -= Vector2.UnitY;
+        }
+        if (GameController.LookUpHeld())
+        {
+            lookDirection += Vector2.UnitY;
+        }
+        if (GameController.LookLeftHeld())
+        {
+            lookDirection += Vector2.UnitX;
+        }
+        if (GameController.LookRightHeld())
+        {
+            lookDirection -= Vector2.UnitX;
+        }
+
+        return lookDirection;
     }
 
-    public override void Update(in PlayerMovementContext playerMovementContext)
+    private float AdjustZoom()
     {
-        float delta = playerMovementContext.GameTime.GetElapsedSeconds();
+        float zoomChange = 0;
+
+        if (GameController.ZoomInHeld())
+        {
+            zoomChange += 1;
+        }
+
+        if (GameController.ZoomOutHeld())
+        {
+            zoomChange -= 1;
+        }
+
+        return zoomChange;
+    }
+
+    public override void Update(in GameTime gametime)
+    {
+        // Read hardware
+        // Movement
+        Vector2 movementDirection = GetMovementDirection();
+        // Update the MovementInput component of the player
+        GlobalContext.PlayerEntity.Get<MovementInput>().Direction = movementDirection;
+
+        // Look
+        Vector2 lookChange = GetLookDirection();
+        GlobalContext.CameraEntity.Get<CameraInput>().LookChange = lookChange;
+
+        // Zoom
+        float zoomChange = AdjustZoom();
+        GlobalContext.CameraEntity.Get<CameraInput>().ZoomChange = zoomChange;
+    }
+}
+
+/// <summary>
+///     The <see cref="DrawSystem"/> class
+///     ensures that all <see cref="Entity"/>s are drawn to the screen.
+/// </summary>
+public sealed class DrawSystem : SystemBase<GameTime>
+{
+    private readonly QueryDescription _entitiesToDraw = new QueryDescription().WithAll<
+        Position,
+        GraphicalTile
+    >();
+
+    private readonly Effect _uberShader;
+    private readonly Effect _screenEffect;
+
+    private readonly RenderTarget2D _renderTarget2D;
+
+    private float smoothTime = 100.00f;
+    private float depthStrength = 0.03f;
+
+    private Vector2 _currentVanishingPoint;
+    private Vector2 _vanishingPointVelocity;
+
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="DrawSystem"/> class.
+    /// </summary>
+    /// <param name="world">Its <see cref="World"/>.</param>
+    /// <param name="batch">The <see cref="SpriteBatch"/> used to draw all <see cref="Entity"/>s.</param>
+    public DrawSystem(World world, Effect uberShader, Effect screenEffect)
+        : base(world)
+    {
+        _uberShader = uberShader;
+        _screenEffect = screenEffect;
+
+        _renderTarget2D = new RenderTarget2D(
+            Core.GraphicsDevice,
+            Core.Graphics.PreferredBackBufferWidth,
+            Core.Graphics.PreferredBackBufferHeight
+        );
+    }
+
+    /// <summary>
+    ///     Gets called to execute the draw systems logic and to draw the <see cref="Entity"/>s.
+    /// </summary>
+    public override void Update(in GameTime gameTime)
+    {
+        // Log.Debug("DrawSystem Update started.");
+
+        // -- SETUP --
+        // If the current vanishing point is zero, set it to the center of the screen
+        if (_currentVanishingPoint == Vector2.Zero)
+        {
+            _currentVanishingPoint = new Vector2(
+                Core.GraphicsDevice.Viewport.Width / 2,
+                Core.GraphicsDevice.Viewport.Height / 2
+            );
+        }
+
+        // -- Pass 1: render tiles to render target --
+        Core.GraphicsDevice.SetRenderTarget(_renderTarget2D);
+
+        // Set background color
+        Core.GraphicsDevice.Clear(new Color(24, 25, 38));
+
+        // get the transformation for world -> screen space
+        var viewMatrix = GlobalContext.Camera.GetViewMatrix();
+
+        // Get projection matrix for projecting to CLIP space (-1 to 1)
+        var projectionMatrix = Matrix.CreateOrthographicOffCenter(
+            0,
+            Core.GraphicsDevice.Viewport.Width,
+            Core.GraphicsDevice.Viewport.Height,
+            0,
+            0,
+            -1
+        );
+
+        // Combine them (Order matters: View * Projection)
+        var finalTransform = viewMatrix * projectionMatrix;
+
+        Core.TileBatch.Begin(
+            sortMode: SpriteSortMode.BackToFront,
+            effect: _uberShader,
+            samplerState: SamplerState.PointClamp
+        );
+
+        var transformParam = _uberShader.Parameters["WorldViewProjection"];
+        var textureSizeParam = _uberShader.Parameters["TextureSize"];
+        var tileSizeParam = _uberShader.Parameters["TileSize"];
+        var cameraZoomParam = _uberShader.Parameters["CameraZoom"];
+        var viewportParam = _uberShader.Parameters["ViewportSize"];
+
+        if (transformParam != null)
+            transformParam.SetValue(finalTransform);
+        if (textureSizeParam != null)
+            textureSizeParam.SetValue(
+                new Vector2(
+                    GlobalContext.TileManager.TileSet.Rows
+                        * GlobalContext.TileManager.TileSet.TileHeight,
+                    GlobalContext.TileManager.TileSet.Columns
+                        * GlobalContext.TileManager.TileSet.TileWidth
+                )
+            );
+        if (tileSizeParam != null)
+            tileSizeParam.SetValue(
+                new Vector2(
+                    GlobalContext.TileManager.TileSet.TileHeight,
+                    GlobalContext.TileManager.TileSet.TileWidth
+                )
+            ); // Size of ONE
+        if (cameraZoomParam != null)
+            cameraZoomParam.SetValue(GlobalContext.Camera.Zoom);
+        if (viewportParam != null)
+            viewportParam.SetValue(
+                new Vector2(Core.GraphicsDevice.Viewport.Width, Core.GraphicsDevice.Viewport.Height)
+            );
+
+        // -- DRAW TILES --
+        // Get player z position
+        ref var pos = ref GlobalContext.PlayerEntity.Get<Position>();
+        float playerZLevel = pos.zLevel;
+
+        // Get num z levels:
+        float numZLevels = GlobalContext.MapRegistry.GetNumZLevels();
+
+        // Get query for the description, targets all entities with "Positions" and "Sprite".
+        var query = World.Query(in _entitiesToDraw);
+        foreach (ref var chunk in query) // Iterate over each chunk that has entities that fit the query.
+        {
+            // Log.Debug("Processing chunk with {0} entities", chunk.Count);
+            // Receive raw arrays of positions and sprites from the chunk.
+            // chunk.GetArray<Position, GraphicalTile>(out var positions, out var graphicalTiles);
+            var positions = chunk.GetArray<Position>();
+            var graphicalTiles = chunk.GetArray<GraphicalTile>();
+
+            // Loop over the chunk
+            foreach (var index in chunk)
+            {
+                // Get refs to position and sprite.
+                // ref var position = ref positions[index]; // IS NULL
+                // ref var graphicalTile = ref graphicalTiles[index]; // IS POSITION OBJ
+                var position = positions[index];
+                var graphicalTile = graphicalTiles[index];
+
+                // graphicalTile contains a name, referencing a tile in the TileManager,
+                // and a color
+                // Log.Debug("Drawing tile {0} at position {1}", graphicalTile.Name, position.Vec2);
+
+                TileRenderInfo? tileInfo = GlobalContext.TileManager.GetTile(graphicalTile.TileId);
+                // tileInfo contains a TextureRegion and color string
+                // If tileInfo is null, skip drawing
+                if (tileInfo != null)
+                {
+                    Vector2 basePosition =
+                        new Vector2(
+                            position.WorldCoordinate.X * tileInfo.Value.TileWidth,
+                            position.WorldCoordinate.Y * tileInfo.Value.TileHeight
+                        )
+                        * graphicalTile.Scale
+                        * GlobalContext.GlobalScale;
+
+                    Vector2 finalVanishingPoint =
+                        GlobalContext.Camera.Center
+                        + (GlobalContext.CameraEntity.Get<CameraState>().LookDirection);
+
+                    // Calculate where the intermediate vanishing point is for this frame,
+                    // based on where it currently is and where it should be.
+                    _currentVanishingPoint = CameraUtils.SmoothDamp(
+                        _currentVanishingPoint,
+                        finalVanishingPoint,
+                        ref _vanishingPointVelocity,
+                        smoothTime,
+                        float.MaxValue,
+                        gameTime.GetElapsedSeconds()
+                    );
+
+                    basePosition -= _currentVanishingPoint;
+
+                    float perspectiveScale = 1.0f + (position.zLevel * depthStrength);
+
+                    Vector2 finalPosition =
+                        _currentVanishingPoint + (basePosition * perspectiveScale);
+
+                    // Color should be the default in the tile definition, unless the GraphicalTile object holds an override
+                    Color color = graphicalTile.SpriteColor ?? tileInfo.Value.Color;
+
+                    float sortingLevel = 1 - ((position.zLevel + position.top) / numZLevels);
+
+                    float layerDifference = position.zLevel - playerZLevel;
+
+                    tileInfo.Value.TextureRegion.Draw(
+                        Core.TileBatch,
+                        finalPosition,
+                        color,
+                        0.0f,
+                        Vector2.Zero,
+                        graphicalTile.Scale * GlobalContext.GlobalScale * perspectiveScale,
+                        SpriteEffects.None,
+                        sortingLevel,
+                        graphicalTile.BackgroundColor,
+                        graphicalTile.BorderColor,
+                        graphicalTile.BorderMask,
+                        graphicalTile.BorderWidth,
+                        layerDifference
+                    );
+                }
+            }
+        }
+        Core.TileBatch.End();
+
+        // -- Pass 2: Render Target to Screen with post-processing shader --
+
+        Core.GraphicsDevice.SetRenderTarget(null);
+
+        Core.SpriteBatch.Begin(effect: _screenEffect);
+
+        var timeParam = _screenEffect.Parameters["Time"];
+        if (timeParam != null)
+            timeParam.SetValue((float)gameTime.TotalGameTime.TotalSeconds);
+
+        Core.SpriteBatch.Draw(
+            _renderTarget2D,
+            new Rectangle(
+                0,
+                0,
+                Core.Graphics.PreferredBackBufferWidth,
+                Core.Graphics.PreferredBackBufferHeight
+            ),
+            Color.White
+        );
+
+        Core.SpriteBatch.End();
+    }
+}
+
+public sealed class MovementSystem : SystemBase<GameTime>
+{
+    private float _moveDelay = 0.20f;
+    private float _currentTimer = 0f;
+
+    public MovementSystem(World world)
+        : base(world) { }
+
+    public override void Update(in GameTime gameTime)
+    {
+        float delta = gameTime.GetElapsedSeconds();
+
         if (_currentTimer > 0)
         {
             _currentTimer -= delta;
         }
 
-        if (_currentTimer <= 0)
+        // Query all entities with a position and a movement component
+        var queryDescription = new QueryDescription().WithAll<Position, MovementInput, Direction>();
+        var query = World.Query(in queryDescription);
+        foreach (ref var chunk in query.GetChunkIterator())
         {
-            Vector2 movementDirection = GetMovementDirection();
+            var references = chunk.GetFirst<Position, MovementInput, Direction>();
 
-            if (movementDirection != Vector2.Zero)
+            foreach (var entity in chunk)
             {
-                ref var pos = ref _playerEntity.Get<Position>();
-                var coord = pos.WorldCoordinate;
-                coord.X += movementDirection.X;
-                coord.Y += movementDirection.Y;
-                pos.WorldCoordinate = coord;
+                ref var position = ref Unsafe.Add(ref references.t0, entity);
+                ref var movementInput = ref Unsafe.Add(ref references.t1, entity);
+                ref var direction = ref Unsafe.Add(ref references.t2, entity);
 
-                _currentTimer = _moveDelay;
+                Vector2 movementDirection = movementInput.Direction;
 
-                // If movementDirection is not 0, set faceDirection equal to it.
-                // Otherwise, faceDirection stays the same
-                _playerEntity.Get<Direction>().FaceDirection = movementDirection;
+                if (movementDirection == Vector2.Zero)
+                {
+                    _currentTimer = 0f;
+                    continue; // No movement input, skip
+                }
+
+                if (_currentTimer <= 0)
+                {
+                    Vector2 coord = position.WorldCoordinate;
+                    coord.X += movementDirection.X;
+                    coord.Y += movementDirection.Y;
+                    position.WorldCoordinate = coord;
+
+                    // If movementDirection is not 0, set faceDirection equal to it.
+                    // Otherwise, faceDirection stays the same
+                    direction.FaceDirection = movementDirection;
+
+                    _currentTimer = _moveDelay;
+                }
             }
         }
+    }
+}
 
-        // Move camera to follow player
+public sealed class CameraLogicSystem : SystemBase<GameTime>
+{
+    private float smoothTime = 0.20f; // Time to move camera to target (player)
+    private float zoomSpeed = 0.01f; // Speed of zooming
+    private float lookSpeed = 20.0f; // Speed of looking around
+    private float clampLength = 400.0f; // Max length of look direction
+
+    private Vector2 _camVelocity;
+
+    public CameraLogicSystem(World world)
+        : base(world) { }
+
+    public struct GetPlayerPos : IForEach<PlayerTag, Position>
+    {
+        public Vector2 Result;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Update(ref PlayerTag playerTag, ref Position pos)
+        {
+            Result = pos.WorldCoordinate;
+        }
+    }
+
+    public override void Update(in GameTime gameTime)
+    {
+        // Apply movement (based on player)
+        // Query for player entity to get position
+        var playerPos = new GetPlayerPos();
+        World.InlineQuery<GetPlayerPos, PlayerTag, Position>(
+            in new QueryDescription().WithAll<PlayerTag, Position>(),
+            ref playerPos
+        );
         Vector2 playerPosition =
-            _playerEntity.Get<Position>().WorldCoordinate * playerMovementContext.TileScaleModifier;
+            playerPos.Result * GlobalContext.GlobalScale * GlobalContext.TileManager.TileHeight;
 
         Vector2 targetPosition =
             playerPosition
@@ -319,14 +480,62 @@ public sealed class PlayerMovementSystem : SystemBase<PlayerMovementContext>
                 Core.Graphics.PreferredBackBufferHeight / 2
             );
 
-        _camera.Position = CameraUtils.SmoothDamp(
-            _camera.Position,
+        GlobalContext.CameraEntity.Get<CameraState>().Position = CameraUtils.SmoothDamp(
+            GlobalContext.CameraEntity.Get<CameraState>().Position,
             targetPosition,
             ref _camVelocity,
             smoothTime,
             float.MaxValue,
-            delta
+            gameTime.GetElapsedSeconds()
         );
+
+        // Apply zoom
+        float zoomChange = GlobalContext.CameraEntity.Get<CameraInput>().ZoomChange;
+        GlobalContext.CameraEntity.Get<CameraState>().ZoomAmount += (zoomChange * zoomSpeed);
+        GlobalContext.CameraEntity.Get<CameraInput>().ZoomChange = 0; // Reset after applying
+
+        // Apply Look Direction
+        Vector2 currentLookDirection = GlobalContext.CameraEntity.Get<CameraState>().LookDirection;
+        Vector2 lookChange = GlobalContext.CameraEntity.Get<CameraInput>().LookChange;
+
+        // 1. Calculate the tentative new position
+        Vector2 newLook = currentLookDirection + (lookChange * lookSpeed);
+
+        // 2. CIRCULAR CLAMP
+        // We check LengthSquared() because it is faster than Length() (avoids square root)
+        if (newLook.LengthSquared() > clampLength * clampLength)
+        {
+            // Normalize gets the direction (length of 1), then we multiply by radius
+            newLook = Vector2.Normalize(newLook) * clampLength;
+        }
+
+        GlobalContext.CameraEntity.Get<CameraState>().LookDirection = newLook;
+
+        // TODO: add previous state update for different refresh rates?
+    }
+}
+
+public sealed class CameraApplySystem : SystemBase<GameTime>
+{
+    public CameraApplySystem(World world)
+        : base(world) { }
+
+    public override void Update(in GameTime gameTime)
+    {
+        // Apply camera state to actual camera
+        ref var cameraState = ref GlobalContext.CameraEntity.Get<CameraState>();
+
+        GlobalContext.Camera.Position = cameraState.Position;
+
+        if (cameraState.ZoomAmount > 0)
+        {
+            GlobalContext.Camera.ZoomIn(cameraState.ZoomAmount);
+        }
+        else if (cameraState.ZoomAmount < 0)
+        {
+            GlobalContext.Camera.ZoomOut(-cameraState.ZoomAmount);
+        }
+        cameraState.ZoomAmount = 0; // Reset after applying
     }
 }
 
@@ -339,13 +548,8 @@ public sealed class TileAdjacencySystem : SystemBase<GameTime>
         GraphicalTile
     >();
 
-    private readonly MapRegistry _mapRegistry;
-
-    public TileAdjacencySystem(World world, MapRegistry mapRegistry)
-        : base(world)
-    {
-        _mapRegistry = mapRegistry;
-    }
+    public TileAdjacencySystem(World world)
+        : base(world) { }
 
     public override void Update(in GameTime gameTime)
     {
@@ -382,7 +586,7 @@ public sealed class TileAdjacencySystem : SystemBase<GameTime>
                     {
                         Vector2 adjacentCoord = currentCoord + directions[i];
                         if (
-                            !_mapRegistry.TryGet(
+                            !GlobalContext.MapRegistry.TryGet(
                                 new Vector3(adjacentCoord.X, adjacentCoord.Y, position.zLevel),
                                 out Entity _
                             )
@@ -398,20 +602,5 @@ public sealed class TileAdjacencySystem : SystemBase<GameTime>
                 }
             }
         }
-    }
-}
-
-public static class XnaColorExtensions
-{
-    public static Color Lighten(this Color color, float amount)
-    {
-        // 0.0f = no change, 1.0f = completey white
-        return Color.Lerp(color, Color.White, amount);
-    }
-
-    public static Color Darken(this Color color, float amount)
-    {
-        // 0.0f = no change, 1.0f = completely black
-        return Color.Lerp(color, Color.Black, amount);
     }
 }
