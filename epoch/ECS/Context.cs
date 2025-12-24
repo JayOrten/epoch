@@ -1,44 +1,20 @@
+using Arch.Core;
+using epoch.Engine.Graphics.Tiles;
 using Microsoft.Xna.Framework;
+using MonoGame.Extended;
 
 namespace epoch.ECS;
 
-public struct GlobalSettings
+public static class GlobalContext
 {
-    public float GlobalScale { get; set; }
+    // Global Settings
+    public static float GlobalScale { get; set; } = 4.0f;
 
-    public GlobalSettings()
-    {
-        GlobalScale = 4.0f;
-    }
-
-    public GlobalSettings(float globalScale)
-    {
-        GlobalScale = globalScale;
-    }
-}
-
-public readonly struct DrawContext
-{
-    public readonly GameTime GameTime;
-    public readonly float ZLevel;
-    public readonly float GlobalScale;
-
-    public DrawContext(GameTime gameTime, float zLevel, float globalScale)
-    {
-        GameTime = gameTime;
-        ZLevel = zLevel;
-        GlobalScale = globalScale;
-    }
-}
-
-public readonly struct PlayerMovementContext
-{
-    public readonly GameTime GameTime;
-    public readonly float TileScaleModifier;
-
-    public PlayerMovementContext(GameTime gameTime, float tileScaleModifier)
-    {
-        GameTime = gameTime;
-        TileScaleModifier = tileScaleModifier;
-    }
+    // Object/entity references
+    public static OrthographicCamera Camera { get; set; }
+    public static Entity CameraEntity { get; set; }
+    public static Entity PlayerEntity { get; set; }
+    public static MapRegistry MapRegistry { get; set; }
+    public static TileManager TileManager { get; set; }
+    public static EntityManager EntityManager { get; set; }
 }

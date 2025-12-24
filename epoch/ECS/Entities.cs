@@ -132,15 +132,11 @@ public class EntityManager
 
     private World _world;
 
-    private MapRegistry _mapRegistry;
-
-    public EntityManager(World world, MapRegistry mapRegistry, string xmlPath)
+    public EntityManager(World world, string xmlPath)
     {
         _entityDefs = Parse(xmlPath);
 
         _world = world;
-
-        _mapRegistry = mapRegistry;
     }
 
     public static Dictionary<string, EntityDefinition> Parse(string xmlPath)
@@ -190,7 +186,7 @@ public class EntityManager
             var comp = entity.Get<Position>();
 
             // Register entity in the map registry at the specified position.
-            _mapRegistry.Register(
+            GlobalContext.MapRegistry.Register(
                 new Vector3(comp.WorldCoordinate.X, comp.WorldCoordinate.Y, comp.zLevel),
                 entity
             );

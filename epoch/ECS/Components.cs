@@ -74,7 +74,7 @@ public struct GraphicalTile
 
     public int BorderMask { get; set; } = 0;
 
-    public float BorderWidth { get; set; } = 0.13f;
+    public float BorderWidth { get; set; } = 0.20f;
 
     // Flag to check border mask updates (but could be used for other things?)
     public bool IsDirty { get; set; } = true;
@@ -98,4 +98,33 @@ public struct Position
 public struct Direction
 {
     public Vector2 FaceDirection { get; set; }
+}
+
+[Component]
+public struct MovementInput
+{
+    public Vector2 Direction { get; set; }
+}
+
+[Component]
+public struct CameraInput
+{
+    // public Vector2 Movement;
+    public Vector2 LookChange { get; set; }
+    public float ZoomChange { get; set; }
+}
+
+[Component]
+public struct CameraState
+{
+    public Vector2 Position { get; set; }
+    public Vector2 LookDirection { get; set; }
+    public float ZoomAmount { get; set; }
+}
+
+[Component]
+public struct CameraPreviousState
+{
+    public Vector2 Position { get; set; }
+    public float Zoom { get; set; }
 }

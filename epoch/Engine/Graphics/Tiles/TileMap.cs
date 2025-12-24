@@ -7,7 +7,7 @@ namespace epoch.Engine.Graphics.Tiles;
 
 public static class TileMap
 {
-    public static void LoadTileMap(string tileMapPath, World world, MapRegistry mapRegistry)
+    public static void LoadTileMap(string tileMapPath, World world)
     {
         // Iterate through each row of the tilemap txt file,
         // adding a new entity for each index
@@ -44,7 +44,7 @@ public static class TileMap
                         new Position { WorldCoordinate = new Vector2(column, row), zLevel = z }
                     );
 
-                    mapRegistry.Register(coordinates, tile);
+                    GlobalContext.MapRegistry.Register(coordinates, tile);
                 }
                 column++;
             }

@@ -56,18 +56,6 @@
 /processorParam:TextureFormat=Color
 /build:images/Anikki_square_20x20.png
 
-#begin images/Terbert_21x21_modified.png
-/importer:TextureImporter
-/processor:TextureProcessor
-/processorParam:ColorKeyColor=255,0,255,255
-/processorParam:ColorKeyEnabled=True
-/processorParam:GenerateMipmaps=False
-/processorParam:PremultiplyAlpha=True
-/processorParam:ResizeToPowerOfTwo=False
-/processorParam:MakeSquare=False
-/processorParam:TextureFormat=Color
-/build:images/Terbert_21x21_modified.png
-
 #begin images/Terbert_7x7.png
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -79,18 +67,6 @@
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
 /build:images/Terbert_7x7.png
-
-#begin images/Terbert_7x7_modified.png
-/importer:TextureImporter
-/processor:TextureProcessor
-/processorParam:ColorKeyColor=255,0,255,255
-/processorParam:ColorKeyEnabled=True
-/processorParam:GenerateMipmaps=False
-/processorParam:PremultiplyAlpha=True
-/processorParam:ResizeToPowerOfTwo=False
-/processorParam:MakeSquare=False
-/processorParam:TextureFormat=Color
-/build:images/Terbert_7x7_modified.png
 
 #begin images/urizen_onebit_tileset__v2d0.png
 /importer:TextureImporter

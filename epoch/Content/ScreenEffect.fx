@@ -28,7 +28,7 @@ float4 MainPS(VertexShaderOutput input) : COLOR
     
     // (-0.08) = Barrel (Standard CRT TV look)
     // (0.08)  = Pincushion (Arcade / Projection look)
-    float distortionStrength = 0.05; 
+    float distortionStrength = 0.06; 
     
     // 1. Center the UVs [0,1] -> [-0.5, 0.5]
     float2 centeredUV = input.TextureCoordinates - 0.5;

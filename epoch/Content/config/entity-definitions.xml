@@ -9,6 +9,7 @@
       <component component_name="Position" WorldCoordinate="0,0,0"/>
       <component component_name="PlayerTag"/>
       <component component_name="Direction" FaceDirection="0,0"/>
+      <component component_name="MovementInput"/>
     </entity>
     <entity name="grass">
       <component component_name="GraphicalTile" TileId="2"/>
