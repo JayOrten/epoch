@@ -401,37 +401,66 @@ public sealed class MovementSystem : SystemBase<GameTime>
 
         // Query all entities with a position and a movement component
         var queryDescription = new QueryDescription().WithAll<Position, MovementInput, Direction>();
+        // TODO: check potential children?
         var query = World.Query(in queryDescription);
         foreach (ref var chunk in query.GetChunkIterator())
         {
+            var entityParams = chunk.Entities;
             var references = chunk.GetFirst<Position, MovementInput, Direction>();
 
-            foreach (var entity in chunk)
+            foreach (var index in chunk)
             {
-                ref var position = ref Unsafe.Add(ref references.t0, entity);
-                ref var movementInput = ref Unsafe.Add(ref references.t1, entity);
-                ref var direction = ref Unsafe.Add(ref references.t2, entity);
+                var entity = entityParams[index];
+                ref var position = ref Unsafe.Add(ref references.t0, index);
+                ref var movementInput = ref Unsafe.Add(ref references.t1, index);
+                ref var direction = ref Unsafe.Add(ref references.t2, index);
 
-                Vector2 movementDirection = movementInput.Direction;
+                bool canMove = true;
 
-                if (movementDirection == Vector2.Zero)
+                if (World.TryGet(entity, out CompositeControllerComponent compositeController))
                 {
-                    _currentTimer = 0f;
-                    continue; // No movement input, skip
+                    foreach (var partID in compositeController.Parts.Values)
+                    {
+                        // TODO: random access/cache miss issues?
+                        ref var childPos = ref World.Get<Position>(partID);
+                        // TODO: add collision detection
+                    }
                 }
+                // TODO: add collision detection
 
-                if (_currentTimer <= 0)
+                if (canMove)
                 {
-                    Vector2 coord = position.WorldCoordinate;
-                    coord.X += movementDirection.X;
-                    coord.Y += movementDirection.Y;
-                    position.WorldCoordinate = coord;
+                    Vector2 movementDirection = movementInput.Direction;
 
-                    // If movementDirection is not 0, set faceDirection equal to it.
-                    // Otherwise, faceDirection stays the same
-                    direction.FaceDirection = movementDirection;
+                    if (movementDirection == Vector2.Zero)
+                    {
+                        _currentTimer = 0f;
+                        continue; // No movement input, skip
+                    }
 
-                    _currentTimer = _moveDelay;
+                    if (_currentTimer <= 0)
+                    {
+                        position.WorldCoordinate += movementDirection;
+
+                        // TODO: update mapregistry?
+
+                        // If movementDirection is not 0, set faceDirection equal to it.
+                        // Otherwise, faceDirection stays the same
+                        direction.FaceDirection = movementDirection;
+
+                        // Move children if they exist
+                        if (compositeController.Parts != null)
+                        {
+                            foreach (var partID in compositeController.Parts.Values)
+                            {
+                                ref var childPos = ref World.Get<Position>(partID);
+                                childPos.WorldCoordinate += movementDirection;
+
+                                // TODO: update mapregistry?
+                            }
+                        }
+                        _currentTimer = _moveDelay;
+                    }
                 }
             }
         }
@@ -442,8 +471,8 @@ public sealed class CameraLogicSystem : SystemBase<GameTime>
 {
     private float smoothTime = 0.20f; // Time to move camera to target (player)
     private float zoomSpeed = 0.01f; // Speed of zooming
-    private float lookSpeed = 20.0f; // Speed of looking around
-    private float clampLength = 400.0f; // Max length of look direction
+    private float lookSpeed = 15.0f; // Speed of looking around
+    private float clampLength = 350.0f; // Max length of look direction
 
     private Vector2 _camVelocity;
 

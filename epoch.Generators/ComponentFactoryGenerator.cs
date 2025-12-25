@@ -69,9 +69,15 @@ public class ComponentFactoryGenerator : IIncrementalGenerator
         sb.AppendLine("");
         sb.AppendLine("namespace epoch.Generated");
         sb.AppendLine("{");
-        sb.AppendLine("    public static class ComponentFactory");
+        sb.AppendLine("    public static partial class ComponentFactory");
         sb.AppendLine("    {");
 
+        // CHANGE 2: Define a partial method hook
+        // If you don't implement this in your manual file, the compiler removes calls to it.
+        sb.AppendLine(
+            "        static partial void TrySetCustom(Entity entity, World world, ComponentDefinition def, ref bool handled);"
+        );
+        sb.AppendLine("");
         // --- METHOD 1: GetArchType ---
         // Generates: return Component<epoch.Components.Position>.ComponentType;
         sb.AppendLine("        public static ComponentType GetArchType(string typeName)");
@@ -99,6 +105,11 @@ public class ComponentFactoryGenerator : IIncrementalGenerator
             "        public static void SetOnEntity(this Entity entity, World world, ComponentDefinition def)"
         );
         sb.AppendLine("        {");
+        sb.AppendLine("            bool handled = false;");
+        sb.AppendLine("            TrySetCustom(entity, world, def, ref handled);");
+        sb.AppendLine("            if (handled) return;");
+        sb.AppendLine("");
+
         sb.AppendLine("            switch (def.TypeName)");
         sb.AppendLine("            {");
         foreach (var comp in uniqueComponents)

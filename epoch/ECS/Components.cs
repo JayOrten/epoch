@@ -1,64 +1,22 @@
 using System;
 using System.Collections.Generic;
+using Arch.Core;
 using Microsoft.Xna.Framework;
 
 namespace epoch.ECS;
 
-public class ComponentDefinition
-{
-    public string TypeName { get; set; }
-
-    public Dictionary<string, string> Properties { get; } = new();
-
-    public string this[string property]
-    {
-        get => Properties.TryGetValue(property, out var value) ? value : null;
-        set => Properties[property] = value;
-    }
-
-    public bool TryGet(string property, out string value)
-    {
-        return Properties.TryGetValue(property, out value);
-    }
-
-    public ComponentDefinition(string typeName)
-    {
-        TypeName = typeName;
-    }
-
-    public ComponentDefinition(string typeName, Dictionary<string, string> properties)
-        : this(typeName)
-    {
-        foreach (var kvp in properties)
-            Properties[kvp.Key] = kvp.Value;
-    }
-
-    public ComponentDefinition Add(string property, string value)
-    {
-        Properties[property] = value;
-        return this;
-    }
-
-    public ComponentDefinition Merge(ComponentDefinition other)
-    {
-        if (other == null)
-            return this;
-
-        foreach (var kvp in other.Properties)
-            Properties[kvp.Key] = kvp.Value;
-
-        return this;
-    }
-}
-
 [AttributeUsage(AttributeTargets.Struct)]
-public class ComponentAttribute : Attribute { }
+public class ComponentAttribute : Attribute
+{
+    public bool UseCustomFactory { get; set; } = false;
+}
 
 // Tag Components
 [Component]
 public struct PlayerTag { }
 
 // Regular Components
+// --- GENERAL TILE ---
 [Component]
 public struct GraphicalTile
 {
@@ -74,7 +32,7 @@ public struct GraphicalTile
 
     public int BorderMask { get; set; } = 0;
 
-    public float BorderWidth { get; set; } = 0.20f;
+    public float BorderWidth { get; set; } = 0.13f;
 
     // Flag to check border mask updates (but could be used for other things?)
     public bool IsDirty { get; set; } = true;
@@ -91,9 +49,13 @@ public struct Position
     // Represents priority on the z-level, usually just 0. Always less than 1, or this will break
     public float top { get; set; } = 0;
 
+    // Represents potential offset from parent entity, not necessary
+    public Vector3 Offset { get; set; }
+
     public Position() { }
 }
 
+// --- ORGANISM ---
 [Component]
 public struct Direction
 {
@@ -106,6 +68,30 @@ public struct MovementInput
     public Vector2 Direction { get; set; }
 }
 
+[Component]
+public struct Movement
+{
+    public float MoveDelay { get; set; }
+    public float CurrentTimer { get; set; } = 0f;
+
+    public Movement() { }
+}
+
+// Body Components
+[Component(UseCustomFactory = true)]
+public struct CompositeControllerComponent
+{
+    public Dictionary<string, Entity> Parts;
+}
+
+[Component(UseCustomFactory = true)]
+public struct CompositePartComponent
+{
+    public Entity MasterId { get; set; }
+    public string PartLabel { get; set; }
+}
+
+// --- CAMERA ---
 [Component]
 public struct CameraInput
 {
