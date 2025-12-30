@@ -54,20 +54,6 @@ public static class TileMap
                     );
 
                     GlobalContext.EntityManager.Spawn(character - '0', spawnPosition);
-
-                    // var tile = world.Create(
-                    //     new GraphicalTile
-                    //     {
-                    //         TileId = character - '0',
-                    //         BackgroundColor = new Color(30, 32, 48, 255),
-                    //         // BackgroundColor = Color.Black,
-                    //         BorderColor = new Color(75, 75, 75, 150),
-                    //         // SpriteColor = new Color(150, 150, 150, 255),
-                    //     },
-                    //     new Position { WorldCoordinate = new Vector2(column, row), zLevel = z }
-                    // );
-
-                    // GlobalContext.MapRegistry.Register(coordinates, tile);
                 }
                 column++;
             }
