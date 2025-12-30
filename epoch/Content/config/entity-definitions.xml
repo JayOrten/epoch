@@ -1,30 +1,54 @@
 <?xml version="1.0" encoding="utf-8"?>
 <entityDefinitions>
-    <entity name="empty">
-      <component component_name="GraphicalTile" TileId="0"/>
-      <component component_name="Position" WorldCoordinate="0,0,0"/>
-    </entity>
-    <entity name="player">
-      <component component_name="GraphicalTile" TileId="1"/>
-      <component component_name="Position" WorldCoordinate="0,0,0"/>
+    <entity name="player" id="0">
       <component component_name="PlayerTag"/>
+      <component component_name="Position"/>
       <component component_name="Direction" FaceDirection="0,0"/>
       <component component_name="MovementInput"/>
+      <component component_name="Movement"/>
+      <component component_name="CompositeControllerComponent">
+        <parts>
+          <part key="Legs" entity_template="legs" offset="0,0,0"/>
+          <part key="Torso" entity_template="torso" offset="0,0,1"/>
+          <part key="Head" entity_template="head" offset="0,0,2"/>
+        </parts>
+      </component>
     </entity>
-    <entity name="grass">
+    <entity name="legs" id="1">
+      <component component_name="GraphicalTile" TileId="1"/>
+      <component component_name="Position"/>
+    </entity>
+    <entity name="torso" id="2">
+      <component component_name="GraphicalTile" TileId="1"/>
+      <component component_name="Position"/>
+    </entity>
+    <entity name="head" id="3">
+      <component component_name="GraphicalTile" TileId="1"/>
+      <component component_name="Position"/>
+    </entity>
+
+    <entity name="empty" id="4">
+      <component component_name="GraphicalTile" TileId="0"/>
+      <component component_name="Position" Passable = "true"/>
+    </entity>
+    <entity name="grass" id="5">
       <component component_name="GraphicalTile" TileId="2"/>
-      <component component_name="Position" WorldCoordinate="0,0,0"/>
+      <component component_name="Position" Passable = "true"/>
     </entity>
-    <entity name="tree">
+    <entity name="tree" id="6">
       <component component_name="GraphicalTile" TileId="3"/>
-      <component component_name="Position" WorldCoordinate="0,0,0"/>
+      <component component_name="Position" Passable = "false"/>
     </entity>
-    <entity name="dirt">
+    <entity name="dirt" id="7">
       <component component_name="GraphicalTile" TileId="4"/>
-      <component component_name="Position" WorldCoordinate="0,0,0"/>
+      <component component_name="Position" Passable = "false"/>
     </entity>
-    <entity name="water">
+    <entity name="water" id="8">
       <component component_name="GraphicalTile" TileId="5" color="#ff0000"/>
-      <component component_name="Position" WorldCoordinate="0,0,0"/>
+      <component component_name="Position" Passable = "false"/>
+    </entity>
+    <entity name="stone" id="9">
+      <component component_name="GraphicalTile" TileId="6" color="#222222"/>
+      <component component_name="Position" Passable = "false"/>
     </entity>
 </entityDefinitions>

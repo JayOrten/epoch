@@ -73,7 +73,7 @@ public class WorldScene : Scene
         _world = World.Create();
 
         // Create empty map registry
-        GlobalContext.MapRegistry = new MapRegistry();
+        GlobalContext.MapRegistry = new MapRegistry(_world, 20, 20, 9);
 
         // Create the entity manager, loading in entity definitions from file
         GlobalContext.EntityManager = new EntityManager(_world, entityDefinitionsPath);
@@ -110,12 +110,7 @@ public class WorldScene : Scene
         EntityDefinition spawnPosition = new EntityDefinition(
             new ComponentDefinition(
                 "Position",
-                new Dictionary<string, string>
-                {
-                    { "WorldCoordinate", "1,1" },
-                    { "zLevel", "0" },
-                    { "top", "0.9" },
-                }
+                new Dictionary<string, string> { { "WorldCoordinate", "1,1,1" }, { "top", "0.9" } }
             )
         );
 
@@ -129,7 +124,7 @@ public class WorldScene : Scene
 
         GlobalContext.Camera.LookAt(
             Utils.ConvertGridToWorldCoordinate(
-                pos.WorldCoordinate,
+                new Vector2(pos.WorldCoordinate.X, pos.WorldCoordinate.Y),
                 GlobalContext.TileManager.TileWidth * GlobalContext.GlobalScale,
                 GlobalContext.TileManager.TileHeight * GlobalContext.GlobalScale
             )

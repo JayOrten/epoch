@@ -1,64 +1,28 @@
 using System;
 using System.Collections.Generic;
+using Arch.Core;
 using Microsoft.Xna.Framework;
 
 namespace epoch.ECS;
 
-public class ComponentDefinition
+[AttributeUsage(AttributeTargets.Struct)]
+public class ComponentAttribute : Attribute
 {
-    public string TypeName { get; set; }
-
-    public Dictionary<string, string> Properties { get; } = new();
-
-    public string this[string property]
-    {
-        get => Properties.TryGetValue(property, out var value) ? value : null;
-        set => Properties[property] = value;
-    }
-
-    public bool TryGet(string property, out string value)
-    {
-        return Properties.TryGetValue(property, out value);
-    }
-
-    public ComponentDefinition(string typeName)
-    {
-        TypeName = typeName;
-    }
-
-    public ComponentDefinition(string typeName, Dictionary<string, string> properties)
-        : this(typeName)
-    {
-        foreach (var kvp in properties)
-            Properties[kvp.Key] = kvp.Value;
-    }
-
-    public ComponentDefinition Add(string property, string value)
-    {
-        Properties[property] = value;
-        return this;
-    }
-
-    public ComponentDefinition Merge(ComponentDefinition other)
-    {
-        if (other == null)
-            return this;
-
-        foreach (var kvp in other.Properties)
-            Properties[kvp.Key] = kvp.Value;
-
-        return this;
-    }
+    public bool UseCustomFactory { get; set; } = false;
 }
 
-[AttributeUsage(AttributeTargets.Struct)]
-public class ComponentAttribute : Attribute { }
-
 // Tag Components
+
+// Signifies the entity is a player
 [Component]
 public struct PlayerTag { }
 
+// Signifies the entity is an empty space/air unit
+[Component]
+public struct AirTag { }
+
 // Regular Components
+// --- GENERAL TILE ---
 [Component]
 public struct GraphicalTile
 {
@@ -72,12 +36,25 @@ public struct GraphicalTile
     public Color BackgroundColor { get; set; }
     public Color BorderColor { get; set; }
 
+    // Bits in the mask that are 1 indicate air in that direction
+    // directions: north, east, south, west, above, below
+    public int SpaceMask { get; set; } = 0;
+
+    // Bits in the mask that are 1 indicate a border in that direction
+    // directions: north, east, south, west
+    // This is calcualted based on the spacemask and spacemask of adjacent tiles
     public int BorderMask { get; set; } = 0;
 
-    public float BorderWidth { get; set; } = 0.20f;
+    public float BorderWidth { get; set; } = 0.13f;
 
     // Flag to check border mask updates (but could be used for other things?)
     public bool IsDirty { get; set; } = true;
+
+    // For interpolating between positions
+    public Vector2 CurrentDrawPosition { get; set; }
+    public Vector2 DrawPositionVelocity;
+
+    public float CurrentDrawScale { get; set; }
 
     public GraphicalTile() { }
 }
@@ -85,15 +62,23 @@ public struct GraphicalTile
 [Component]
 public struct Position
 {
-    public Vector2 WorldCoordinate { get; set; }
-    public float zLevel { get; set; }
+    public Vector3 WorldCoordinate { get; set; }
+
+    // public float zLevel { get; set; }
 
     // Represents priority on the z-level, usually just 0. Always less than 1, or this will break
     public float top { get; set; } = 0;
 
+    // Represents potential offset from parent entity, not necessary
+    public Vector3 Offset { get; set; }
+
+    // Whether this block is passable
+    public bool Passable { get; set; }
+
     public Position() { }
 }
 
+// --- ORGANISM ---
 [Component]
 public struct Direction
 {
@@ -106,6 +91,32 @@ public struct MovementInput
     public Vector2 Direction { get; set; }
 }
 
+[Component]
+public struct Movement
+{
+    // Speed of movement
+    public float MoveDelay { get; set; } = 0.25f;
+    public float CurrentTimer { get; set; } = 0f;
+
+    public Movement() { }
+}
+
+// Body Components
+[Component(UseCustomFactory = true)]
+public struct CompositeControllerComponent
+{
+    public Dictionary<string, Entity> Parts { get; set; }
+    public List<Vector3> ChildOffsets { get; set; }
+}
+
+[Component(UseCustomFactory = true)]
+public struct CompositePartComponent
+{
+    public Entity MasterId { get; set; }
+    public string PartLabel { get; set; }
+}
+
+// --- CAMERA ---
 [Component]
 public struct CameraInput
 {

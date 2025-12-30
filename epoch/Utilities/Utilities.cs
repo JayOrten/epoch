@@ -129,11 +129,28 @@ public static class ComponentParsers
     // Handle Nullable types by returning the value type (assignment to Nullable works automatically)
     public static Color ParseColor(string value)
     {
-        // Simple implementation: Assume Hex or Named color
-        var prop = typeof(Color).GetProperty(value);
-        if (prop != null)
-            return (Color)prop.GetValue(null);
-        return Color.White;
+        // value could be hex, named, or rgba format.
+        if (value.StartsWith("#"))
+        {
+            return Utils.FromHex(value);
+        }
+        else if (value.Contains(","))
+        {
+            var parts = value.Split(',');
+            byte r = byte.Parse(parts[0]);
+            byte g = byte.Parse(parts[1]);
+            byte b = byte.Parse(parts[2]);
+            byte a = parts.Length > 3 ? byte.Parse(parts[3]) : (byte)255;
+            return new Color(r, g, b, a);
+        }
+        else
+        {
+            // Try to parse named color
+            var prop = typeof(Color).GetProperty(value);
+            if (prop != null)
+                return (Color)prop.GetValue(null);
+            throw new ArgumentException($"Invalid color format: {value}");
+        }
     }
 }
 

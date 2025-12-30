@@ -67,11 +67,17 @@ public class ComponentFactoryGenerator : IIncrementalGenerator
         sb.AppendLine("using Microsoft.Xna.Framework;");
 
         sb.AppendLine("");
-        sb.AppendLine("namespace epoch.Generated");
+        sb.AppendLine("namespace epoch.ECS");
         sb.AppendLine("{");
-        sb.AppendLine("    public static class ComponentFactory");
+        sb.AppendLine("    public static partial class ComponentFactory");
         sb.AppendLine("    {");
 
+        // CHANGE 2: Define a partial method hook
+        // If you don't implement this in your manual file, the compiler removes calls to it.
+        sb.AppendLine(
+            "        static partial void TrySetCustom(Entity entity, World world, ComponentDefinition def, ref bool handled);"
+        );
+        sb.AppendLine("");
         // --- METHOD 1: GetArchType ---
         // Generates: return Component<epoch.Components.Position>.ComponentType;
         sb.AppendLine("        public static ComponentType GetArchType(string typeName)");
@@ -99,10 +105,33 @@ public class ComponentFactoryGenerator : IIncrementalGenerator
             "        public static void SetOnEntity(this Entity entity, World world, ComponentDefinition def)"
         );
         sb.AppendLine("        {");
+        sb.AppendLine("            bool handled = false;");
+        sb.AppendLine("            TrySetCustom(entity, world, def, ref handled);");
+        sb.AppendLine("            if (handled) return;");
+        sb.AppendLine("");
+
         sb.AppendLine("            switch (def.TypeName)");
         sb.AppendLine("            {");
         foreach (var comp in uniqueComponents)
         {
+            // Check custom factory flag
+            // We look for the attribute and check the 'UseCustomFactory' named argument
+            var attr = comp.GetAttributes()
+                .FirstOrDefault(a => a.AttributeClass?.Name == "ComponentAttribute");
+            var useCustom = false;
+
+            if (attr != null)
+            {
+                // Check named arguments (e.g. [Component(UseCustomFactory = true)])
+                var arg = attr.NamedArguments.FirstOrDefault(kvp => kvp.Key == "UseCustomFactory");
+                if (arg.Value.Value is bool b)
+                    useCustom = b;
+            }
+
+            // If custom, we SKIP generating the case.
+            // The default case will throw an error if the partial method didn't handle it.
+            if (useCustom)
+                continue;
             GenerateSetCase(sb, comp);
         }
         sb.AppendLine("                default:");
