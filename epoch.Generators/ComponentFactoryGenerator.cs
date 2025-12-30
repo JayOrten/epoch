@@ -67,7 +67,7 @@ public class ComponentFactoryGenerator : IIncrementalGenerator
         sb.AppendLine("using Microsoft.Xna.Framework;");
 
         sb.AppendLine("");
-        sb.AppendLine("namespace epoch.Generated");
+        sb.AppendLine("namespace epoch.ECS");
         sb.AppendLine("{");
         sb.AppendLine("    public static partial class ComponentFactory");
         sb.AppendLine("    {");
@@ -114,6 +114,24 @@ public class ComponentFactoryGenerator : IIncrementalGenerator
         sb.AppendLine("            {");
         foreach (var comp in uniqueComponents)
         {
+            // Check custom factory flag
+            // We look for the attribute and check the 'UseCustomFactory' named argument
+            var attr = comp.GetAttributes()
+                .FirstOrDefault(a => a.AttributeClass?.Name == "ComponentAttribute");
+            var useCustom = false;
+
+            if (attr != null)
+            {
+                // Check named arguments (e.g. [Component(UseCustomFactory = true)])
+                var arg = attr.NamedArguments.FirstOrDefault(kvp => kvp.Key == "UseCustomFactory");
+                if (arg.Value.Value is bool b)
+                    useCustom = b;
+            }
+
+            // If custom, we SKIP generating the case.
+            // The default case will throw an error if the partial method didn't handle it.
+            if (useCustom)
+                continue;
             GenerateSetCase(sb, comp);
         }
         sb.AppendLine("                default:");
