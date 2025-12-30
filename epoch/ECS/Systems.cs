@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -19,17 +20,92 @@ namespace epoch.ECS;
 /// Need to figure out how to handle chunk loading/unloading, etc.
 public class MapRegistry
 {
-    private Dictionary<Vector3, Entity> _grid = new();
+    private World _world;
 
-    public void Register(Vector3 coord, Entity entity) => _grid[coord] = entity;
+    private int _xSize;
+    private int _ySize;
+    private int _zSize;
 
-    public bool TryGet(Vector3 coord, out Entity entity) => _grid.TryGetValue(coord, out entity);
+    private Entity[] _entityMap;
 
-    public float GetMaxZLevel() => _grid.Keys.Max(v => v.Z);
+    // 0 is passable, 1 is not passable
+    private byte[] _collisionMap;
 
-    public float GetMinZLevel() => _grid.Keys.Min(v => v.Z);
+    private int GetIndex(int x, int y, int z) => x + (z * _xSize) + (y * _xSize * _zSize);
 
-    public float GetNumZLevels() => _grid.Keys.Select(v => v.Z).Distinct().Count();
+    private int GetIndex(Vector3 coord) =>
+        (int)(coord.X + (coord.Z * _xSize) + (coord.Y * _xSize * _zSize));
+
+    public MapRegistry(World world, int xSize, int ySize, int zSize)
+    {
+        _world = world;
+        _xSize = xSize;
+        _ySize = ySize;
+        _zSize = zSize;
+
+        int size = xSize * ySize * zSize;
+
+        _entityMap = new Entity[size];
+        // Create an entity with a AirTag component to represent empty space.
+        Entity airEntity = world.Create(new AirTag());
+        // Fill the entity map with this entity initially.
+        Array.Fill(_entityMap, airEntity);
+
+        _collisionMap = new byte[size];
+    }
+
+    public void Register(Vector3 coord, Entity entity)
+    {
+        int idx = GetIndex(coord);
+        _entityMap[idx] = entity;
+
+        // Get passability from entity's Position component
+        ref var position = ref _world.Get<Position>(entity);
+        _collisionMap[idx] = (byte)(position.Passable ? 0 : 1);
+    }
+
+    public Entity GetEntityAt(Vector3 coord)
+    {
+        // Check bounds of coordinate (otherwise it wraps)
+        if (
+            coord.X >= _xSize
+            || coord.Y >= _ySize
+            || coord.Z >= _zSize
+            || coord.X < 0
+            || coord.Y < 0
+            || coord.Z < 0
+        )
+        {
+            return Entity.Null;
+        }
+
+        int idx = GetIndex(coord);
+        // If out of bounds, return Entity.Null
+        if (idx < 0 || idx >= _entityMap.Length)
+        {
+            return Entity.Null;
+        }
+
+        Entity entity = _entityMap[idx];
+
+        return _entityMap[idx];
+    }
+
+    public bool IsPassableAt(Vector3 coord)
+    {
+        int idx = GetIndex(coord);
+        // If out of bounds, return false (not passable)
+        if (idx < 0 || idx >= _collisionMap.Length)
+        {
+            return false;
+        }
+        return _collisionMap[idx] == 0;
+    }
+
+    public int GetNumZLevels()
+    {
+        return _zSize;
+    }
 }
 
 /// <summary>
@@ -164,11 +240,15 @@ public sealed class DrawSystem : SystemBase<GameTime>
 
     private readonly RenderTarget2D _renderTarget2D;
 
-    private float smoothTime = 100.00f;
-    private float depthStrength = 0.03f;
+    // Controls vanishing point time smoothing
+    private float _smoothTime = 100.00f;
+    private float _depthStrength = 0.03f;
 
     private Vector2 _currentVanishingPoint;
     private Vector2 _vanishingPointVelocity;
+
+    // Controls draw position and scale smoothing
+    private float _drawTime = 0.00001f;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="DrawSystem"/> class.
@@ -267,9 +347,10 @@ public sealed class DrawSystem : SystemBase<GameTime>
         // -- DRAW TILES --
         // Get player z position
         ref var pos = ref GlobalContext.PlayerEntity.Get<Position>();
-        float playerZLevel = pos.zLevel;
+        float playerZLevel = pos.WorldCoordinate.Z;
 
         // Get num z levels:
+        // TODO: need to figure out actual drawing culling. Need to get which z are actually shown.
         float numZLevels = GlobalContext.MapRegistry.GetNumZLevels();
 
         // Get query for the description, targets all entities with "Positions" and "Sprite".
@@ -289,11 +370,15 @@ public sealed class DrawSystem : SystemBase<GameTime>
                 // ref var position = ref positions[index]; // IS NULL
                 // ref var graphicalTile = ref graphicalTiles[index]; // IS POSITION OBJ
                 var position = positions[index];
-                var graphicalTile = graphicalTiles[index];
+                ref var graphicalTile = ref graphicalTiles[index];
 
-                // graphicalTile contains a name, referencing a tile in the TileManager,
-                // and a color
-                // Log.Debug("Drawing tile {0} at position {1}", graphicalTile.Name, position.Vec2);
+                // First, check if we actually want to draw the tile
+                // Check each bit of the border mask. If any bit is set, we need to draw the tile
+                if (graphicalTile.SpaceMask == 0 && graphicalTile.SpriteColor == null)
+                {
+                    continue; // No border to draw, skip
+                    // TODO: maybe add a "force draw" flag instead?
+                }
 
                 TileRenderInfo? tileInfo = GlobalContext.TileManager.GetTile(graphicalTile.TileId);
                 // tileInfo contains a TextureRegion and color string
@@ -318,32 +403,76 @@ public sealed class DrawSystem : SystemBase<GameTime>
                         _currentVanishingPoint,
                         finalVanishingPoint,
                         ref _vanishingPointVelocity,
-                        smoothTime,
+                        _smoothTime,
                         float.MaxValue,
                         gameTime.GetElapsedSeconds()
                     );
 
+                    // This puts the current vanishing point at (0,0) for easier calculations
                     basePosition -= _currentVanishingPoint;
 
-                    float perspectiveScale = 1.0f + (position.zLevel * depthStrength);
+                    // Depth=0 should always be the z level the player is on
+                    float depth = position.WorldCoordinate.Z - playerZLevel;
+
+                    float perspectiveScale = 1.0f + (depth * _depthStrength);
 
                     Vector2 finalPosition =
                         _currentVanishingPoint + (basePosition * perspectiveScale);
 
+                    // Initialize interpolation values if they haven't been set yet
+                    // TODO: this might be problematic
+                    if (graphicalTile.CurrentDrawPosition == Vector2.Zero)
+                    {
+                        graphicalTile.CurrentDrawPosition = finalPosition;
+                    }
+
+                    // Finally, we want to smoothly interpolate the final position from its current position to the target position
+                    // This prevents popping when moving up and down z levels
+                    // Note: this adds a "sluggish" or "sliding" effect when moving
+                    // graphicalTile.CurrentDrawPosition = CameraUtils.SmoothDamp(
+                    //     graphicalTile.CurrentDrawPosition,
+                    //     finalPosition,
+                    //     ref graphicalTile.DrawPositionVelocity,
+                    //     0.075f,
+                    //     float.MaxValue,
+                    //     gameTime.GetElapsedSeconds()
+                    // );
+                    graphicalTile.CurrentDrawPosition = Vector2.Lerp(
+                        graphicalTile.CurrentDrawPosition,
+                        finalPosition,
+                        1 - (float)Math.Pow(_drawTime, gameTime.GetElapsedSeconds())
+                    );
+
+                    // Also, interpolate between scale changes
+                    float finalScale =
+                        graphicalTile.Scale * GlobalContext.GlobalScale * perspectiveScale;
+
+                    if (graphicalTile.CurrentDrawScale == 0.0f)
+                    {
+                        graphicalTile.CurrentDrawScale = finalScale;
+                    }
+
+                    graphicalTile.CurrentDrawScale = MathHelper.Lerp(
+                        graphicalTile.CurrentDrawScale,
+                        finalScale,
+                        1 - (float)Math.Pow(_drawTime, gameTime.GetElapsedSeconds())
+                    );
+
                     // Color should be the default in the tile definition, unless the GraphicalTile object holds an override
                     Color color = graphicalTile.SpriteColor ?? tileInfo.Value.Color;
 
-                    float sortingLevel = 1 - ((position.zLevel + position.top) / numZLevels);
+                    float sortingLevel =
+                        1 - ((position.WorldCoordinate.Z + position.top) / numZLevels);
 
-                    float layerDifference = position.zLevel - playerZLevel;
+                    float layerDifference = position.WorldCoordinate.Z - playerZLevel;
 
                     tileInfo.Value.TextureRegion.Draw(
                         Core.TileBatch,
-                        finalPosition,
+                        graphicalTile.CurrentDrawPosition,
                         color,
                         0.0f,
                         Vector2.Zero,
-                        graphicalTile.Scale * GlobalContext.GlobalScale * perspectiveScale,
+                        graphicalTile.CurrentDrawScale,
                         SpriteEffects.None,
                         sortingLevel,
                         graphicalTile.BackgroundColor,
@@ -384,9 +513,6 @@ public sealed class DrawSystem : SystemBase<GameTime>
 
 public sealed class MovementSystem : SystemBase<GameTime>
 {
-    private float _moveDelay = 0.20f;
-    private float _currentTimer = 0f;
-
     public MovementSystem(World world)
         : base(world) { }
 
@@ -394,53 +520,128 @@ public sealed class MovementSystem : SystemBase<GameTime>
     {
         float delta = gameTime.GetElapsedSeconds();
 
-        if (_currentTimer > 0)
-        {
-            _currentTimer -= delta;
-        }
-
         // Query all entities with a position and a movement component
-        var queryDescription = new QueryDescription().WithAll<Position, MovementInput, Direction>();
-        // TODO: check potential children?
+        var queryDescription = new QueryDescription().WithAll<
+            Position,
+            MovementInput,
+            Movement,
+            Direction
+        >();
         var query = World.Query(in queryDescription);
         foreach (ref var chunk in query.GetChunkIterator())
         {
             var entityParams = chunk.Entities;
-            var references = chunk.GetFirst<Position, MovementInput, Direction>();
+            var references = chunk.GetFirst<Position, MovementInput, Movement, Direction>();
 
             foreach (var index in chunk)
             {
+                // Get components for current entity
                 var entity = entityParams[index];
                 ref var position = ref Unsafe.Add(ref references.t0, index);
                 ref var movementInput = ref Unsafe.Add(ref references.t1, index);
-                ref var direction = ref Unsafe.Add(ref references.t2, index);
+                ref var movement = ref Unsafe.Add(ref references.t2, index);
+                ref var direction = ref Unsafe.Add(ref references.t3, index);
 
-                bool canMove = true;
-
-                if (World.TryGet(entity, out CompositeControllerComponent compositeController))
+                // 0. Decrease the current timer, regardless of state
+                if (movement.CurrentTimer > 0)
                 {
-                    foreach (var partID in compositeController.Parts.Values)
-                    {
-                        // TODO: random access/cache miss issues?
-                        ref var childPos = ref World.Get<Position>(partID);
-                        // TODO: add collision detection
-                    }
+                    movement.CurrentTimer -= delta;
                 }
-                // TODO: add collision detection
 
-                if (canMove)
+                // 1. IF the tile has valid movement input
+                Vector2 movementDirection = movementInput.Direction;
+
+                if (movementDirection == Vector2.Zero)
                 {
-                    Vector2 movementDirection = movementInput.Direction;
+                    movement.CurrentTimer = 0f;
+                    continue; // No movement input, skip
+                }
 
-                    if (movementDirection == Vector2.Zero)
+                // 2. IF the movement timer is ready
+                if (movement.CurrentTimer <= 0)
+                {
+                    // 3. IF the tile CAN move (collision detection)
+                    bool canMove = true;
+
+                    // Check the parent tile first
+                    // Logic here
+                    // Get next x/y coord
+                    // 5 cases:
+                    // 1. It's empty, the coordinate below is not.
+                    // 2. It's empty, the coordinate below is.
+                    // 3. It's not passable, the coordinate above is.
+                    // 4. It's not passable, the coordinate above is not passable.
+                    // 5. It's passable (automatically move forward? Flat ground?)
+                    // So, what we really need to know is:
+                    // 1. The passability of the tile
+                    // 2. The passability of the tile above it
+                    // 3. The coordinate of the next non passable tile below it (but only if the original tile is passable)
+                    Vector3 newCoordinate =
+                        position.WorldCoordinate + new Vector3(movementDirection, 0.0f);
+
+                    if (!GlobalContext.MapRegistry.IsPassableAt(newCoordinate))
                     {
-                        _currentTimer = 0f;
-                        continue; // No movement input, skip
+                        // Check coordinate above
+                        Vector3 coordinateAbove = newCoordinate;
+                        coordinateAbove.Z++;
+
+                        if (GlobalContext.MapRegistry.IsPassableAt(coordinateAbove))
+                        {
+                            // Move up
+                            newCoordinate.Z++;
+                        }
+                        else
+                        {
+                            // Otherwise, you can't move.
+                            canMove = false;
+                        }
+                    }
+                    else if (GlobalContext.MapRegistry.GetEntityAt(newCoordinate).Has<AirTag>())
+                    {
+                        // Get coordinate below
+                        Vector3 coordinateBelow = newCoordinate;
+                        coordinateBelow.Z--;
+
+                        if (GlobalContext.MapRegistry.GetEntityAt(coordinateBelow).Has<AirTag>())
+                        {
+                            Log.Info("uh oh, falling!");
+                            // TODO: add falling. For now, it just moves down one
+                            newCoordinate.Z--;
+                        }
+                        else
+                        {
+                            // Move down the slope
+                            newCoordinate.Z--;
+                        }
                     }
 
-                    if (_currentTimer <= 0)
+                    // Check the children tiles at each offset
+                    if (canMove)
                     {
-                        position.WorldCoordinate += movementDirection;
+                        if (
+                            World.TryGet(
+                                entity,
+                                out CompositeControllerComponent compositeController
+                            )
+                        )
+                        {
+                            foreach (Vector3 childOffset in compositeController.ChildOffsets)
+                            {
+                                Vector3 newChildCoordinate = childOffset + newCoordinate;
+
+                                // Check if tile at newCoordiante is passable
+                                if (!GlobalContext.MapRegistry.IsPassableAt(newChildCoordinate))
+                                {
+                                    canMove = false;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if (canMove)
+                    {
+                        position.WorldCoordinate = newCoordinate;
 
                         // TODO: update mapregistry?
 
@@ -449,17 +650,24 @@ public sealed class MovementSystem : SystemBase<GameTime>
                         direction.FaceDirection = movementDirection;
 
                         // Move children if they exist
-                        if (compositeController.Parts != null)
+                        if (
+                            World.TryGet(
+                                entity,
+                                out CompositeControllerComponent compositeController
+                            )
+                        )
                         {
-                            foreach (var partID in compositeController.Parts.Values)
+                            for (int i = 0; i < compositeController.Parts.Count; i++)
                             {
-                                ref var childPos = ref World.Get<Position>(partID);
-                                childPos.WorldCoordinate += movementDirection;
+                                Entity childEntity = compositeController.Parts.Values.ElementAt(i);
+                                ref var childPosition = ref World.Get<Position>(childEntity);
+                                childPosition.WorldCoordinate =
+                                    newCoordinate + childPosition.Offset;
 
                                 // TODO: update mapregistry?
                             }
                         }
-                        _currentTimer = _moveDelay;
+                        movement.CurrentTimer = movement.MoveDelay;
                     }
                 }
             }
@@ -486,7 +694,7 @@ public sealed class CameraLogicSystem : SystemBase<GameTime>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Update(ref PlayerTag playerTag, ref Position pos)
         {
-            Result = pos.WorldCoordinate;
+            Result = new Vector2(pos.WorldCoordinate.X, pos.WorldCoordinate.Y);
         }
     }
 
@@ -577,12 +785,65 @@ public sealed class TileAdjacencySystem : SystemBase<GameTime>
         GraphicalTile
     >();
 
+    private static readonly Vector3[] _directions = new Vector3[]
+    {
+        new Vector3(0, -1, 0), // North
+        new Vector3(1, 0, 0), // East
+        new Vector3(0, 1, 0), // South
+        new Vector3(-1, 0, 0), // West
+        new Vector3(0, 0, 1), // Above
+        new Vector3(0, 0, -1), // Below
+    };
+
+    private static readonly Vector3[] _borderDirections = new Vector3[]
+    {
+        new Vector3(0, -1, 0), // North
+        new Vector3(1, 0, 0), // East
+        new Vector3(0, 1, 0), // South
+        new Vector3(-1, 0, 0), // West
+    };
+
     public TileAdjacencySystem(World world)
         : base(world) { }
 
     public override void Update(in GameTime gameTime)
     {
         var query = World.Query(in _entitiesToUpdate);
+
+        // Two passes: one to calculate space masks for dirty tiles, one to update border buffer
+        foreach (ref var chunk in query.GetChunkIterator())
+        {
+            var references = chunk.GetFirst<Position, GraphicalTile>();
+
+            foreach (var entity in chunk)
+            {
+                ref var graphicalTile = ref Unsafe.Add(ref references.t1, entity);
+
+                // If the tile is marked as dirty, run check with adjacent tiles
+                // and update border buffer
+                // TODO: use dirty tag, not isDirty boolean
+                if (graphicalTile.IsDirty)
+                {
+                    ref var position = ref Unsafe.Add(ref references.t0, entity);
+
+                    int mask = 0;
+
+                    for (int i = 0; i < _directions.Length; i++)
+                    {
+                        Vector3 adjacentCoord = position.WorldCoordinate + _directions[i];
+                        var entityAtAdjacent = GlobalContext.MapRegistry.GetEntityAt(adjacentCoord);
+                        if (entityAtAdjacent != Entity.Null && entityAtAdjacent.Has<AirTag>())
+                        {
+                            mask |= (1 << i);
+                        }
+                    }
+
+                    graphicalTile.SpaceMask = mask;
+                }
+            }
+        }
+
+        // Pass 2: update border masks
 
         foreach (ref var chunk in query.GetChunkIterator())
         {
@@ -600,28 +861,27 @@ public sealed class TileAdjacencySystem : SystemBase<GameTime>
 
                     int mask = 0;
 
-                    // For each direction, check if it's empty. If it is, there should be a border there.
-                    // TODO: add logic for checking if the adjacent tile does not touch air. It it doesn't, we don't even render it, and there should also be a border here.
-                    Vector2 currentCoord = position.WorldCoordinate;
-                    Vector2[] directions = new Vector2[]
+                    // A border should be drawn if:
+                    // 1. The adjacent tile is air
+                    // 2. The adjacent tile's space mask is 0, indicating the neighbor is not touching air
+                    for (int i = 0; i < _borderDirections.Length; i++)
                     {
-                        new Vector2(0, -1), // North
-                        new Vector2(1, 0), // East
-                        new Vector2(0, 1), // South
-                        new Vector2(-1, 0), // West
-                    };
-
-                    for (int i = 0; i < directions.Length; i++)
-                    {
-                        Vector2 adjacentCoord = currentCoord + directions[i];
+                        Vector3 adjacentCoord = position.WorldCoordinate + _borderDirections[i];
+                        var entityAtAdjacent = GlobalContext.MapRegistry.GetEntityAt(adjacentCoord);
+                        // if (entityAtAdjacent != Entity.Null && entityAtAdjacent.Has<AirTag>())
                         if (
-                            !GlobalContext.MapRegistry.TryGet(
-                                new Vector3(adjacentCoord.X, adjacentCoord.Y, position.zLevel),
-                                out Entity _
+                            entityAtAdjacent != Entity.Null
+                            && (
+                                entityAtAdjacent.Has<AirTag>()
+                                || (
+                                    World.TryGet(
+                                        entityAtAdjacent,
+                                        out GraphicalTile adjacentGraphicalTile
+                                    ) && (adjacentGraphicalTile.SpaceMask == 0)
+                                )
                             )
                         )
                         {
-                            // No tile in this direction, set the corresponding bit in the mask
                             mask |= (1 << i);
                         }
                     }

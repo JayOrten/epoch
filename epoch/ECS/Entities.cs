@@ -4,31 +4,34 @@ using System.Linq;
 using System.Xml.Linq;
 using Arch.Core;
 using Arch.Core.Extensions;
-// using epoch.Generated;
 using Microsoft.Xna.Framework;
 
 namespace epoch.ECS;
 
 public class EntityManager
 {
-    private Dictionary<string, EntityDefinition> _entityDefs;
+    private Dictionary<string, int> _entityNames;
+    private Dictionary<int, EntityDefinition> _entityDefs;
 
     private World _world;
 
     public EntityManager(World world, string xmlPath)
     {
-        _entityDefs = Parse(xmlPath);
+        // Load and parse the XML file
+        Parse(xmlPath);
 
         _world = world;
     }
 
-    public static Dictionary<string, EntityDefinition> Parse(string xmlPath)
+    private void Parse(string xmlPath)
     {
         var doc = XDocument.Load(xmlPath);
-        var entities = new Dictionary<string, EntityDefinition>();
+        _entityNames = new Dictionary<string, int>();
+        _entityDefs = new Dictionary<int, EntityDefinition>();
 
         foreach (var entityElem in doc.Root.Elements("entity"))
         {
+            int entityId = int.Parse(entityElem.Attribute("id")?.Value ?? "0");
             var entity = new EntityDefinition { TypeName = entityElem.Attribute("name")?.Value };
 
             foreach (var compElem in entityElem.Elements("component"))
@@ -39,13 +42,11 @@ public class EntityManager
                     if (attr.Name != "component_name")
                         compDef.Properties[attr.Name.LocalName] = attr.Value;
 
-                // TODO: add parts parsing
                 var partsDef = compElem.Element("parts");
                 if (partsDef != null)
                 {
                     foreach (var partDef in partsDef.Elements("part"))
                     {
-                        // TODO: what if it doesn't have an offset?
                         Vector3 offset = ParseVector3(
                             partDef.Attribute("offset")?.Value ?? "0,0,0"
                         );
@@ -60,12 +61,12 @@ public class EntityManager
                         );
                     }
                 }
-
                 entity.Components[compDef.TypeName] = compDef;
             }
-            entities[entity.TypeName] = entity;
+            // Store the definition
+            _entityNames[entity.TypeName] = entityId;
+            _entityDefs[entityId] = entity;
         }
-        return entities;
     }
 
     // Simple helper to parse "0,0,1"
@@ -101,13 +102,15 @@ public class EntityManager
         // TODO: only add if it's local? in a present chunk?
         if (entity.Has<Position>())
         {
+            // If the entity has the PlayerTag component, skip
+            if (entity.Has<PlayerTag>())
+            {
+                return entity;
+            }
             var comp = entity.Get<Position>();
 
             // Register entity in the map registry at the specified position.
-            GlobalContext.MapRegistry.Register(
-                new Vector3(comp.WorldCoordinate.X, comp.WorldCoordinate.Y, comp.zLevel),
-                entity
-            );
+            GlobalContext.MapRegistry.Register(comp.WorldCoordinate, entity);
         }
 
         return entity;
@@ -128,11 +131,22 @@ public class EntityManager
     public Entity Spawn(string entityName, EntityDefinition entityDefinitionOverride = null)
     {
         // Find the entity definition in the list matching entityName
-        EntityDefinition def = _entityDefs.TryGetValue(entityName, out var value) ? value : null;
+        int entityId = _entityNames.TryGetValue(entityName, out var id) ? id : -1;
+        EntityDefinition def = _entityDefs.TryGetValue(entityId, out var value) ? value : null;
+
+        Entity entity = Spawn(entityId, entityDefinitionOverride);
+
+        return entity;
+    }
+
+    public Entity Spawn(int entityId, EntityDefinition entityDefinitionOverride = null)
+    {
+        // Find the entity definition in the list matching entityId
+        EntityDefinition def = _entityDefs.TryGetValue(entityId, out var value) ? value : null;
 
         if (def == null)
         {
-            Log.Info($"Entity definition '{entityName}' not found.", entityName);
+            Log.Info($"Entity definition ID '{entityId}' not found.", entityId);
             var ex = new InvalidOperationException("Entity definition not found");
             throw ex;
         }

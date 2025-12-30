@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using Arch.Core;
 using epoch.ECS;
@@ -29,22 +30,44 @@ public static class TileMap
             foreach (char character in line)
             {
                 // If the character is a period, skip it
-                if (character != '.')
+                // OR if character is new line
+                if (character != '.' && character != '\n' && character != '\r')
                 {
-                    Vector3 coordinates = new Vector3(column, row, z);
-                    var tile = world.Create(
-                        new GraphicalTile
-                        {
-                            TileId = character - '0',
-                            BackgroundColor = new Color(30, 32, 48, 255),
-                            // BackgroundColor = Color.Black,
-                            BorderColor = new Color(75, 75, 75, 150),
-                            // SpriteColor = new Color(150, 150, 150, 255),
-                        },
-                        new Position { WorldCoordinate = new Vector2(column, row), zLevel = z }
+                    // Vector3 coordinates = new Vector3(column, row, z);
+                    string coordinates = $"{column},{row},{z}";
+                    // Log.Info(
+                    //     $"Spawning tile entity at {coordinates} with TileId {character - '0'}"
+                    // );
+                    EntityDefinition spawnPosition = new EntityDefinition(
+                        new ComponentDefinition(
+                            "Position",
+                            new Dictionary<string, string> { { "WorldCoordinate", coordinates } }
+                        ),
+                        new ComponentDefinition(
+                            "GraphicalTile",
+                            new Dictionary<string, string>
+                            {
+                                { "BackgroundColor", "30,32,48,255" },
+                                { "BorderColor", "75,75,75,150" },
+                            }
+                        )
                     );
 
-                    GlobalContext.MapRegistry.Register(coordinates, tile);
+                    GlobalContext.EntityManager.Spawn(character - '0', spawnPosition);
+
+                    // var tile = world.Create(
+                    //     new GraphicalTile
+                    //     {
+                    //         TileId = character - '0',
+                    //         BackgroundColor = new Color(30, 32, 48, 255),
+                    //         // BackgroundColor = Color.Black,
+                    //         BorderColor = new Color(75, 75, 75, 150),
+                    //         // SpriteColor = new Color(150, 150, 150, 255),
+                    //     },
+                    //     new Position { WorldCoordinate = new Vector2(column, row), zLevel = z }
+                    // );
+
+                    // GlobalContext.MapRegistry.Register(coordinates, tile);
                 }
                 column++;
             }
