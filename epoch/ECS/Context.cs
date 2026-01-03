@@ -8,7 +8,7 @@ namespace epoch.ECS;
 public static class GlobalContext
 {
     // Global Settings
-    public static float GlobalScale { get; set; } = 4.0f;
+    public static float GlobalScale { get; set; } = 2.0f;
 
     // Object/entity references
     public static OrthographicCamera Camera { get; set; }

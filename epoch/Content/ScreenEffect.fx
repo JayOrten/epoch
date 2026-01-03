@@ -58,6 +58,51 @@ float4 MainPS(VertexShaderOutput input) : COLOR
     
     float4 color = float4(r, g, b, tex2D(SpriteTextureSampler, distortedUV).a);
 
+    // --- 1.5 VFD Glow / Bloom (New!) ---
+    // We sample neighbors to create a "bleed" effect.
+    // Adjust 'bloomSpread' for how far the glow reaches (0.004 is decent for 1080p).
+    // Adjust 'bloomIntensity' for how "hot" the display looks.
+    
+    float bloomSpread = 0.0011; 
+    float bloomIntensity = 1.2; 
+    float bloomThreshold = 0.10;
+    
+    float4 glow = float4(0,0,0,0);
+    float samples = 0;
+
+// We define the 8 offsets manually for PS_3_0 compatibility
+    float2 offsets[8];
+    offsets[0] = float2(-1, -1); offsets[1] = float2(1, -1);
+    offsets[2] = float2(-1, 1);  offsets[3] = float2(1, 1);
+    offsets[4] = float2(-1, 0);  offsets[5] = float2(1, 0);
+    offsets[6] = float2(0, -1);  offsets[7] = float2(0, 1);
+
+    for(int i = 0; i < 8; i++)
+    {
+        // 1. Sample the neighbor
+        float2 sampleCoord = distortedUV + (offsets[i] * bloomSpread);
+        float4 neighbor = tex2D(SpriteTextureSampler, sampleCoord);
+        
+        // 2. Calculate Brightness (Luminance)
+        // This formula matches how human eyes perceive brightness (Green is brightest)
+        float luminance = dot(neighbor.rgb, float3(0.299, 0.587, 0.114));
+
+        // 3. Apply Threshold
+        // We subtract the threshold. If the result is negative, it becomes 0.
+        // This creates a smooth ramp: 0.7 brightness = 0 glow, 1.0 brightness = 0.25 glow.
+        float contribution = max(0.0, luminance - bloomThreshold);
+
+        // 4. Accumulate
+        glow += neighbor * contribution;
+    }
+
+    // Average isn't strictly necessary with the weight math, 
+    // but dividing by 8 keeps the intensity controllable.
+    glow /= 8.0;
+
+    // Add the calculated glow to the final color
+    color.rgb += glow.rgb * bloomIntensity;
+
     // --- 2. Scanline Effect ---
     float scanline = sin(distortedUV.y * 400.0) * 0.0025;
     color.rgb -= scanline;
@@ -78,20 +123,11 @@ float4 MainPS(VertexShaderOutput input) : COLOR
 
     color.rgb += (finalNoise - 0.5) * (grainIntensity * luminanceMask);
 
-    // --- 4. Vignette (New!) ---
-    // Darkens the corners to mimic light falloff on a tube
-    
-    // float vignetteStrength = 1.5; // Higher = darker corners
-    // float vignetteSize = 0.65;    // Higher = smaller vignette circle
-
-    // // Calculate distance from center of the screen
+    // --- 4. Vignette ---
+    // float vignetteStrength = 1.5; 
+    // float vignetteSize = 0.65;    
     // float dist = distance(distortedUV, float2(0.5, 0.5));
-    
-    // // Smoothstep creates a smooth fade from transparent to black
-    // // We invert it because we want 1.0 at center and 0.0 at edges
     // float vignette = 1.0 - smoothstep(vignetteSize, vignetteSize + 0.4, dist * vignetteStrength);
-
-    // Apply the shadow
     // color.rgb *= vignette;
 
     return float4(saturate(color.rgb), color.a);

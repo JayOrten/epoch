@@ -1,12 +1,12 @@
 {
-    "file": "images/urizen_onebit_tileset__v2d0",
+    "file": "images/tilesheet_24x24",
     "region": {
         "x": 0,
         "y": 0,
-        "width": 724,
-        "height": 176
+        "width": 384,
+        "height": 384
     },
-    "tile_width": 12,
-    "tile_height": 12,
-    "padding": 1
+    "tile_width": 24,
+    "tile_height": 24,
+    "padding": 0
 }

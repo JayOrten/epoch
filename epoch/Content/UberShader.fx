@@ -124,8 +124,8 @@ float4 MainPS(VertexShaderOutput input) : COLOR0
     float targetWidth = max(input.BorderWidth, uvPerPixel); // Ensure that border is at least 1 screen pixel thick
     // EXAMPLE: If BorderWidth = 0.1, targetWidth = max(0.1, 0.017) = 0.1
 
-    // float startFade = max(0.1, targetWidth - fadeWidth);
-    float startFade = uvPerPixel * 2;
+    float startFade = max(0.0, targetWidth - uvPerPixel * 3.0);
+    // float startFade = uvPerPixel * 2;
     // EXAMPLE: startFade = max(0.0, 0.1 - 3.4) = max(0.0, -3.3) = 0.0
     float endFade = targetWidth;
 
@@ -172,16 +172,32 @@ float4 MainPS(VertexShaderOutput input) : COLOR0
     float layerFactor = saturate(abs(input.LayerDifference) / 5.0); // Assuming max difference of 10 layers
     
     // 2. Blend sprite onto background
-    float4 finalColor = input.BackgroundColor / 255.0;
+    float4 backgroundColor = input.BackgroundColor / 255.0;
 
+    // Background color could be completely transprent to not transparent.
+    // We apply it normally to any pixels that are effectively "0" (completely transparent)
+    // BUT, for pixels that are (0,255,255,255), we always want those be 100% the background color.
+    // TODO: just pass a secondary background color? For now just use the same one
     // Sample the Texture (using original UVs) and apply brightness modifier
-    float4 sprite = tex2D(SpriteTextureSampler, input.TextureCoordinates) * input.SpriteColor;
-    sprite.rgb = lerp(sprite.rgb, targetBrightness, layerFactor);
+    float4 spritePixel = tex2D(SpriteTextureSampler, input.TextureCoordinates);
+    // If the color is (0,255,255,255), apply the backgroundColor with full alpha
+    if (all(spritePixel.rgb == float3(0.0, 1.0 ,1.0)))
+    {
+        spritePixel = backgroundColor;
+        spritePixel.a = 1.0;
+    }
+    else
+    {
+        spritePixel = spritePixel * input.SpriteColor;
+        spritePixel.rgb = lerp(spritePixel.rgb, targetBrightness, layerFactor);
+    }
+
+    backgroundColor.rgb *= backgroundColor.a; // Pre-multiply alpha
     
-    // Blend Sprite onto Background
     // If this is a sprite pixel, it will overwrite the background based on its alpha
-    finalColor.rgb = sprite.rgb * sprite.a + finalColor.rgb * (1.0 - sprite.a);
-    finalColor.a = max(finalColor.a, sprite.a);
+    float4 pixelColor;
+    pixelColor.rgb = spritePixel.rgb * spritePixel.a + backgroundColor.rgb * (1.0 - spritePixel.a);
+    pixelColor.a = max(backgroundColor.a, spritePixel.a);
 
     // 3. Blend Border onto the result
     // Mix the border color with the background color based on the alpha of the border color
@@ -192,11 +208,11 @@ float4 MainPS(VertexShaderOutput input) : COLOR0
     float borderColor = lerp(input.BorderColor.rgb / 255.0, targetBrightness, layerFactor);
 
     // Blend onto background
-    finalColor.rgb = lerp(finalColor.rgb, borderColor, appliedAlpha);
+    pixelColor.rgb = lerp(pixelColor.rgb, borderColor, appliedAlpha);
 
-    finalColor.a = max(finalColor.a, appliedAlpha);
+    pixelColor.a = max(pixelColor.a, appliedAlpha);
 
-    return finalColor;
+    return pixelColor;
     // return float4(frac(localCoord.x * 100), 0, 0, 1);
     // return float4(input.Depth, 0, 0, 1);
 }

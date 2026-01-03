@@ -55,9 +55,9 @@ public class WorldScene : Scene
         // _tilemap = Tilemap.FromFile(Content, "images/tilemap-definition.xml");
         // _tilemap.Scale = new Vector2(8.0f, 8.0f);
 
-        TileMode mode = TileMode.Ascii;
+        TileMode mode = TileMode.Graphical;
         string tileDefinitionsPath = ContentPaths.Config("tile-definitions");
-        string tileSetPath = ContentPaths.Config("ascii-tileset");
+        string tileSetPath = ContentPaths.Config("graphical-tileset");
         string entityDefinitionsPath = ContentPaths.Config("entity-definitions");
 
         // Load tile definitions
@@ -73,7 +73,7 @@ public class WorldScene : Scene
         _world = World.Create();
 
         // Create empty map registry
-        GlobalContext.MapRegistry = new MapRegistry(_world, 20, 20, 9);
+        GlobalContext.MapRegistry = new MapRegistry(_world, 80, 80, 9);
 
         // Create the entity manager, loading in entity definitions from file
         GlobalContext.EntityManager = new EntityManager(_world, entityDefinitionsPath);
@@ -115,6 +115,18 @@ public class WorldScene : Scene
         );
 
         GlobalContext.PlayerEntity = GlobalContext.EntityManager.Spawn("player", spawnPosition);
+
+        // Modify player entity background colors for each nested entity part
+        var compositeEntities = GlobalContext.PlayerEntity.Get<CompositeControllerComponent>();
+        foreach (var value in compositeEntities.Parts.Values)
+        {
+            Entity child = value;
+            if (child.Has<GraphicalTile>())
+            {
+                ref var graphicalTile = ref child.Get<GraphicalTile>();
+                graphicalTile.BackgroundColor = new Color(30, 32, 48, 0);
+            }
+        }
 
         // Spawn Camera entity
         GlobalContext.CameraEntity = _world.Create(new CameraInput(), new CameraState());

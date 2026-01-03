@@ -130,13 +130,13 @@ namespace epoch.Engine.Graphics.Tiles.TileBatches
         )
         {
             // --- 1. HALF-PIXEL UV OFFSET ---
-            float halfPixelX = 0.5f / Texture.Width;
-            float halfPixelY = 0.5f / Texture.Height;
+            // float halfPixelX = 0.5f / Texture.Width;
+            // float halfPixelY = 0.5f / Texture.Height;
 
-            texCoordTL.X += halfPixelX;
-            texCoordTL.Y += halfPixelY;
-            texCoordBR.X -= halfPixelX;
-            texCoordBR.Y -= halfPixelY;
+            // texCoordTL.X += halfPixelX;
+            // texCoordTL.Y += halfPixelY;
+            // texCoordBR.X -= halfPixelX;
+            // texCoordBR.Y -= halfPixelY;
 
             // --- 2. FAT VERTEX FIX ---
             float epsilon = 0.01f;

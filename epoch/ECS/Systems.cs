@@ -242,7 +242,7 @@ public sealed class DrawSystem : SystemBase<GameTime>
 
     // Controls vanishing point time smoothing
     private float _smoothTime = 100.00f;
-    private float _depthStrength = 0.03f;
+    private float _depthStrength = 0.02f;
 
     private Vector2 _currentVanishingPoint;
     private Vector2 _vanishingPointVelocity;
@@ -442,6 +442,24 @@ public sealed class DrawSystem : SystemBase<GameTime>
                         finalPosition,
                         1 - (float)Math.Pow(_drawTime, gameTime.GetElapsedSeconds())
                     );
+
+                    // float distanceToTarget = Vector2.Distance(
+                    //     graphicalTile.CurrentDrawPosition,
+                    //     finalPosition
+                    // );
+                    // float moveAmount = 250f * gameTime.GetElapsedSeconds(); // Speed factor
+                    // if (distanceToTarget <= moveAmount)
+                    // {
+                    //     graphicalTile.CurrentDrawPosition = finalPosition;
+                    // }
+                    // else
+                    // {
+                    //     graphicalTile.CurrentDrawPosition = Vector2.Lerp(
+                    //         graphicalTile.CurrentDrawPosition,
+                    //         finalPosition,
+                    //         moveAmount / distanceToTarget
+                    //     );
+                    // }
 
                     // Also, interpolate between scale changes
                     float finalScale =
@@ -677,10 +695,10 @@ public sealed class MovementSystem : SystemBase<GameTime>
 
 public sealed class CameraLogicSystem : SystemBase<GameTime>
 {
-    private float smoothTime = 0.20f; // Time to move camera to target (player)
+    private float smoothTime = 0.45f; // Time to move camera to target (player)
     private float zoomSpeed = 0.01f; // Speed of zooming
     private float lookSpeed = 15.0f; // Speed of looking around
-    private float clampLength = 350.0f; // Max length of look direction
+    private float clampLength = 500.0f; // Max length of look direction
 
     private Vector2 _camVelocity;
 

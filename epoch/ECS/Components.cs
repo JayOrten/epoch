@@ -45,7 +45,7 @@ public struct GraphicalTile
     // This is calcualted based on the spacemask and spacemask of adjacent tiles
     public int BorderMask { get; set; } = 0;
 
-    public float BorderWidth { get; set; } = 0.13f;
+    public float BorderWidth { get; set; } = 0.04f;
 
     // Flag to check border mask updates (but could be used for other things?)
     public bool IsDirty { get; set; } = true;
@@ -95,7 +95,7 @@ public struct MovementInput
 public struct Movement
 {
     // Speed of movement
-    public float MoveDelay { get; set; } = 0.25f;
+    public float MoveDelay { get; set; } = 0.35f;
     public float CurrentTimer { get; set; } = 0f;
 
     public Movement() { }

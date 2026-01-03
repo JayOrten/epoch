@@ -61,5 +61,26 @@
         "asciiTileIndex": 43,
         "colorString": "#ffffff",
         "graphicalTileIndex": 0
+    },
+    {
+        "id": 9,
+        "name": "head",
+        "asciiTileIndex": 43,
+        "colorString": "#a6a6a6",
+        "graphicalTileIndex": 3
+    },
+    {
+        "id": 10,
+        "name": "torso",
+        "asciiTileIndex": 43,
+        "colorString": "#a6a6a6",
+        "graphicalTileIndex": 2
+    },
+    {
+        "id": 11,
+        "name": "legs",
+        "asciiTileIndex": 43,
+        "colorString": "#a6a6a6",
+        "graphicalTileIndex": 1
     }
 ]

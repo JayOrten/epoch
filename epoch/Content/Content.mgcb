@@ -68,6 +68,30 @@
 /processorParam:TextureFormat=Color
 /build:images/Terbert_7x7.png
 
+#begin images/tilesheet_24x24.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:images/tilesheet_24x24.png
+
+#begin images/tilesheet_wip.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:images/tilesheet_wip.png
+
 #begin images/urizen_onebit_tileset__v2d0.png
 /importer:TextureImporter
 /processor:TextureProcessor

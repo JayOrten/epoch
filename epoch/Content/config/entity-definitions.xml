@@ -15,15 +15,15 @@
       </component>
     </entity>
     <entity name="legs" id="1">
-      <component component_name="GraphicalTile" TileId="1"/>
+      <component component_name="GraphicalTile" TileId="11"/>
       <component component_name="Position"/>
     </entity>
     <entity name="torso" id="2">
-      <component component_name="GraphicalTile" TileId="1"/>
+      <component component_name="GraphicalTile" TileId="10"/>
       <component component_name="Position"/>
     </entity>
     <entity name="head" id="3">
-      <component component_name="GraphicalTile" TileId="1"/>
+      <component component_name="GraphicalTile" TileId="9"/>
       <component component_name="Position"/>
     </entity>
 
