@@ -6,7 +6,6 @@ using Arch.Core;
 using Arch.Core.Extensions;
 using epoch.Engine;
 using epoch.Engine.Graphics.Tiles;
-using epoch.Engine.Graphics.Tiles.TileBatches;
 using epoch.Utilities;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -235,8 +234,8 @@ public sealed class DrawSystem : SystemBase<GameTime>
         GraphicalTile
     >();
 
-    private readonly Effect _uberShader;
-    private readonly Effect _screenEffect;
+    private readonly Effect _renderShader;
+    private readonly Effect _effectShader;
 
     private readonly RenderTarget2D _renderTarget2D;
 
@@ -255,11 +254,11 @@ public sealed class DrawSystem : SystemBase<GameTime>
     /// </summary>
     /// <param name="world">Its <see cref="World"/>.</param>
     /// <param name="batch">The <see cref="SpriteBatch"/> used to draw all <see cref="Entity"/>s.</param>
-    public DrawSystem(World world, Effect uberShader, Effect screenEffect)
+    public DrawSystem(World world, Effect renderShader, Effect effectShader)
         : base(world)
     {
-        _uberShader = uberShader;
-        _screenEffect = screenEffect;
+        _renderShader = renderShader;
+        _effectShader = effectShader;
 
         _renderTarget2D = new RenderTarget2D(
             Core.GraphicsDevice,
@@ -273,8 +272,6 @@ public sealed class DrawSystem : SystemBase<GameTime>
     /// </summary>
     public override void Update(in GameTime gameTime)
     {
-        // Log.Debug("DrawSystem Update started.");
-
         // -- SETUP --
         // If the current vanishing point is zero, set it to the center of the screen
         if (_currentVanishingPoint == Vector2.Zero)
@@ -301,48 +298,27 @@ public sealed class DrawSystem : SystemBase<GameTime>
             Core.GraphicsDevice.Viewport.Height,
             0,
             0,
-            -1
+            1
         );
 
         // Combine them (Order matters: View * Projection)
         var finalTransform = viewMatrix * projectionMatrix;
 
-        Core.TileBatch.Begin(
-            sortMode: SpriteSortMode.BackToFront,
-            effect: _uberShader,
+        Core.TileInstancing.Begin(
+            // sortMode: SpriteSortMode.BackToFront,
+            effect: _renderShader,
             samplerState: SamplerState.PointClamp
         );
 
-        var transformParam = _uberShader.Parameters["WorldViewProjection"];
-        var textureSizeParam = _uberShader.Parameters["TextureSize"];
-        var tileSizeParam = _uberShader.Parameters["TileSize"];
-        var cameraZoomParam = _uberShader.Parameters["CameraZoom"];
-        var viewportParam = _uberShader.Parameters["ViewportSize"];
+        var transformParam = _renderShader.Parameters["WorldViewProjection"];
+        var cameraZoomParam = _renderShader.Parameters["CameraZoom"];
 
         if (transformParam != null)
             transformParam.SetValue(finalTransform);
-        if (textureSizeParam != null)
-            textureSizeParam.SetValue(
-                new Vector2(
-                    GlobalContext.TileManager.TileSet.Rows
-                        * GlobalContext.TileManager.TileSet.TileHeight,
-                    GlobalContext.TileManager.TileSet.Columns
-                        * GlobalContext.TileManager.TileSet.TileWidth
-                )
-            );
-        if (tileSizeParam != null)
-            tileSizeParam.SetValue(
-                new Vector2(
-                    GlobalContext.TileManager.TileSet.TileHeight,
-                    GlobalContext.TileManager.TileSet.TileWidth
-                )
-            ); // Size of ONE
         if (cameraZoomParam != null)
             cameraZoomParam.SetValue(GlobalContext.Camera.Zoom);
-        if (viewportParam != null)
-            viewportParam.SetValue(
-                new Vector2(Core.GraphicsDevice.Viewport.Width, Core.GraphicsDevice.Viewport.Height)
-            );
+
+        // TODO: just house this stuff inside the instancing?
 
         // -- DRAW TILES --
         // Get player z position
@@ -374,21 +350,21 @@ public sealed class DrawSystem : SystemBase<GameTime>
 
                 // First, check if we actually want to draw the tile
                 // Check each bit of the border mask. If any bit is set, we need to draw the tile
-                if (graphicalTile.SpaceMask == 0 && graphicalTile.SpriteColor == null)
+                if (graphicalTile.SpaceMask == 0)
                 {
                     continue; // No border to draw, skip
-                    // TODO: maybe add a "force draw" flag instead?
+                    // TODO: maybe add a "force draw" flag?
                 }
 
-                TileRenderInfo? tileInfo = GlobalContext.TileManager.GetTile(graphicalTile.TileId);
+                Tile? tileInfo = GlobalContext.TileManager.GetTile(graphicalTile.TileId);
                 // tileInfo contains a TextureRegion and color string
                 // If tileInfo is null, skip drawing
                 if (tileInfo != null)
                 {
                     Vector2 basePosition =
                         new Vector2(
-                            position.WorldCoordinate.X * tileInfo.Value.TileWidth,
-                            position.WorldCoordinate.Y * tileInfo.Value.TileHeight
+                            position.WorldCoordinate.X * tileInfo.TextureRegion.Width,
+                            position.WorldCoordinate.Y * tileInfo.TextureRegion.Height
                         )
                         * graphicalTile.Scale
                         * GlobalContext.GlobalScale;
@@ -477,40 +453,46 @@ public sealed class DrawSystem : SystemBase<GameTime>
                     );
 
                     // Color should be the default in the tile definition, unless the GraphicalTile object holds an override
-                    Color color = graphicalTile.SpriteColor ?? tileInfo.Value.Color;
+                    Color background1Color =
+                        graphicalTile.Background1Color ?? tileInfo.Background1Color;
+                    Color background2Color =
+                        graphicalTile.Background2Color ?? tileInfo.Background2Color;
+                    Color baseColor = graphicalTile.BaseColor ?? tileInfo.BaseColor;
+                    Color accentColor = graphicalTile.AccentColor ?? tileInfo.AccentColor;
+                    Color borderColor = graphicalTile.BorderColor ?? tileInfo.BorderColor;
 
                     float sortingLevel =
                         1 - ((position.WorldCoordinate.Z + position.top) / numZLevels);
 
                     float layerDifference = position.WorldCoordinate.Z - playerZLevel;
 
-                    tileInfo.Value.TextureRegion.Draw(
-                        Core.TileBatch,
-                        graphicalTile.CurrentDrawPosition,
-                        color,
-                        0.0f,
-                        Vector2.Zero,
-                        graphicalTile.CurrentDrawScale,
-                        SpriteEffects.None,
-                        sortingLevel,
-                        graphicalTile.BackgroundColor,
-                        graphicalTile.BorderColor,
+                    Core.TileInstancing.Draw(
+                        graphicalTile.CurrentDrawPosition, // Position
+                        sortingLevel, // Depth
+                        graphicalTile.CurrentDrawScale, // Scale
+                        0.0f, // Rotation
                         graphicalTile.BorderMask,
                         graphicalTile.BorderWidth,
-                        layerDifference
+                        layerDifference,
+                        tileInfo.TextureRegion.SourceRectangle,
+                        background1Color,
+                        background2Color,
+                        baseColor,
+                        accentColor,
+                        borderColor
                     );
                 }
             }
         }
-        Core.TileBatch.End();
+        Core.TileInstancing.End();
 
         // -- Pass 2: Render Target to Screen with post-processing shader --
 
         Core.GraphicsDevice.SetRenderTarget(null);
 
-        Core.SpriteBatch.Begin(effect: _screenEffect);
+        Core.SpriteBatch.Begin(effect: _effectShader);
 
-        var timeParam = _screenEffect.Parameters["Time"];
+        var timeParam = _effectShader.Parameters["Time"];
         if (timeParam != null)
             timeParam.SetValue((float)gameTime.TotalGameTime.TotalSeconds);
 
@@ -726,7 +708,9 @@ public sealed class CameraLogicSystem : SystemBase<GameTime>
             ref playerPos
         );
         Vector2 playerPosition =
-            playerPos.Result * GlobalContext.GlobalScale * GlobalContext.TileManager.TileHeight;
+            playerPos.Result
+            * GlobalContext.GlobalScale
+            * GlobalContext.TileManager.Tileset.TileHeight;
 
         Vector2 targetPosition =
             playerPosition

@@ -6,65 +6,32 @@ namespace epoch.Utilities;
 
 public static class Utils
 {
-    public static Color FromHex(string hex)
-    {
-        // Strip the leading # if present
-        if (hex.StartsWith("#"))
-            hex = hex.Substring(1);
-
-        // Parse as RRGGBB or AARRGGBB
-        if (hex.Length == 6)
-        {
-            byte r = byte.Parse(hex.Substring(0, 2), NumberStyles.HexNumber);
-            byte g = byte.Parse(hex.Substring(2, 2), NumberStyles.HexNumber);
-            byte b = byte.Parse(hex.Substring(4, 2), NumberStyles.HexNumber);
-            return new Color(r, g, b);
-        }
-        else if (hex.Length == 8)
-        {
-            byte a = byte.Parse(hex.Substring(0, 2), NumberStyles.HexNumber);
-            byte r = byte.Parse(hex.Substring(2, 2), NumberStyles.HexNumber);
-            byte g = byte.Parse(hex.Substring(4, 2), NumberStyles.HexNumber);
-            byte b = byte.Parse(hex.Substring(6, 2), NumberStyles.HexNumber);
-            return new Color(r, g, b, a);
-        }
-
-        throw new ArgumentException("Invalid hex color format");
-    }
-
     public static object ConvertValue(string value, Type targetType)
     {
         if (targetType == typeof(string))
             return value;
         if (targetType == typeof(int))
-            return int.Parse(value);
+            return ParseInt(value);
         if (targetType == typeof(float))
-            return float.Parse(value);
+            return ParseFloat(value);
         if (targetType == typeof(double))
-            return double.Parse(value);
+            return ParseDouble(value);
         if (targetType == typeof(bool))
-            return bool.Parse(value);
+            return ParseBool(value);
 
         if (targetType == typeof(Vector2))
         {
-            // Expect "x,y"
-            var parts = value.Split(',');
-            return new Vector2(float.Parse(parts[0]), float.Parse(parts[1]));
+            return ParseVector2(value);
         }
 
         if (targetType == typeof(Vector3))
         {
-            // Expect "x,y,z"
-            var parts = value.Split(',');
-            return new Vector3(float.Parse(parts[0]), float.Parse(parts[1]), float.Parse(parts[2]));
+            return ParseVector3(value);
         }
 
         if (targetType == typeof(Color?))
         {
-            if (value.StartsWith("#"))
-                return FromHex(value);
-            else
-                throw new ArgumentException("Color string must be in hex format starting with #");
+            return ParseColor(value);
         }
 
         if (targetType == null)
@@ -80,27 +47,13 @@ public static class Utils
         return System.Convert.ChangeType(value, targetType);
     }
 
-    public static Vector2 ConvertGridToWorldCoordinate(
-        Vector2 gridCoordinate,
-        float tileWidth,
-        float tileHeight
-    )
-    {
-        // Converts unit grid position to center of tile in world coordinates (pixels)
-        Vector2 tileSize = new Vector2(tileWidth, tileHeight);
-
-        Vector2 worldCoordinate = (gridCoordinate * tileSize) + (tileSize * 0.5f);
-
-        return worldCoordinate;
-    }
-}
-
-public static class ComponentParsers
-{
     public static int ParseInt(string value) => int.Parse(value, CultureInfo.InvariantCulture);
 
     public static float ParseFloat(string value) =>
         float.Parse(value, CultureInfo.InvariantCulture);
+
+    public static double ParseDouble(string value) =>
+        double.Parse(value, CultureInfo.InvariantCulture);
 
     public static bool ParseBool(string value) => bool.Parse(value);
 
@@ -129,12 +82,7 @@ public static class ComponentParsers
     // Handle Nullable types by returning the value type (assignment to Nullable works automatically)
     public static Color ParseColor(string value)
     {
-        // value could be hex, named, or rgba format.
-        if (value.StartsWith("#"))
-        {
-            return Utils.FromHex(value);
-        }
-        else if (value.Contains(","))
+        if (value.Contains(","))
         {
             var parts = value.Split(',');
             byte r = byte.Parse(parts[0]);
@@ -151,6 +99,20 @@ public static class ComponentParsers
                 return (Color)prop.GetValue(null);
             throw new ArgumentException($"Invalid color format: {value}");
         }
+    }
+
+    public static Vector2 ConvertGridToWorldCoordinate(
+        Vector2 gridCoordinate,
+        float tileWidth,
+        float tileHeight
+    )
+    {
+        // Converts unit grid position to center of tile in world coordinates (pixels)
+        Vector2 tileSize = new Vector2(tileWidth, tileHeight);
+
+        Vector2 worldCoordinate = (gridCoordinate * tileSize) + (tileSize * 0.5f);
+
+        return worldCoordinate;
     }
 }
 

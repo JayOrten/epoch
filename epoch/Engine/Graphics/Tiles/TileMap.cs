@@ -47,8 +47,9 @@ public static class TileMap
                             "GraphicalTile",
                             new Dictionary<string, string>
                             {
-                                { "BackgroundColor", "30,32,48,255" },
-                                { "BorderColor", "75,75,75,150" },
+                                { "Background1Color", "30,32,48,255" },
+                                { "BaseColor", "255,255,255,255" },
+                                { "BorderColor", "75,75,75,255" },
                             }
                         )
                     );

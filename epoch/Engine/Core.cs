@@ -1,6 +1,6 @@
 using System;
 using epoch.Engine.Audio;
-using epoch.Engine.Graphics.Tiles.TileBatches;
+using epoch.Engine.Graphics.Tiles.TileInstancing;
 using epoch.Engine.Input;
 using epoch.Engine.Scenes;
 using Microsoft.Xna.Framework;
@@ -41,7 +41,7 @@ public class Core : Game
     /// </summary>
     public static SpriteBatch SpriteBatch { get; private set; }
 
-    public static TileBatch TileBatch { get; private set; }
+    public static TileInstancing TileInstancing { get; private set; }
 
     /// <summary>
     /// Gets the content manager used to load global assets.
@@ -84,6 +84,8 @@ public class Core : Game
         // Create a new graphics device manager.
         Graphics = new GraphicsDeviceManager(this);
 
+        Graphics.GraphicsProfile = GraphicsProfile.HiDef;
+
         // Set the graphics defaults
         Graphics.PreferredBackBufferWidth = width;
         Graphics.PreferredBackBufferHeight = height;
@@ -120,7 +122,7 @@ public class Core : Game
         // Create the sprite batch instance.
         SpriteBatch = new SpriteBatch(GraphicsDevice);
 
-        TileBatch = new TileBatch(GraphicsDevice, 0);
+        TileInstancing = new TileInstancing(GraphicsDevice);
 
         // Create a new input manager.
         Input = new InputManager();
@@ -225,7 +227,7 @@ public class Core : Game
             s_instance = null;
             Content = null;
             SpriteBatch = null;
-            TileBatch = null;
+            TileInstancing = null;
             Graphics = null;
             GraphicsDevice = null;
             Input = null;

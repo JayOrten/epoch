@@ -29,12 +29,14 @@ public struct GraphicalTile
     public int TileId { get; set; }
     public float Scale { get; set; } = 1.0f;
 
-    // You can use this as an override for the color in the tile definition,
+    // You can use these as an override for the color in the tile definition,
     // either by putting the color in the entity definition, or within the code
     // when you create the entity (merging)
-    public Color? SpriteColor { get; set; }
-    public Color BackgroundColor { get; set; }
-    public Color BorderColor { get; set; }
+    public Color? Background1Color { get; set; }
+    public Color? Background2Color { get; set; }
+    public Color? BaseColor { get; set; }
+    public Color? AccentColor { get; set; }
+    public Color? BorderColor { get; set; }
 
     // Bits in the mask that are 1 indicate air in that direction
     // directions: north, east, south, west, above, below

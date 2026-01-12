@@ -180,9 +180,9 @@ public class ComponentFactoryGenerator : IIncrementalGenerator
             sb.AppendLine(
                 $"                    if (def.TryGet(\"{member.Name}\", out var val_{member.Name}))"
             );
-            // Generates:     component.TileId = ComponentParsers.ParseInt(val_TileId);
+            // Generates:     component.TileId = Utils.ParseInt(val_TileId);
             sb.AppendLine(
-                $"                        component.{member.Name} = ComponentParsers.{parseFunc}(val_{member.Name});"
+                $"                        component.{member.Name} = Utils.{parseFunc}(val_{member.Name});"
             );
         }
 
