@@ -234,6 +234,11 @@ public sealed class DrawSystem : SystemBase<GameTime>
         GraphicalTile
     >();
 
+    private readonly QueryDescription _compositeEntitiesToDraw = new QueryDescription().WithAll<
+        Position,
+        GraphicalTileList
+    >();
+
     private readonly Effect _renderShader;
     private readonly Effect _effectShader;
 
@@ -241,13 +246,13 @@ public sealed class DrawSystem : SystemBase<GameTime>
 
     // Controls vanishing point time smoothing
     private float _smoothTime = 100.00f;
-    private float _depthStrength = 0.02f;
+    private float _depthStrength = 0.03f;
 
     private Vector2 _currentVanishingPoint;
     private Vector2 _vanishingPointVelocity;
 
     // Controls draw position and scale smoothing
-    private float _drawTime = 0.00001f;
+    private float _drawTime = 0.0001f;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="DrawSystem"/> class.
@@ -325,10 +330,6 @@ public sealed class DrawSystem : SystemBase<GameTime>
         ref var pos = ref GlobalContext.PlayerEntity.Get<Position>();
         float playerZLevel = pos.WorldCoordinate.Z;
 
-        // Get num z levels:
-        // TODO: need to figure out actual drawing culling. Need to get which z are actually shown.
-        float numZLevels = GlobalContext.MapRegistry.GetNumZLevels();
-
         // Get query for the description, targets all entities with "Positions" and "Sprite".
         var query = World.Query(in _entitiesToDraw);
         foreach (ref var chunk in query) // Iterate over each chunk that has entities that fit the query.
@@ -351,139 +352,51 @@ public sealed class DrawSystem : SystemBase<GameTime>
                 // First, check if we actually want to draw the tile
                 // Check each bit of the border mask. If any bit is set, we need to draw the tile
                 if (graphicalTile.SpaceMask == 0)
+                    if (!graphicalTile.ForceDraw)
+                        continue; // No border to draw, skip
+
+                DrawTile(gameTime, ref graphicalTile, ref position, playerZLevel);
+            }
+        }
+
+        // Now draw composite entities
+        var compositeQuery = World.Query(in _compositeEntitiesToDraw);
+        foreach (ref var chunk in compositeQuery)
+        {
+            var positions = chunk.GetArray<Position>();
+            var graphicalTileLists = chunk.GetArray<GraphicalTileList>();
+
+            foreach (var index in chunk)
+            {
+                var position = positions[index];
+                ref var graphicalTileList = ref graphicalTileLists[index];
+
+                // Check Bit 0 (1)
+                if ((graphicalTileList.ActiveTileMask & 1) != 0)
                 {
-                    continue; // No border to draw, skip
-                    // TODO: maybe add a "force draw" flag?
+                    DrawTile(gameTime, ref graphicalTileList.Tile0, ref position, playerZLevel);
                 }
 
-                Tile? tileInfo = GlobalContext.TileManager.GetTile(graphicalTile.TileId);
-                // tileInfo contains a TextureRegion and color string
-                // If tileInfo is null, skip drawing
-                if (tileInfo != null)
+                // Check Bit 1 (2)
+                if ((graphicalTileList.ActiveTileMask & 2) != 0)
                 {
-                    Vector2 basePosition =
-                        new Vector2(
-                            position.WorldCoordinate.X * tileInfo.TextureRegion.Width,
-                            position.WorldCoordinate.Y * tileInfo.TextureRegion.Height
-                        )
-                        * graphicalTile.Scale
-                        * GlobalContext.GlobalScale;
+                    DrawTile(gameTime, ref graphicalTileList.Tile1, ref position, playerZLevel);
+                }
 
-                    Vector2 finalVanishingPoint =
-                        GlobalContext.Camera.Center
-                        + (GlobalContext.CameraEntity.Get<CameraState>().LookDirection);
+                // Check Bit 2 (4)
+                if ((graphicalTileList.ActiveTileMask & 4) != 0)
+                {
+                    DrawTile(gameTime, ref graphicalTileList.Tile2, ref position, playerZLevel);
+                }
 
-                    // Calculate where the intermediate vanishing point is for this frame,
-                    // based on where it currently is and where it should be.
-                    _currentVanishingPoint = CameraUtils.SmoothDamp(
-                        _currentVanishingPoint,
-                        finalVanishingPoint,
-                        ref _vanishingPointVelocity,
-                        _smoothTime,
-                        float.MaxValue,
-                        gameTime.GetElapsedSeconds()
-                    );
-
-                    // This puts the current vanishing point at (0,0) for easier calculations
-                    basePosition -= _currentVanishingPoint;
-
-                    // Depth=0 should always be the z level the player is on
-                    float depth = position.WorldCoordinate.Z - playerZLevel;
-
-                    float perspectiveScale = 1.0f + (depth * _depthStrength);
-
-                    Vector2 finalPosition =
-                        _currentVanishingPoint + (basePosition * perspectiveScale);
-
-                    // Initialize interpolation values if they haven't been set yet
-                    // TODO: this might be problematic
-                    if (graphicalTile.CurrentDrawPosition == Vector2.Zero)
-                    {
-                        graphicalTile.CurrentDrawPosition = finalPosition;
-                    }
-
-                    // Finally, we want to smoothly interpolate the final position from its current position to the target position
-                    // This prevents popping when moving up and down z levels
-                    // Note: this adds a "sluggish" or "sliding" effect when moving
-                    // graphicalTile.CurrentDrawPosition = CameraUtils.SmoothDamp(
-                    //     graphicalTile.CurrentDrawPosition,
-                    //     finalPosition,
-                    //     ref graphicalTile.DrawPositionVelocity,
-                    //     0.075f,
-                    //     float.MaxValue,
-                    //     gameTime.GetElapsedSeconds()
-                    // );
-                    graphicalTile.CurrentDrawPosition = Vector2.Lerp(
-                        graphicalTile.CurrentDrawPosition,
-                        finalPosition,
-                        1 - (float)Math.Pow(_drawTime, gameTime.GetElapsedSeconds())
-                    );
-
-                    // float distanceToTarget = Vector2.Distance(
-                    //     graphicalTile.CurrentDrawPosition,
-                    //     finalPosition
-                    // );
-                    // float moveAmount = 250f * gameTime.GetElapsedSeconds(); // Speed factor
-                    // if (distanceToTarget <= moveAmount)
-                    // {
-                    //     graphicalTile.CurrentDrawPosition = finalPosition;
-                    // }
-                    // else
-                    // {
-                    //     graphicalTile.CurrentDrawPosition = Vector2.Lerp(
-                    //         graphicalTile.CurrentDrawPosition,
-                    //         finalPosition,
-                    //         moveAmount / distanceToTarget
-                    //     );
-                    // }
-
-                    // Also, interpolate between scale changes
-                    float finalScale =
-                        graphicalTile.Scale * GlobalContext.GlobalScale * perspectiveScale;
-
-                    if (graphicalTile.CurrentDrawScale == 0.0f)
-                    {
-                        graphicalTile.CurrentDrawScale = finalScale;
-                    }
-
-                    graphicalTile.CurrentDrawScale = MathHelper.Lerp(
-                        graphicalTile.CurrentDrawScale,
-                        finalScale,
-                        1 - (float)Math.Pow(_drawTime, gameTime.GetElapsedSeconds())
-                    );
-
-                    // Color should be the default in the tile definition, unless the GraphicalTile object holds an override
-                    Color background1Color =
-                        graphicalTile.Background1Color ?? tileInfo.Background1Color;
-                    Color background2Color =
-                        graphicalTile.Background2Color ?? tileInfo.Background2Color;
-                    Color baseColor = graphicalTile.BaseColor ?? tileInfo.BaseColor;
-                    Color accentColor = graphicalTile.AccentColor ?? tileInfo.AccentColor;
-                    Color borderColor = graphicalTile.BorderColor ?? tileInfo.BorderColor;
-
-                    float sortingLevel =
-                        1 - ((position.WorldCoordinate.Z + position.top) / numZLevels);
-
-                    float layerDifference = position.WorldCoordinate.Z - playerZLevel;
-
-                    Core.TileInstancing.Draw(
-                        graphicalTile.CurrentDrawPosition, // Position
-                        sortingLevel, // Depth
-                        graphicalTile.CurrentDrawScale, // Scale
-                        0.0f, // Rotation
-                        graphicalTile.BorderMask,
-                        graphicalTile.BorderWidth,
-                        layerDifference,
-                        tileInfo.TextureRegion.SourceRectangle,
-                        background1Color,
-                        background2Color,
-                        baseColor,
-                        accentColor,
-                        borderColor
-                    );
+                // Check Bit 3 (8)
+                if ((graphicalTileList.ActiveTileMask & 8) != 0)
+                {
+                    DrawTile(gameTime, ref graphicalTileList.Tile3, ref position, playerZLevel);
                 }
             }
         }
+
         Core.TileInstancing.End();
 
         // -- Pass 2: Render Target to Screen with post-processing shader --
@@ -508,6 +421,124 @@ public sealed class DrawSystem : SystemBase<GameTime>
         );
 
         Core.SpriteBatch.End();
+    }
+
+    private void DrawTile(
+        GameTime gameTime,
+        ref GraphicalTile graphicalTile,
+        ref Position position,
+        float playerZLevel
+    )
+    {
+        Tile? tileInfo = GlobalContext.TileManager.GetTile(graphicalTile.TileId);
+        // tileInfo contains a TextureRegion and color string
+        // If tileInfo is null, skip drawing
+        if (tileInfo != null)
+        {
+            // Get num z levels:
+            float numZLevels = GlobalContext.MapRegistry.GetNumZLevels();
+
+            Vector2 basePosition =
+                new Vector2(
+                    position.WorldCoordinate.X * tileInfo.TextureRegion.Width,
+                    position.WorldCoordinate.Y * tileInfo.TextureRegion.Height
+                )
+                * graphicalTile.Scale
+                * GlobalContext.GlobalScale;
+
+            Vector2 finalVanishingPoint =
+                GlobalContext.Camera.Center
+                + (GlobalContext.CameraEntity.Get<CameraState>().LookDirection);
+
+            // Calculate where the intermediate vanishing point is for this frame,
+            // based on where it currently is and where it should be.
+            _currentVanishingPoint = CameraUtils.SmoothDamp(
+                _currentVanishingPoint,
+                finalVanishingPoint,
+                ref _vanishingPointVelocity,
+                _smoothTime,
+                float.MaxValue,
+                gameTime.GetElapsedSeconds()
+            );
+
+            // This puts the current vanishing point at (0,0) for easier calculations
+            basePosition -= _currentVanishingPoint;
+
+            // Depth=0 should always be the z level the player is on
+            float depth = position.WorldCoordinate.Z - playerZLevel;
+
+            // Add any given offset
+            depth += graphicalTile.Offset;
+
+            float perspectiveScale = 1.0f + (depth * _depthStrength);
+
+            Vector2 finalPosition = _currentVanishingPoint + (basePosition * perspectiveScale);
+
+            // Initialize interpolation values if they haven't been set yet
+            // TODO: this might be problematic
+            if (graphicalTile.CurrentDrawPosition == Vector2.Zero)
+            {
+                graphicalTile.CurrentDrawPosition = finalPosition;
+            }
+
+            // Finally, we want to smoothly interpolate the final position from its current position to the target position
+            // This prevents popping when moving up and down z levels
+            if (graphicalTile.InterpolateMovement == true)
+            {
+                graphicalTile.CurrentDrawPosition = Vector2.Lerp(
+                    graphicalTile.CurrentDrawPosition,
+                    finalPosition,
+                    1 - (float)Math.Pow(_drawTime, gameTime.GetElapsedSeconds())
+                );
+            }
+            else
+            {
+                graphicalTile.CurrentDrawPosition = finalPosition;
+            }
+
+            // Also, interpolate between scale changes
+            float finalScale = graphicalTile.Scale * GlobalContext.GlobalScale * perspectiveScale;
+
+            if (graphicalTile.CurrentDrawScale == 0.0f)
+            {
+                graphicalTile.CurrentDrawScale = finalScale;
+            }
+
+            graphicalTile.CurrentDrawScale = MathHelper.Lerp(
+                graphicalTile.CurrentDrawScale,
+                finalScale,
+                1 - (float)Math.Pow(_drawTime, gameTime.GetElapsedSeconds())
+            );
+
+            // Color should be the default in the tile definition, unless the GraphicalTile object holds an override
+            Color background1Color = graphicalTile.Background1Color ?? tileInfo.Background1Color;
+            Color background2Color = graphicalTile.Background2Color ?? tileInfo.Background2Color;
+            Color baseColor = graphicalTile.BaseColor ?? tileInfo.BaseColor;
+            Color accentColor = graphicalTile.AccentColor ?? tileInfo.AccentColor;
+            Color borderColor = graphicalTile.BorderColor ?? tileInfo.BorderColor;
+
+            float sortingLevel =
+                1
+                - ((position.WorldCoordinate.Z + graphicalTile.Offset + position.top) / numZLevels);
+
+            float layerDifference = position.WorldCoordinate.Z - playerZLevel;
+
+            Core.TileInstancing.Draw(
+                graphicalTile.CurrentDrawPosition, // Position
+                sortingLevel, // Depth
+                graphicalTile.CurrentDrawScale, // Scale
+                0.0f, // Rotation
+                graphicalTile.BorderMask,
+                graphicalTile.BorderWidth,
+                layerDifference,
+                tileInfo.TextureRegion.SourceRectangle,
+                background1Color,
+                background2Color,
+                baseColor,
+                accentColor,
+                borderColor
+            );
+        }
     }
 }
 
@@ -865,12 +896,11 @@ public sealed class TileAdjacencySystem : SystemBase<GameTime>
 
                     // A border should be drawn if:
                     // 1. The adjacent tile is air
-                    // 2. The adjacent tile's space mask is 0, indicating the neighbor is not touching air
+                    // 2. The adjacent tile's space mask is 0, indicating the neighbor is not touching air, UNLESS ForceDraw is on.
                     for (int i = 0; i < _borderDirections.Length; i++)
                     {
                         Vector3 adjacentCoord = position.WorldCoordinate + _borderDirections[i];
                         var entityAtAdjacent = GlobalContext.MapRegistry.GetEntityAt(adjacentCoord);
-                        // if (entityAtAdjacent != Entity.Null && entityAtAdjacent.Has<AirTag>())
                         if (
                             entityAtAdjacent != Entity.Null
                             && (
@@ -879,7 +909,9 @@ public sealed class TileAdjacencySystem : SystemBase<GameTime>
                                     World.TryGet(
                                         entityAtAdjacent,
                                         out GraphicalTile adjacentGraphicalTile
-                                    ) && (adjacentGraphicalTile.SpaceMask == 0)
+                                    )
+                                    && (adjacentGraphicalTile.SpaceMask == 0)
+                                    && !adjacentGraphicalTile.ForceDraw
                                 )
                             )
                         )

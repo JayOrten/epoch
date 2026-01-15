@@ -23,11 +23,59 @@ public struct AirTag { }
 
 // Regular Components
 // --- GENERAL TILE ---
+[Component(UseCustomFactory = true)]
+public struct GraphicalTileList
+{
+    public GraphicalTile Tile0;
+    public GraphicalTile Tile1;
+    public GraphicalTile Tile2;
+    public GraphicalTile Tile3;
+
+    // Bit 0 = Tile0, Bit 1 = Tile1, etc.
+    // 0000 = no tiles
+    // 0101 = Tile0 and Tile2
+    public byte ActiveTileMask { get; set; } = 0;
+
+    // Turn a tile ON
+    public void Set(int index, GraphicalTile tile)
+    {
+        switch (index)
+        {
+            case 0:
+                Tile0 = tile;
+                break;
+            case 1:
+                Tile1 = tile;
+                break;
+            case 2:
+                Tile2 = tile;
+                break;
+            case 3:
+                Tile3 = tile;
+                break;
+        }
+        // Bitwise OR to switch the bit ON
+        ActiveTileMask |= (byte)(1 << index);
+    }
+
+    // Turn a tile OFF
+    public void Remove(int index)
+    {
+        // Bitwise AND with NOT to switch the bit OFF
+        ActiveTileMask &= (byte)~(1 << index);
+    }
+
+    public GraphicalTileList() { }
+}
+
 [Component]
 public struct GraphicalTile
 {
     public int TileId { get; set; }
     public float Scale { get; set; } = 1.0f;
+
+    // Offset from the entity position
+    public float Offset { get; set; } = 0.0f;
 
     // You can use these as an override for the color in the tile definition,
     // either by putting the color in the entity definition, or within the code
@@ -42,6 +90,9 @@ public struct GraphicalTile
     // directions: north, east, south, west, above, below
     public int SpaceMask { get; set; } = 0;
 
+    // Draw regardless of space nearby
+    public bool ForceDraw { get; set; } = false;
+
     // Bits in the mask that are 1 indicate a border in that direction
     // directions: north, east, south, west
     // This is calcualted based on the spacemask and spacemask of adjacent tiles
@@ -53,6 +104,7 @@ public struct GraphicalTile
     public bool IsDirty { get; set; } = true;
 
     // For interpolating between positions
+    public bool InterpolateMovement { get; set; } = true;
     public Vector2 CurrentDrawPosition { get; set; }
     public Vector2 DrawPositionVelocity;
 
@@ -97,7 +149,7 @@ public struct MovementInput
 public struct Movement
 {
     // Speed of movement
-    public float MoveDelay { get; set; } = 0.35f;
+    public float MoveDelay { get; set; } = 0.40f;
     public float CurrentTimer { get; set; } = 0f;
 
     public Movement() { }

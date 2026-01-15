@@ -5,7 +5,7 @@
         "TileIndex": 0,
         "Background1ColorString": "100,100,100",
         "Background2ColorString": "100,100,100",
-        "BaseColorString": "255,255,255",
+        "BaseColorString": "88,91,112,255",
         "AccentColorString": "255,255,255",
         "BorderColorString": "255,255,255"
     },
@@ -23,12 +23,12 @@
     {
         "Id": 2,
         "Name": "grass",
-        "TileIndex": 0,
-        "Background1ColorString": "100,100,100",
-        "Background2ColorString": "100,100,100",
-        "BaseColorString": "255,255,255",
-        "AccentColorString": "255,255,255",
-        "BorderColorString": "255,255,255"
+        "TileIndex": 4,
+        "Background1ColorString": "0,0,0,0",
+        "Background2ColorString": "0,0,0,0",
+        "BaseColorString": "166,227,161,255",
+        "AccentColorString": "255,255,255,255",
+        "BorderColorString": "255,255,255,255"
     },
     {
         "Id": 3,
@@ -120,5 +120,15 @@
         "BaseColorString": "255,255,255,255",
         "AccentColorString": "255,255,255,255",
         "BorderColorString": "0,0,0,0"
+    },
+    {
+        "Id": 12,
+        "Name": "grass2",
+        "TileIndex": 5,
+        "Background1ColorString": "0,0,0,0",
+        "Background2ColorString": "0,0,0,0",
+        "BaseColorString": "166,227,161,255",
+        "AccentColorString": "255,255,255,255",
+        "BorderColorString": "255,255,255,255"
     }
 ]

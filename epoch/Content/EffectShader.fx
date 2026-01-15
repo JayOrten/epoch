@@ -63,57 +63,57 @@ float4 MainPS(VertexShaderOutput input) : COLOR
     // Adjust 'bloomSpread' for how far the glow reaches (0.004 is decent for 1080p).
     // Adjust 'bloomIntensity' for how "hot" the display looks.
     
-    float bloomSpread = 0.0013; 
-    float bloomIntensity = 1.3;
-    float bloomThreshold = 0.1;
+    // float bloomSpread = 0.0013; 
+    // float bloomIntensity = 0;
+    // float bloomThreshold = 0.1;
     
-    float4 glow = float4(0,0,0,0);
-    float samples = 0;
+    // float4 glow = float4(0,0,0,0);
+    // float samples = 0;
 
-    // We define the 8 offsets manually for PS_3_0 compatibility
-    float2 offsets[8];
-    offsets[0] = float2(-1, -1); offsets[1] = float2(1, -1);
-    offsets[2] = float2(-1, 1);  offsets[3] = float2(1, 1);
-    offsets[4] = float2(-1, 0);  offsets[5] = float2(1, 0);
-    offsets[6] = float2(0, -1);  offsets[7] = float2(0, 1);
+    // // We define the 8 offsets manually for PS_3_0 compatibility
+    // float2 offsets[8];
+    // offsets[0] = float2(-1, -1); offsets[1] = float2(1, -1);
+    // offsets[2] = float2(-1, 1);  offsets[3] = float2(1, 1);
+    // offsets[4] = float2(-1, 0);  offsets[5] = float2(1, 0);
+    // offsets[6] = float2(0, -1);  offsets[7] = float2(0, 1);
 
-    for(int i = 0; i < 8; i++)
-    {
-        // 1. Sample the neighbor
-        float2 sampleCoord = distortedUV + (offsets[i] * bloomSpread);
-        float4 neighbor = tex2D(SpriteTextureSampler, sampleCoord);
+    // for(int i = 0; i < 8; i++)
+    // {
+    //     // 1. Sample the neighbor
+    //     float2 sampleCoord = distortedUV + (offsets[i] * bloomSpread);
+    //     float4 neighbor = tex2D(SpriteTextureSampler, sampleCoord);
         
-        // 2. Calculate Brightness (Luminance)
-        // This formula matches how human eyes perceive brightness (Green is brightest)
-        float luminance = dot(neighbor.rgb, float3(0.299, 0.587, 0.114));
+    //     // 2. Calculate Brightness (Luminance)
+    //     // This formula matches how human eyes perceive brightness (Green is brightest)
+    //     float luminance = dot(neighbor.rgb, float3(0.299, 0.587, 0.114));
 
-        // 3. Apply Threshold
-        // We subtract the threshold. If the result is negative, it becomes 0.
-        // This creates a smooth ramp: 0.7 brightness = 0 glow, 1.0 brightness = 0.25 glow.
-        float contribution = max(0.0, luminance - bloomThreshold);
+    //     // 3. Apply Threshold
+    //     // We subtract the threshold. If the result is negative, it becomes 0.
+    //     // This creates a smooth ramp: 0.7 brightness = 0 glow, 1.0 brightness = 0.25 glow.
+    //     float contribution = max(0.0, luminance - bloomThreshold);
 
-        // 4. Accumulate
-        glow += neighbor * contribution;
-    }
+    //     // 4. Accumulate
+    //     glow += neighbor * contribution;
+    // }
 
-    // Average isn't strictly necessary with the weight math, 
-    // but dividing by 8 keeps the intensity controllable.
-    glow /= 8.0;
+    // // Average isn't strictly necessary with the weight math, 
+    // // but dividing by 8 keeps the intensity controllable.
+    // glow /= 8.0;
 
-    // 1. Calculate how bright the CURRENT pixel is (before adding glow)
-    float selfLuma = dot(color.rgb, float3(0.299, 0.587, 0.114));
+    // // 1. Calculate how bright the CURRENT pixel is (before adding glow)
+    // float selfLuma = dot(color.rgb, float3(0.299, 0.587, 0.114));
 
-    // 2. Create a "Bleed Mask"
-    // We want 1.0 if the pixel is dark (allow glow), and 0.0 if bright (block glow).
-    // smoothstep(low, high, value): 
-    //    If selfLuma < 0.1 (Dark Background) -> Returns 0.0 -> Result 1.0 (Full Glow)
-    //    If selfLuma > 0.8 (Bright Sprite)   -> Returns 1.0 -> Result 0.0 (No Glow)
-    //    In between -> Smooth blending
-    float bleedMask = 1.0 - smoothstep(0.1, 0.6, selfLuma);
+    // // 2. Create a "Bleed Mask"
+    // // We want 1.0 if the pixel is dark (allow glow), and 0.0 if bright (block glow).
+    // // smoothstep(low, high, value): 
+    // //    If selfLuma < 0.1 (Dark Background) -> Returns 0.0 -> Result 1.0 (Full Glow)
+    // //    If selfLuma > 0.8 (Bright Sprite)   -> Returns 1.0 -> Result 0.0 (No Glow)
+    // //    In between -> Smooth blending
+    // float bleedMask = 1.0 - smoothstep(0.1, 0.6, selfLuma);
 
-    // 3. Add the glow, but modulated by the mask
-    // Bright pixels will multiply the glow by 0.0, preserving their original hue.
-    color.rgb += glow.rgb * bloomIntensity * bleedMask;
+    // // 3. Add the glow, but modulated by the mask
+    // // Bright pixels will multiply the glow by 0.0, preserving their original hue.
+    // color.rgb += glow.rgb * bloomIntensity * bleedMask;
 
     // --- 2. Scanline Effect ---
     float scanline = sin(distortedUV.y * 400.0) * 0.0025;

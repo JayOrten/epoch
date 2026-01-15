@@ -54,6 +54,26 @@ namespace epoch.ECS
                     handled = true;
                     break;
                 }
+                case "GraphicalTileList":
+                {
+                    var component = new epoch.ECS.GraphicalTileList();
+
+                    int index = 0;
+                    foreach (var subpart in def.SubCompositeParts)
+                    {
+                        // Call the component factory to create the subpart component
+                        GraphicalTile tile = ComponentFactory.Create<GraphicalTile>(subpart);
+                        component.Set(index, tile);
+
+                        index++;
+                    }
+
+                    world.Set<epoch.ECS.GraphicalTileList>(entity, component);
+
+                    handled = true;
+
+                    break;
+                }
             }
         }
     }
