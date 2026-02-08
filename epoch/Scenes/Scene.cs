@@ -103,6 +103,8 @@ public abstract class Scene : IDisposable
             return;
         }
 
+        IsDisposed = true;
+
         if (disposing)
         {
             UnloadContent();

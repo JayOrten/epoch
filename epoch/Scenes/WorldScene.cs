@@ -132,7 +132,7 @@ public class WorldScene : Scene
         EntityDefinition spawnPosition = new EntityDefinition(
             new ComponentDefinition(
                 "Position",
-                new Dictionary<string, string> { { "WorldCoordinate", "1,1,1" }, { "top", "0.9" } }
+                new Dictionary<string, string> { { "WorldCoordinate", "1,1,1" }, { "Top", "0.9" } }
             )
         );
 

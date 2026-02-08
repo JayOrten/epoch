@@ -206,9 +206,6 @@ public class Core : Game
             s_activeScene.Dispose();
         }
 
-        // Force the garbage collector to collect to ensure memory is cleared.
-        GC.Collect();
-
         // Change the currently active scene to the new scene.
         s_activeScene = s_nextScene;
 
@@ -232,6 +229,10 @@ public class Core : Game
 
         if (disposing)
         {
+            // Dispose GPU resources before nulling references
+            SpriteBatch?.Dispose();
+            TileInstancing?.Dispose();
+
             // Reset all singleton and static references
             s_instance = null;
             Content = null;

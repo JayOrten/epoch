@@ -160,7 +160,7 @@ public struct Position
     public Vector3 WorldCoordinate { get; set; }
 
     /// <summary>Z-layer sub-priority for draw sorting. Must be in [0, 1).</summary>
-    public float top { get; set; } = 0;
+    public float Top { get; set; } = 0;
 
     // Represents potential offset from parent entity, not necessary
     public Vector3 Offset { get; set; }

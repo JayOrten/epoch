@@ -69,7 +69,7 @@ public class EntityManager
         {
             foreach (var partDef in partsDef.Elements("part"))
             {
-                Vector3 offset = ParseVector3(
+                Vector3 offset = Utilities.Utils.ParseVector3(
                     partDef.Attribute("offset")?.Value ?? "0,0,0"
                 );
 
@@ -104,15 +104,6 @@ public class EntityManager
         return compDef;
     }
 
-    // Simple helper to parse "0,0,1"
-    // TODO: move this to utilities
-    private static Vector3 ParseVector3(string s)
-    {
-        var parts = s.Split(',');
-        if (parts.Length != 3)
-            return Vector3.Zero;
-        return new Vector3(float.Parse(parts[0]), float.Parse(parts[1]), float.Parse(parts[2]));
-    }
 
     /// <summary>
     /// Spawns a new entity from a fully-resolved <see cref="EntityDefinition"/>.

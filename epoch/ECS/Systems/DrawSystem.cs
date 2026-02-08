@@ -327,7 +327,7 @@ public sealed class DrawSystem : SystemBase<GameTime>
 
             float sortingLevel =
                 1
-                - ((position.WorldCoordinate.Z + graphicalTile.Offset + position.top) / numZLevels);
+                - ((position.WorldCoordinate.Z + graphicalTile.Offset + position.Top) / numZLevels);
 
             float layerDifference = position.WorldCoordinate.Z - playerZLevel;
 

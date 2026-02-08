@@ -20,7 +20,7 @@ public static class ContentPaths
         { "audio", new[] { ".ogg", ".wav", ".mp3" } },
     };
 
-    public static string Root { get; private set; } = Core.Content.RootDirectory;
+    public static string Root { get; private set; } = "Content";
     public static string ImagesDir => Path.Combine(Root, "images");
     public static string ConfigDir => Path.Combine(Root, "config");
     public static string AudioDir => Path.Combine(Root, "audio");

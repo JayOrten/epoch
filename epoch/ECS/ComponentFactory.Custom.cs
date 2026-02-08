@@ -35,7 +35,7 @@ namespace epoch.ECS
                             ref var pos = ref world.Get<Position>(partEntity);
                             pos.WorldCoordinate = parentPos.WorldCoordinate + part.Offset;
                             pos.Offset = part.Offset;
-                            pos.top = parentPos.top;
+                            pos.Top = parentPos.Top;
                         }
 
                         world.Add<CompositePartComponent>(

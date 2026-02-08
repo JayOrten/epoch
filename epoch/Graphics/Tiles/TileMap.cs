@@ -42,7 +42,7 @@ public static class TileMap
                 if (character != '.' && character != '\n' && character != '\r')
                 {
                     string coordinates = $"{column},{row},{z}";
-                    generateTileList(coordinates, character);
+                    GenerateTileList(coordinates, character);
                 }
                 column++;
             }
@@ -50,8 +50,14 @@ public static class TileMap
         }
     }
 
-    private static void generateTileList(string coordinates, char character)
+    private static void GenerateTileList(string coordinates, char character)
     {
+        if (character < '0' || character > '9')
+        {
+            Log.Warn("TileMap: skipping invalid character '{0}' at {1}", character, coordinates);
+            return;
+        }
+
         ComponentDefinition graphicalTileList = new ComponentDefinition("GraphicalTileList");
 
         EntityDefinition spawnPosition = new EntityDefinition(

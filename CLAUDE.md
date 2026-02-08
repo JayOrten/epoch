@@ -92,6 +92,24 @@ world.Query(in query, (Entity entity, ref Position pos, ref Movement mov) => { .
 
 `epoch.Generators/ComponentFactoryGenerator.cs` auto-generates component factory code via Roslyn.
 
+## Testing
+
+xUnit test suite in `epoch.Tests/`. See `docs/testing.md` for full details.
+
+```bash
+dotnet test epoch.sln                                              # all tests
+dotnet test epoch.Tests/epoch.Tests.csproj --filter "FullyQualifiedName~MapRegistryTests"  # one class
+```
+
+**Testability tiers:**
+- **Tier 1** (pure functions): No dependencies — parsing, bitmask ops, perspective math
+- **Tier 2** (Arch World): Needs `World.Create()` — MapRegistry, movement collision, space masks
+- **Tier 3** (MonoGame): Needs `Core` singleton — ContentPaths, rendering, scenes. **Skip these.**
+
+`epoch.csproj` has `InternalsVisibleTo("epoch.Tests")` for access to `internal` methods.
+
+**When modifying code, update corresponding tests.** When adding new static/pure functions extracted for testability, add tests.
+
 ## Dependencies
 
 - MonoGame.Framework.DesktopGL 3.8
