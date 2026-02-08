@@ -299,19 +299,15 @@ public sealed class DrawSystem : SystemBase<GameTime>
             }
 
             // Smoothly interpolate position to prevent popping on z-level transitions
-            if (graphicalTile.InterpolateMovement)
-            {
-                graphicalTile.CurrentDrawPosition = Vector2.Lerp(
+            var targetPosition = graphicalTile.InterpolateMovement
+                ? Vector2.Lerp(
                     graphicalTile.CurrentDrawPosition,
                     finalPosition,
                     lerpFactor
-                );
-            }
-            else
-            {
-                graphicalTile.CurrentDrawPosition = finalPosition;
-            }
+                )
+                : finalPosition;
 
+            graphicalTile.CurrentDrawPosition = targetPosition;
             graphicalTile.CurrentDrawScale = MathHelper.Lerp(
                 graphicalTile.CurrentDrawScale,
                 finalScale,
