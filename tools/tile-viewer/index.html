@@ -35,17 +35,117 @@ body {
   overflow: hidden;
 }
 
+/* Menu bar */
+.menubar {
+  display: flex;
+  align-items: center;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  padding: 0 8px;
+  gap: 0;
+  position: relative;
+  z-index: 100;
+}
+.menu-logo {
+  flex-shrink: 0;
+  padding: 4px 8px 4px 4px;
+  display: flex;
+  align-items: center;
+}
+.menu-item {
+  position: relative;
+}
+.menu-item > button {
+  background: none;
+  border: none;
+  color: var(--subtext);
+  font-size: 13px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.menu-item > button:hover, .menu-item.open > button {
+  background: var(--surface2);
+  color: var(--text);
+}
+.menu-dropdown {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0 0 6px 6px;
+  min-width: 200px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  z-index: 200;
+  padding: 4px 0;
+}
+.menu-item.open .menu-dropdown { display: block; }
+.menu-action {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text);
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+}
+.menu-action:hover { background: var(--surface2); }
+.menu-action .menu-shortcut {
+  margin-left: auto;
+  color: var(--surface2);
+  font-size: 11px;
+}
+.menu-action .menu-check {
+  width: 16px;
+  text-align: center;
+  color: var(--accent);
+  font-size: 12px;
+}
+.menu-sep {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+.menu-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  color: var(--text);
+}
+.menu-row label { color: var(--subtext); font-size: 12px; flex-shrink: 0; }
+.menu-row input[type="range"] { flex: 1; accent-color: var(--accent); }
+.menu-row input[type="color"] {
+  width: 24px; height: 20px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+  background: none;
+  padding: 0;
+}
+.menu-row .range-val { font-size: 11px; color: var(--subtext); width: 28px; text-align: right; }
+
 /* Top bar */
 .toolbar {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 8px 16px;
-  background: var(--surface);
+  padding: 6px 16px;
+  background: var(--bg);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
 .toolbar label { color: var(--subtext); font-size: 13px; }
+.toolbar-sep { width: 1px; height: 20px; background: var(--border); flex-shrink: 0; }
 .toolbar select, .toolbar input[type="range"] { accent-color: var(--accent); }
 .toolbar select {
   background: var(--surface2);
@@ -141,6 +241,8 @@ body {
   padding: 0 2px;
 }
 .tile-stack-item:hover .tile-remove { opacity: 1; }
+.tile-stack-item.drag-over { border-top: 2px solid var(--accent); }
+.tile-stack-item.dragging { opacity: 0.4; }
 
 /* Center - canvas */
 .panel-center {
@@ -443,23 +545,82 @@ body {
 }
 .flash-msg.success { display: block; background: #1e3a2f; color: var(--green); }
 .flash-msg.error { display: block; background: #3a1e1e; color: var(--accent2); }
+
+/* Color override indicator */
+.color-override-pip {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+  transition: background 0.15s, border-color 0.15s;
+}
+.color-override-pip.overridden {
+  background: var(--accent2);
+  border-color: var(--accent2);
+}
+.color-reset-btn {
+  background: none;
+  border: none;
+  color: var(--subtext);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 0 2px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.prop-row:hover .color-reset-btn.visible { opacity: 1; }
+.color-reset-btn:hover { color: var(--accent2); }
 </style>
 </head>
 <body>
 
-<!-- Top toolbar -->
+<!-- Menu bar -->
+<div class="menubar">
+  <div class="menu-logo">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="24" height="24"><circle cx="32" cy="32" r="14" fill="#89b4fa"/><ellipse cx="32" cy="32" rx="28" ry="8" fill="none" stroke="#a6e3a1" stroke-width="3" transform="rotate(-20 32 32)"/></svg>
+  </div>
+  <div class="menu-item" id="menu-file">
+    <button>File</button>
+    <div class="menu-dropdown">
+      <button class="menu-action" id="menu-new-entity"><span>New Entity</span></button>
+      <div class="menu-sep"></div>
+      <button class="menu-action" id="menu-save-entity"><span>Save Entity</span><span class="menu-shortcut">Ctrl+S</span></button>
+      <button class="menu-action" id="menu-save-tiledef"><span>Save Tile Def</span></button>
+      <button class="menu-action" id="menu-new-tiledef"><span>Save as New Tile Def</span></button>
+    </div>
+  </div>
+  <div class="menu-item" id="menu-edit">
+    <button>Edit</button>
+    <div class="menu-dropdown">
+      <button class="menu-action" id="menu-undo"><span>Undo</span><span class="menu-shortcut">Ctrl+Z</span></button>
+      <button class="menu-action" id="menu-redo"><span>Redo</span><span class="menu-shortcut">Ctrl+Y</span></button>
+    </div>
+  </div>
+  <div class="menu-item" id="menu-view">
+    <button>View</button>
+    <div class="menu-dropdown">
+      <button class="menu-action" id="menu-toggle-xml"><span class="menu-check" id="menu-xml-check">&#10003;</span><span>XML Panel</span></button>
+      <button class="menu-action" id="menu-toggle-crt"><span class="menu-check" id="menu-crt-check"></span><span>CRT Effect</span></button>
+      <div class="menu-sep"></div>
+      <div class="menu-row">
+        <label>BG:</label>
+        <input type="color" id="bg-color" value="#1e1e2e">
+      </div>
+      <div class="menu-row">
+        <label>Scale:</label>
+        <input type="range" id="render-scale" min="2" max="16" value="8" step="1">
+        <span class="range-val" id="scale-val">8x</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toolbar: entity controls -->
 <div class="toolbar">
   <label>Entity:</label>
   <select id="entity-select"><option>Loading...</option></select>
   <input type="text" id="entity-name" class="toolbar-input" placeholder="entity name">
-  <button class="toolbar-btn" id="new-entity-btn">+ New Entity</button>
-  <label>BG:</label>
-  <input type="color" id="bg-color" value="#1e1e2e">
-  <label>Scale:</label>
-  <input type="range" id="render-scale" min="2" max="16" value="8" step="1">
-  <span id="scale-val" style="color:var(--subtext);font-size:12px;">8x</span>
-  <label style="margin-left:auto;"><input type="checkbox" id="crt-toggle" style="accent-color:var(--accent);vertical-align:middle;"> CRT</label>
-  <button class="toolbar-btn" id="xml-toggle-btn">XML</button>
 </div>
 
 <!-- Main panels -->
@@ -517,41 +678,51 @@ body {
         <input type="number" id="prop-index" min="0" max="255" value="0">
       </div>
       <div class="prop-row">
+        <span class="color-override-pip" id="pip-bg1"></span>
         <label>bg1:</label>
         <input type="color" id="prop-bg1" value="#000000">
         <label style="width:auto">a:</label>
         <input type="range" id="prop-bg1-a" min="0" max="255" value="0" style="width:60px">
+        <button class="color-reset-btn" id="reset-bg1" title="Reset to tile def">&circlearrowleft;</button>
       </div>
       <div class="prop-row">
+        <span class="color-override-pip" id="pip-bg2"></span>
         <label>bg2:</label>
         <input type="color" id="prop-bg2" value="#1e2030">
         <label style="width:auto">a:</label>
         <input type="range" id="prop-bg2-a" min="0" max="255" value="255" style="width:60px">
+        <button class="color-reset-btn" id="reset-bg2" title="Reset to tile def">&circlearrowleft;</button>
       </div>
       <div class="prop-row">
+        <span class="color-override-pip" id="pip-base"></span>
         <label>base:</label>
         <input type="color" id="prop-base" value="#6c7086">
         <label style="width:auto">a:</label>
         <input type="range" id="prop-base-a" min="0" max="255" value="255" style="width:60px">
+        <button class="color-reset-btn" id="reset-base" title="Reset to tile def">&circlearrowleft;</button>
       </div>
       <div class="prop-row">
+        <span class="color-override-pip" id="pip-accent"></span>
         <label>accent:</label>
         <input type="color" id="prop-accent" value="#ffffff">
         <label style="width:auto">a:</label>
         <input type="range" id="prop-accent-a" min="0" max="255" value="255" style="width:60px">
+        <button class="color-reset-btn" id="reset-accent" title="Reset to tile def">&circlearrowleft;</button>
       </div>
       <div class="prop-row">
+        <span class="color-override-pip" id="pip-border"></span>
         <label>border:</label>
         <input type="color" id="prop-border" value="#6c7086">
         <label style="width:auto">a:</label>
         <input type="range" id="prop-border-a" min="0" max="255" value="255" style="width:60px">
+        <button class="color-reset-btn" id="reset-border" title="Reset to tile def">&circlearrowleft;</button>
       </div>
     </div>
   </div>
 
-  <div class="resize-handle" data-target="panel-xml" data-side="left" id="xml-resize-handle" style="display:none;"></div>
+  <div class="resize-handle" data-target="panel-xml" data-side="left" id="xml-resize-handle"></div>
   <!-- XML sidebar -->
-  <div class="panel-xml" id="panel-xml">
+  <div class="panel-xml visible" id="panel-xml">
     <div class="xml-tabs">
       <button class="xml-tab active" data-tab="entity">Entity XML</button>
       <button class="xml-tab" data-tab="tiledef">Tile Def XML</button>
@@ -605,11 +776,64 @@ const state = {
   vpY: 0,
   depthStrength: 0.03,
   crtEnabled: false,
-  xmlSidebarVisible: false,
+  xmlSidebarVisible: true,
   xmlActiveTab: 'entity',  // 'entity' or 'tiledef'
   currentEntityId: null,
   currentEntityName: '',
 };
+
+// ─── Undo/Redo ──────────────────────────────────────────────────────
+const UNDO_MAX = 50;
+const undoStack = [];
+const redoStack = [];
+
+function snapshotState() {
+  return JSON.stringify({
+    tileStack: state.tileStack,
+    selectedTileIdx: state.selectedTileIdx,
+    currentEntityId: state.currentEntityId,
+    currentEntityName: state.currentEntityName,
+  });
+}
+
+function pushUndo() {
+  undoStack.push(snapshotState());
+  if (undoStack.length > UNDO_MAX) undoStack.shift();
+  redoStack.length = 0; // new edit kills redo
+}
+
+function restoreSnapshot(json) {
+  const snap = JSON.parse(json);
+  state.tileStack = snap.tileStack;
+  state.selectedTileIdx = snap.selectedTileIdx;
+  state.currentEntityId = snap.currentEntityId;
+  state.currentEntityName = snap.currentEntityName;
+  $('#entity-name').value = state.currentEntityName;
+  refreshTileStack();
+  refreshProps();
+  refreshTilesetSelection();
+  refreshXmlSidebar();
+}
+
+function undo() {
+  if (undoStack.length === 0) return;
+  redoStack.push(snapshotState());
+  restoreSnapshot(undoStack.pop());
+}
+
+function redo() {
+  if (redoStack.length === 0) return;
+  undoStack.push(snapshotState());
+  restoreSnapshot(redoStack.pop());
+}
+
+// For continuous controls (sliders, color pickers): capture state once
+// when interaction starts, don't push again until a different interaction.
+let _undoArmed = true;
+function pushUndoOnce() {
+  if (_undoArmed) { pushUndo(); _undoArmed = false; }
+}
+function rearmUndo() { _undoArmed = true; }
 
 const TILE_W = 24;
 const TILE_H = 24;
@@ -902,9 +1126,46 @@ function render(timestamp) {
 function refreshTileStack() {
   const container = $('#tile-stack');
   container.innerHTML = '';
+  let dragIdx = null;
   state.tileStack.forEach((tile, i) => {
     const item = document.createElement('div');
     item.className = 'tile-stack-item' + (i === state.selectedTileIdx ? ' selected' : '');
+    item.draggable = true;
+    item.dataset.idx = i;
+
+    // Drag events
+    item.ondragstart = (e) => {
+      dragIdx = i;
+      item.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    };
+    item.ondragend = () => { item.classList.remove('dragging'); dragIdx = null; };
+    item.ondragover = (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      container.querySelectorAll('.tile-stack-item').forEach(el => el.classList.remove('drag-over'));
+      if (dragIdx !== null && dragIdx !== i) item.classList.add('drag-over');
+    };
+    item.ondragleave = () => item.classList.remove('drag-over');
+    item.ondrop = (e) => {
+      e.preventDefault();
+      item.classList.remove('drag-over');
+      if (dragIdx === null || dragIdx === i) return;
+      pushUndo();
+      // Move tile from dragIdx to i
+      const [moved] = state.tileStack.splice(dragIdx, 1);
+      state.tileStack.splice(i, 0, moved);
+      // Redistribute offsets evenly based on new order
+      const step = state.tileStack.length > 1 ? 0.25 : 0;
+      state.tileStack.forEach((t, j) => { t.offset = +(j * step).toFixed(2); });
+      // Track selection
+      if (state.selectedTileIdx === dragIdx) state.selectedTileIdx = i;
+      else if (dragIdx < state.selectedTileIdx && i >= state.selectedTileIdx) state.selectedTileIdx--;
+      else if (dragIdx > state.selectedTileIdx && i <= state.selectedTileIdx) state.selectedTileIdx++;
+      dragIdx = null;
+      refreshTileStack();
+      refreshProps();
+    };
 
     // Mini preview
     const preview = renderColorMaskedTile(tile.index, tile.bg1, tile.bg2, tile.base, tile.accent);
@@ -921,6 +1182,7 @@ function refreshTileStack() {
     removeBtn.textContent = '\u00d7';
     removeBtn.onclick = (e) => {
       e.stopPropagation();
+      pushUndo();
       state.tileStack.splice(i, 1);
       if (state.selectedTileIdx >= state.tileStack.length) {
         state.selectedTileIdx = state.tileStack.length - 1;
@@ -983,6 +1245,16 @@ function refreshProps() {
   $('#prop-accent-a').value = tile.accent[3];
   $('#prop-border').value = colorToHex(tile.border);
   $('#prop-border-a').value = tile.border[3];
+
+  // Update override indicators
+  const tileDef = state.tileDefs.find(td => td.id === tile.tileDefId);
+  for (const key of ['bg1', 'bg2', 'base', 'accent', 'border']) {
+    const pip = $(`#pip-${key}`);
+    const resetBtn = $(`#reset-${key}`);
+    const isOverridden = tileDef && colorStr(tile[key]) !== colorStr(tileDef[key]);
+    pip.classList.toggle('overridden', !!isOverridden);
+    resetBtn.classList.toggle('visible', !!isOverridden);
+  }
 }
 
 function getTile() {
@@ -992,6 +1264,7 @@ function getTile() {
 function bindPropInputs() {
   // Tile def selector — changing this resets colors to the new def's defaults
   $('#prop-tiledef').onchange = (e) => {
+    pushUndo();
     const t = getTile(); if (!t) return;
     const newDefId = parseInt(e.target.value);
     const newDef = state.tileDefs.find(td => td.id === newDefId);
@@ -1010,12 +1283,14 @@ function bindPropInputs() {
   };
 
   // Tile def name
+  $('#prop-tiledef-name').onfocus = () => pushUndo();
   $('#prop-tiledef-name').oninput = (e) => {
     const t = getTile(); if (!t) return;
     t.name = e.target.value;
     refreshTileStack();
   };
 
+  $('#prop-index').onfocus = () => pushUndo();
   $('#prop-index').oninput = (e) => {
     const t = getTile(); if (!t) return;
     t.index = parseInt(e.target.value) || 0;
@@ -1031,10 +1306,13 @@ function bindPropInputs() {
     state.selectedTileIdx = state.tileStack.indexOf(t);
     refreshTileStack();
   }
-  $('#prop-offset').oninput = (e) => setOffset(e.target.value);
+  $('#prop-offset').oninput = (e) => { pushUndoOnce(); setOffset(e.target.value); };
+  $('#prop-offset').onchange = () => rearmUndo();
+  $('#prop-offset-num').onfocus = () => pushUndo();
   $('#prop-offset-num').onchange = (e) => setOffset(e.target.value);
 
   $('#prop-show-border').onchange = (e) => {
+    pushUndo();
     const t = getTile(); if (!t) return;
     t.showBorder = e.target.checked;
     refreshTileStack();
@@ -1042,15 +1320,30 @@ function bindPropInputs() {
 
   for (const key of ['bg1', 'bg2', 'base', 'accent', 'border']) {
     $(`#prop-${key}`).oninput = (e) => {
+      pushUndoOnce();
       const t = getTile(); if (!t) return;
       const rgb = hexToRgb(e.target.value);
       t[key][0] = rgb[0]; t[key][1] = rgb[1]; t[key][2] = rgb[2];
       refreshTileStack();
     };
+    $(`#prop-${key}`).onchange = () => rearmUndo();
     $(`#prop-${key}-a`).oninput = (e) => {
+      pushUndoOnce();
       const t = getTile(); if (!t) return;
       t[key][3] = parseInt(e.target.value);
       refreshTileStack();
+    };
+    $(`#prop-${key}-a`).onchange = () => rearmUndo();
+
+    // Reset to tile def color
+    $(`#reset-${key}`).onclick = () => {
+      const t = getTile(); if (!t) return;
+      const tileDef = state.tileDefs.find(td => td.id === t.tileDefId);
+      if (!tileDef) return;
+      pushUndo();
+      t[key] = [...tileDef[key]];
+      refreshTileStack();
+      refreshProps();
     };
   }
 }
@@ -1071,6 +1364,7 @@ function buildTilesetGrid() {
     masked.onclick = () => {
       const t = getTile();
       if (!t) return;
+      pushUndo();
       t.index = i;
       $('#prop-index').value = i;
       refreshTileStack();
@@ -1101,6 +1395,7 @@ function populateEntitySelect() {
   sel.onchange = () => {
     const eDef = state.entityDefs.find(e => e.name === sel.value);
     if (eDef) {
+      pushUndo();
       buildStackFromEntity(eDef);
       refreshTileStack();
       refreshProps();
@@ -1120,16 +1415,13 @@ function bindToolbar() {
     state.renderScale = parseInt(e.target.value);
     $('#scale-val').textContent = state.renderScale + 'x';
   };
-  $('#crt-toggle').onchange = (e) => {
-    state.crtEnabled = e.target.checked;
-    $('#crt-overlay').classList.toggle('active', state.crtEnabled);
-  };
   $('#depth-strength').oninput = (e) => {
     state.depthStrength = parseFloat(e.target.value);
     $('#depth-val').textContent = state.depthStrength.toFixed(3);
   };
 
   $('#add-tile-btn').onclick = () => {
+    pushUndo();
     const defaultDef = state.tileDefs[0] || {
       name: 'new', index: 0,
       bg1: [0,0,0,0], bg2: [0,0,0,255], base: [255,255,255,255],
@@ -1146,6 +1438,88 @@ function bindToolbar() {
   };
 }
 
+// ─── Menu bar ────────────────────────────────────────────────────────
+function bindMenus() {
+  let openMenu = null;
+  function closeMenus() {
+    document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('open'));
+    openMenu = null;
+  }
+  for (const item of document.querySelectorAll('.menu-item')) {
+    const btn = item.querySelector(':scope > button');
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      if (openMenu === item) { closeMenus(); return; }
+      closeMenus();
+      item.classList.add('open');
+      openMenu = item;
+    };
+    // Hover to switch between open menus
+    item.onmouseenter = () => {
+      if (openMenu && openMenu !== item) {
+        closeMenus();
+        item.classList.add('open');
+        openMenu = item;
+      }
+    };
+  }
+  document.addEventListener('click', (e) => {
+    if (openMenu && !openMenu.contains(e.target)) closeMenus();
+  });
+  // Keep dropdowns open for inline controls (sliders, color pickers)
+  for (const dd of document.querySelectorAll('.menu-dropdown')) {
+    dd.addEventListener('click', (e) => {
+      if (e.target.closest('.menu-row')) e.stopPropagation();
+    });
+  }
+
+  // File
+  $('#menu-new-entity').onclick = () => { closeMenus(); newEntity(); };
+  $('#menu-save-entity').onclick = () => { closeMenus(); saveEntity(); };
+  $('#menu-save-tiledef').onclick = () => { closeMenus(); saveTileDef(false); };
+  $('#menu-new-tiledef').onclick = () => { closeMenus(); saveTileDef(true); };
+
+  // Edit
+  $('#menu-undo').onclick = () => { closeMenus(); undo(); };
+  $('#menu-redo').onclick = () => { closeMenus(); redo(); };
+
+  // View
+  $('#menu-toggle-xml').onclick = () => {
+    toggleXmlPanel();
+    $('#menu-xml-check').textContent = state.xmlSidebarVisible ? '\u2713' : '';
+  };
+  $('#menu-toggle-crt').onclick = () => {
+    state.crtEnabled = !state.crtEnabled;
+    $('#crt-overlay').classList.toggle('active', state.crtEnabled);
+    $('#menu-crt-check').textContent = state.crtEnabled ? '\u2713' : '';
+  };
+}
+
+function newEntity() {
+  pushUndo();
+  state.currentEntityId = null;
+  state.currentEntityName = 'new_entity';
+  $('#entity-name').value = 'new_entity';
+  const defaultDef = state.tileDefs[0] || {
+    id: 0, name: 'empty', index: 0,
+    bg1: [0,0,0,0], bg2: [0,0,0,255], base: [255,255,255,255],
+    accent: [255,255,255,255], border: [255,255,255,255]
+  };
+  state.tileStack = [makeTileEntry(defaultDef, 0, null)];
+  state.selectedTileIdx = 0;
+  refreshTileStack();
+  refreshProps();
+  refreshTilesetSelection();
+  refreshXmlSidebar();
+}
+
+function toggleXmlPanel() {
+  state.xmlSidebarVisible = !state.xmlSidebarVisible;
+  $('#panel-xml').classList.toggle('visible', state.xmlSidebarVisible);
+  $('#xml-resize-handle').style.display = state.xmlSidebarVisible ? '' : 'none';
+  refreshXmlSidebar();
+}
+
 // ─── VP: Keyboard look (UHJK) ───────────────────────────────────────
 const VP_CLAMP = 1500;
 const VP_LOOK_SPEED = 800; // pixels per second
@@ -1157,6 +1531,10 @@ function isInputFocused() {
 }
 
 document.addEventListener('keydown', (e) => {
+  // Global shortcuts (work even with input focused)
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveEntity(); return; }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); redo(); return; }
   if (isInputFocused()) return;
   keysHeld[e.key.toLowerCase()] = true;
   if (e.key === 'Escape') {
@@ -1323,17 +1701,6 @@ function refreshXmlSidebar() {
 
 // ─── XML Sidebar Bindings ────────────────────────────────────────────
 function bindXmlSidebar() {
-  const panel = $('#panel-xml');
-  const toggleBtn = $('#xml-toggle-btn');
-
-  toggleBtn.onclick = () => {
-    state.xmlSidebarVisible = !state.xmlSidebarVisible;
-    panel.classList.toggle('visible', state.xmlSidebarVisible);
-    toggleBtn.classList.toggle('active', state.xmlSidebarVisible);
-    $('#xml-resize-handle').style.display = state.xmlSidebarVisible ? '' : 'none';
-    refreshXmlSidebar();
-  };
-
   // Tab switching
   for (const tab of document.querySelectorAll('.xml-tab')) {
     tab.onclick = () => {
@@ -1345,6 +1712,7 @@ function bindXmlSidebar() {
   }
 
   // Entity name input
+  $('#entity-name').onfocus = () => pushUndo();
   $('#entity-name').oninput = (e) => {
     state.currentEntityName = e.target.value;
     refreshXmlSidebar();
@@ -1448,31 +1816,6 @@ function bindSaveButtons() {
   $('#new-tiledef-btn').onclick = () => saveTileDef(true);
 }
 
-// ─── New Entity ──────────────────────────────────────────────────────
-function bindNewEntity() {
-  $('#new-entity-btn').onclick = () => {
-    // Auto-assign next ID
-    const maxId = state.entityDefs.reduce((m, e) => Math.max(m, e.id), -1);
-    state.currentEntityId = null; // null = server assigns
-    state.currentEntityName = 'new_entity';
-    $('#entity-name').value = 'new_entity';
-
-    // Start with one default tile
-    const defaultDef = state.tileDefs[0] || {
-      id: 0, name: 'empty', index: 0,
-      bg1: [0,0,0,0], bg2: [0,0,0,255], base: [255,255,255,255],
-      accent: [255,255,255,255], border: [255,255,255,255]
-    };
-    state.tileStack = [makeTileEntry(defaultDef, 0, null)];
-    state.selectedTileIdx = 0;
-
-    refreshTileStack();
-    refreshProps();
-    refreshTilesetSelection();
-    refreshXmlSidebar();
-  };
-}
-
 // ─── Resize Handles ──────────────────────────────────────────────────
 function bindResizeHandles() {
   for (const handle of document.querySelectorAll('.resize-handle')) {
@@ -1535,7 +1878,7 @@ async function init() {
   bindVpPad();
   bindXmlSidebar();
   bindSaveButtons();
-  bindNewEntity();
+  bindMenus();
   bindResizeHandles();
 
   // Load first entity
