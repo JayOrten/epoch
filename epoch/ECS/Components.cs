@@ -5,6 +5,7 @@ using Microsoft.Xna.Framework;
 
 namespace epoch.ECS;
 
+/// <summary>Determines which border style is applied to a tile's edges.</summary>
 public enum BorderType
 {
     None,
@@ -12,29 +13,37 @@ public enum BorderType
     Top,
 }
 
+/// <summary>
+/// Marks a struct as an ECS component for the source generator.
+/// Set <see cref="UseCustomFactory"/> to skip auto-generation and use hand-written factory logic.
+/// </summary>
 [AttributeUsage(AttributeTargets.Struct)]
 public class ComponentAttribute : Attribute
 {
     public bool UseCustomFactory { get; set; } = false;
 }
 
-// Tag Components
+// ── Tag Components ──────────────────────────────────────────────────
 
-// Signifies the entity is a player
+/// <summary>Marks the entity as the player.</summary>
 [Component]
 public struct PlayerTag { }
 
-// Signifies the entity is an empty space/air unit
+/// <summary>Marks the entity as empty space (air). Used as the default fill in <see cref="MapRegistry"/>.</summary>
 [Component]
 public struct AirTag { }
 
-// Signifies the entity is "dirty" and the tile may need to be updated
-// Usually from surrounding tile changes
+/// <summary>Flags an entity for re-evaluation (e.g. adjacency recalc after a neighbor changed).</summary>
 [Component]
 public struct DirtyTag { }
 
-// Regular Components
-// --- GENERAL TILE ---
+// ── Tile Components ─────────────────────────────────────────────────
+
+/// <summary>
+/// Variable-length list of <see cref="GraphicalTile"/> layers for an entity.
+/// Uses a bitmask (<see cref="ActiveTileMask"/>) to track which slots are active,
+/// enabling O(1) enable/disable without shifting array elements.
+/// </summary>
 [Component(UseCustomFactory = true)]
 public struct GraphicalTileList
 {
@@ -47,7 +56,7 @@ public struct GraphicalTileList
     // 0101 = Tile0 and Tile2
     public int ActiveTileMask { get; set; } = 0;
 
-    // Turn a tile ON
+    /// <summary>Activates a tile at <paramref name="index"/>, growing the array if needed.</summary>
     public void Set(int index, GraphicalTile tile)
     {
         if (index < 0)
@@ -72,7 +81,7 @@ public struct GraphicalTileList
             NumTiles++;
     }
 
-    // Turn a tile OFF
+    /// <summary>Deactivates the tile at <paramref name="index"/> without removing the array slot.</summary>
     public void Remove(int index)
     {
         if (index < 0 || Tiles == null || index >= Tiles.Length)
@@ -93,6 +102,10 @@ public struct GraphicalTileList
     }
 }
 
+/// <summary>
+/// Visual description of a single tile layer: sprite ID, color overrides, border settings,
+/// and interpolation state for smooth z-level transitions.
+/// </summary>
 [Component]
 public struct GraphicalTile
 {
@@ -127,6 +140,7 @@ public struct GraphicalTile
 
     // For interpolating between positions
     public bool InterpolateMovement { get; set; } = true;
+    public bool DrawInitialized { get; set; } = false;
     public Vector2 CurrentDrawPosition { get; set; }
     public Vector2 DrawPositionVelocity;
 
@@ -135,13 +149,18 @@ public struct GraphicalTile
     public GraphicalTile() { }
 }
 
+/// <summary>
+/// Grid position and spatial metadata for an entity.
+/// <see cref="SpaceMask"/> encodes a 26-bit neighborhood (3x3x3 cube minus center)
+/// used for adjacency, border, and autotiling calculations.
+/// </summary>
 [Component]
 public struct Position
 {
     public Vector3 WorldCoordinate { get; set; }
 
-    // Represents priority on the z-level, usually just 0. Always less than 1, or this will break
-    public float top { get; set; } = 0;
+    /// <summary>Z-layer sub-priority for draw sorting. Must be in [0, 1).</summary>
+    public float Top { get; set; } = 0;
 
     // Represents potential offset from parent entity, not necessary
     public Vector3 Offset { get; set; }
@@ -200,30 +219,41 @@ public struct Position
     public Position() { }
 }
 
-// --- ORGANISM ---
+// ── Organism Components ─────────────────────────────────────────────
+
+/// <summary>The direction an entity is facing (for sprites/AI).</summary>
 [Component]
 public struct Direction
 {
     public Vector2 FaceDirection { get; set; }
 }
 
+/// <summary>Raw movement input vector written by <see cref="InputSystem"/>.</summary>
 [Component]
 public struct MovementInput
 {
     public Vector2 Direction { get; set; }
 }
 
+/// <summary>
+/// Movement timing. The entity moves one tile every <see cref="MoveDelay"/> seconds;
+/// <see cref="CurrentTimer"/> counts down between moves.
+/// </summary>
 [Component]
 public struct Movement
 {
-    // Speed of movement
     public float MoveDelay { get; set; } = 0.40f;
     public float CurrentTimer { get; set; } = 0f;
 
     public Movement() { }
 }
 
-// Body Components
+// ── Composite Body Components ───────────────────────────────────────
+
+/// <summary>
+/// Controls a multi-entity "body" (e.g. player with separate head/torso/legs entities).
+/// Maps part labels to child entities and tracks their offsets.
+/// </summary>
 [Component(UseCustomFactory = true)]
 public struct CompositeControllerComponent
 {
@@ -231,6 +261,7 @@ public struct CompositeControllerComponent
     public List<Vector3> ChildOffsets { get; set; }
 }
 
+/// <summary>Back-reference from a child part to its parent controller entity.</summary>
 [Component(UseCustomFactory = true)]
 public struct CompositePartComponent
 {
@@ -238,15 +269,17 @@ public struct CompositePartComponent
     public string PartLabel { get; set; }
 }
 
-// --- CAMERA ---
+// ── Camera Components ───────────────────────────────────────────────
+
+/// <summary>Per-frame camera input deltas (look direction change, zoom change).</summary>
 [Component]
 public struct CameraInput
 {
-    // public Vector2 Movement;
     public Vector2 LookChange { get; set; }
     public float ZoomChange { get; set; }
 }
 
+/// <summary>Current camera state: world position, look offset, and zoom level.</summary>
 [Component]
 public struct CameraState
 {
@@ -255,6 +288,7 @@ public struct CameraState
     public float ZoomAmount { get; set; }
 }
 
+/// <summary>Snapshot of previous frame's camera state for interpolation across refresh rates.</summary>
 [Component]
 public struct CameraPreviousState
 {

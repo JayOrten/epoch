@@ -1,9 +1,0 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<!-- This tileset is 7x7 with 0 pixel border and 1 pixel between tiles. -->
-<TextureAtlas>
-    <Texture>images/Terbert_7x7</Texture>
-    <Regions>
-    </Regions>
-    <Animations>
-    </Animations>
-</TextureAtlas>

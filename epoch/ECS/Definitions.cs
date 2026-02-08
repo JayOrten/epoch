@@ -90,7 +90,18 @@ public class EntityDefinition
     }
 
     /// <summary>
-    /// Merges another EntityDefinition into this one.
+    /// Returns a deep copy of this definition (all components and their properties are cloned).
+    /// </summary>
+    public EntityDefinition Clone()
+    {
+        var clone = new EntityDefinition(TypeName);
+        foreach (var kvp in Components)
+            clone.Components[kvp.Key] = kvp.Value.Clone();
+        return clone;
+    }
+
+    /// <summary>
+    /// Merges another EntityDefinition into this one (mutates <c>this</c>).
     /// Components from the other definition will overwrite or add to this definition's components.
     /// </summary>
     public EntityDefinition Merge(EntityDefinition other)
@@ -161,6 +172,26 @@ public class ComponentDefinition
     {
         Properties[property] = value;
         return this;
+    }
+
+    /// <summary>
+    /// Returns a deep copy of this component definition.
+    /// </summary>
+    public ComponentDefinition Clone()
+    {
+        var clone = new ComponentDefinition(TypeName);
+        foreach (var kvp in Properties)
+            clone.Properties[kvp.Key] = kvp.Value;
+        foreach (var part in CompositeParts)
+            clone.CompositeParts.Add(new PartDefinition
+            {
+                Key = part.Key,
+                EntityTemplate = part.EntityTemplate,
+                Offset = part.Offset,
+            });
+        foreach (var sub in SubCompositeParts)
+            clone.SubCompositeParts.Add(sub.Clone());
+        return clone;
     }
 
     public ComponentDefinition Merge(ComponentDefinition other)

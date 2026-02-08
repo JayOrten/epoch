@@ -29,12 +29,16 @@ dotnet test epoch.Tests/epoch.Tests.csproj
 
 ## Architecture
 
-### Layered Structure
+### Directory Structure
 
-1. **Engine Layer** (`epoch/Engine/`) - Game loop, scene management, graphics, input, audio
-2. **ECS Layer** (`epoch/ECS/`) - Components, systems, entity management via Arch
-3. **Game Layer** (`epoch/Scenes/`) - Scene implementations (WorldScene)
-4. **Utilities** (`epoch/Utilities/`) - Logging, content paths, math helpers
+1. **Core** (`epoch/Core.cs`) - Game loop, singleton for global resources
+2. **Input** (`epoch/Input/`) - Input devices, GameController action mapping
+3. **Audio** (`epoch/Audio/`) - Audio playback management
+4. **Graphics** (`epoch/Graphics/`) - Tile rendering, texture regions, GPU instancing
+5. **Scenes** (`epoch/Scenes/`) - Scene base class and implementations (WorldScene)
+6. **ECS** (`epoch/ECS/`) - Components, entity management, definitions via Arch
+7. **ECS/Systems** (`epoch/ECS/Systems/`) - Individual system files (Input, Movement, Draw, Camera, TileAdjacency)
+8. **Utilities** (`epoch/Utilities/`) - Logging, content paths, math helpers
 
 ### ECS Pattern (Arch Framework)
 
@@ -43,7 +47,7 @@ dotnet test epoch.Tests/epoch.Tests.csproj
 - Data components: `Position`, `GraphicalTileList`, `Movement`, `Direction`
 - Camera components: `CameraInput`, `CameraState`, `CameraPreviousState`
 
-**Systems** (`ECS/Systems.cs`) - Inherit from `SystemBase<GameTime>`:
+**Systems** (`ECS/Systems/`) - Each in its own file, inherit from `SystemBase<GameTime>`:
 - `InputSystem` → `MovementSystem` → `TileAdjacencySystem` → `DrawSystem`
 - `CameraLogicSystem` → `CameraApplySystem`
 
@@ -80,13 +84,31 @@ world.Query(in query, (Entity entity, ref Position pos, ref Movement mov) => { .
 ## Key Entry Points
 
 - `Game1.cs` - Game initialization
-- `Engine/Core.cs` - Static singleton for global resources (`Core.Instance`, `Core.GraphicsDevice`)
+- `Core.cs` - Static singleton for global resources (`Core.Instance`, `Core.GraphicsDevice`)
 - `Scenes/WorldScene.cs` - Main scene, orchestrates all systems
 - `ECS/Entities.cs` - EntityManager for spawning from XML definitions
 
 ## Source Generators
 
 `epoch.Generators/ComponentFactoryGenerator.cs` auto-generates component factory code via Roslyn.
+
+## Testing
+
+xUnit test suite in `epoch.Tests/`. See `docs/testing.md` for full details.
+
+```bash
+dotnet test epoch.sln                                              # all tests
+dotnet test epoch.Tests/epoch.Tests.csproj --filter "FullyQualifiedName~MapRegistryTests"  # one class
+```
+
+**Testability tiers:**
+- **Tier 1** (pure functions): No dependencies — parsing, bitmask ops, perspective math
+- **Tier 2** (Arch World): Needs `World.Create()` — MapRegistry, movement collision, space masks
+- **Tier 3** (MonoGame): Needs `Core` singleton — ContentPaths, rendering, scenes. **Skip these.**
+
+`epoch.csproj` has `InternalsVisibleTo("epoch.Tests")` for access to `internal` methods.
+
+**When modifying code, update corresponding tests.** When adding new static/pure functions extracted for testability, add tests.
 
 ## Dependencies
 

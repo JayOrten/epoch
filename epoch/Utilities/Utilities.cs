@@ -4,10 +4,25 @@ using Microsoft.Xna.Framework;
 
 namespace epoch.Utilities;
 
+/// <summary>
+/// String-to-CLR-type conversion helpers used by the component factory to hydrate
+/// component properties from XML/definition strings. Also provides coordinate conversion.
+/// </summary>
 public static class Utils
 {
+    /// <summary>
+    /// Converts a string <paramref name="value"/> to the given <paramref name="targetType"/>.
+    /// Supports primitives, <see cref="Vector2"/>, <see cref="Vector3"/>, and <see cref="Color"/>.
+    /// Falls back to <see cref="Convert.ChangeType"/> for other types.
+    /// </summary>
     public static object ConvertValue(string value, Type targetType)
     {
+        if (targetType == null)
+        {
+            Log.Error("ConvertValue called with null targetType for value {0}", value);
+            throw new ArgumentNullException(nameof(targetType));
+        }
+
         if (targetType == typeof(string))
             return value;
         if (targetType == typeof(int))
@@ -18,30 +33,12 @@ public static class Utils
             return ParseDouble(value);
         if (targetType == typeof(bool))
             return ParseBool(value);
-
         if (targetType == typeof(Vector2))
-        {
             return ParseVector2(value);
-        }
-
         if (targetType == typeof(Vector3))
-        {
             return ParseVector3(value);
-        }
-
         if (targetType == typeof(Color?))
-        {
             return ParseColor(value);
-        }
-
-        if (targetType == null)
-        {
-            Log.Error(
-                "Someone did an oopsie! Trying to convert value {0} to targetType {1}",
-                value,
-                targetType
-            );
-        }
 
         // Fallback: try Convert.ChangeType for simple convertible types
         return System.Convert.ChangeType(value, targetType);
@@ -82,7 +79,9 @@ public static class Utils
         );
     }
 
-    // Handle Nullable types by returning the value type (assignment to Nullable works automatically)
+    /// <summary>
+    /// Parses a color from either "R,G,B[,A]" byte format or a named XNA color (e.g. "White").
+    /// </summary>
     public static Color ParseColor(string value)
     {
         if (value.Contains(","))
@@ -104,6 +103,9 @@ public static class Utils
         }
     }
 
+    /// <summary>
+    /// Converts integer grid position to pixel-center world coordinates.
+    /// </summary>
     public static Vector2 ConvertGridToWorldCoordinate(
         Vector2 gridCoordinate,
         float tileWidth,
@@ -119,8 +121,16 @@ public static class Utils
     }
 }
 
+/// <summary>
+/// Camera math utilities. <see cref="SmoothDamp"/> implements Unity-style critically-damped
+/// spring interpolation for smooth camera following.
+/// </summary>
 public static class CameraUtils
 {
+    /// <summary>
+    /// Smoothly moves <paramref name="current"/> toward <paramref name="target"/> using
+    /// a critically-damped spring. Modifies <paramref name="currentVelocity"/> in place.
+    /// </summary>
     public static Vector2 SmoothDamp(
         Vector2 current,
         Vector2 target,
