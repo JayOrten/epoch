@@ -87,10 +87,10 @@ public class ParsingTests
     public void ParseComponentElement_Simple()
     {
         var xml = XElement.Parse(
-            """<component component_name="Position" Passable="true" IsBlock="false" />"""
+            """<Position Passable="true" IsBlock="false" />"""
         );
 
-        var def = EntityManager.ParseComponentElement(xml);
+        var def = EntityManager.ParseComponentElement("Position", xml);
 
         Assert.Equal("Position", def.TypeName);
         Assert.Equal("true", def.Properties["Passable"]);
@@ -99,25 +99,47 @@ public class ParsingTests
     }
 
     [Fact]
-    public void ParseComponentElement_WithSubparts()
+    public void ParseComponentElement_WithTiles()
     {
         var xml = XElement.Parse(
             """
-            <component component_name="GraphicalTileList">
-                <subparts>
-                    <part component_name="GraphicalTile" TileId="1" Scale="1.0" />
-                    <part component_name="GraphicalTile" TileId="2" Scale="0.5" />
-                </subparts>
-            </component>
+            <GraphicalTileList>
+                <tile TileId="1" Scale="1.0" />
+                <tile TileId="2" Scale="0.5" />
+            </GraphicalTileList>
             """
         );
 
-        var def = EntityManager.ParseComponentElement(xml);
+        var def = EntityManager.ParseComponentElement("GraphicalTileList", xml);
 
         Assert.Equal("GraphicalTileList", def.TypeName);
         Assert.Equal(2, def.SubCompositeParts.Count);
         Assert.Equal("GraphicalTile", def.SubCompositeParts[0].TypeName);
         Assert.Equal("1", def.SubCompositeParts[0].Properties["TileId"]);
         Assert.Equal("2", def.SubCompositeParts[1].Properties["TileId"]);
+    }
+
+    [Fact]
+    public void ParseComponentElement_WithChildren()
+    {
+        var xml = XElement.Parse(
+            """
+            <CompositeController>
+                <child key="Legs" template="legs" offset="0,0,0"/>
+                <child key="Head" template="head" offset="0,0,2"/>
+            </CompositeController>
+            """
+        );
+
+        var def = EntityManager.ParseComponentElement("CompositeController", xml);
+
+        Assert.Equal("CompositeControllerComponent", def.TypeName);
+        Assert.Equal(2, def.CompositeParts.Count);
+        Assert.Equal("Legs", def.CompositeParts[0].Key);
+        Assert.Equal("legs", def.CompositeParts[0].EntityTemplate);
+        Assert.Equal(new Vector3(0, 0, 0), def.CompositeParts[0].Offset);
+        Assert.Equal("Head", def.CompositeParts[1].Key);
+        Assert.Equal("head", def.CompositeParts[1].EntityTemplate);
+        Assert.Equal(new Vector3(0, 0, 2), def.CompositeParts[1].Offset);
     }
 }

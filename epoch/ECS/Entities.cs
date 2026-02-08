@@ -41,9 +41,9 @@ public class EntityManager
             int entityId = int.Parse(entityElem.Attribute("id")?.Value ?? "0");
             var entity = new EntityDefinition { TypeName = entityElem.Attribute("name")?.Value };
 
-            foreach (var compElem in entityElem.Elements("component"))
+            foreach (var compElem in entityElem.Elements())
             {
-                var compDef = ParseComponentElement(compElem);
+                var compDef = ParseComponentElement(compElem.Name.LocalName, compElem);
                 entity.Components[compDef.TypeName] = compDef;
             }
 
@@ -53,52 +53,48 @@ public class EntityManager
     }
 
     /// <summary>
-    /// Parses a single <c>&lt;component&gt;</c> XML element into a <see cref="ComponentDefinition"/>,
-    /// including any nested <c>&lt;parts&gt;</c> and <c>&lt;subparts&gt;</c>.
+    /// Parses a component XML element into a <see cref="ComponentDefinition"/>.
+    /// The element name is the component type (e.g. <c>&lt;Position&gt;</c>).
+    /// Handles <c>&lt;tile&gt;</c> children for GraphicalTileList and
+    /// <c>&lt;child&gt;</c> children for CompositeController.
     /// </summary>
-    internal static ComponentDefinition ParseComponentElement(XElement compElem)
+    internal static ComponentDefinition ParseComponentElement(string typeName, XElement compElem)
     {
-        var compDef = new ComponentDefinition(compElem.Attribute("component_name")?.Value);
+        // Map shorthand element names to actual component type names
+        if (typeName == "CompositeController")
+            typeName = "CompositeControllerComponent";
+
+        var compDef = new ComponentDefinition(typeName);
 
         foreach (var attr in compElem.Attributes())
-            if (attr.Name != "component_name")
-                compDef.Properties[attr.Name.LocalName] = attr.Value;
+            compDef.Properties[attr.Name.LocalName] = attr.Value;
 
-        var partsDef = compElem.Element("parts");
-        if (partsDef != null)
+        // <tile> children → SubCompositeParts (GraphicalTileList)
+        foreach (var tileElem in compElem.Elements("tile"))
         {
-            foreach (var partDef in partsDef.Elements("part"))
-            {
-                Vector3 offset = Utilities.Utils.ParseVector3(
-                    partDef.Attribute("offset")?.Value ?? "0,0,0"
-                );
+            var subcompDef = new ComponentDefinition("GraphicalTile");
 
-                compDef.CompositeParts.Add(
-                    new PartDefinition
-                    {
-                        Key = partDef.Attribute("key")?.Value,
-                        EntityTemplate = partDef.Attribute("entity_template")?.Value,
-                        Offset = offset,
-                    }
-                );
-            }
+            foreach (var attr in tileElem.Attributes())
+                subcompDef.Properties[attr.Name.LocalName] = attr.Value;
+
+            compDef.SubCompositeParts.Add(subcompDef);
         }
 
-        var subpartsDef = compElem.Element("subparts");
-        if (subpartsDef != null)
+        // <child> children → CompositeParts (CompositeController)
+        foreach (var childElem in compElem.Elements("child"))
         {
-            foreach (var subpartDef in subpartsDef.Elements("part"))
-            {
-                var subcompDef = new ComponentDefinition(
-                    subpartDef.Attribute("component_name")?.Value
-                );
+            Vector3 offset = Utilities.Utils.ParseVector3(
+                childElem.Attribute("offset")?.Value ?? "0,0,0"
+            );
 
-                foreach (var attr in subpartDef.Attributes())
-                    if (attr.Name != "component_name")
-                        subcompDef.Properties[attr.Name.LocalName] = attr.Value;
-
-                compDef.SubCompositeParts.Add(subcompDef);
-            }
+            compDef.CompositeParts.Add(
+                new PartDefinition
+                {
+                    Key = childElem.Attribute("key")?.Value,
+                    EntityTemplate = childElem.Attribute("template")?.Value,
+                    Offset = offset,
+                }
+            );
         }
 
         return compDef;

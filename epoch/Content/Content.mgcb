@@ -32,8 +32,8 @@
 #begin config/entity-definitions.xml
 /copy:config/entity-definitions.xml
 
-#begin config/tile-definitions.json
-/copy:config/tile-definitions.json
+#begin config/tile-definitions.xml
+/copy:config/tile-definitions.xml
 
 #begin config/tilemap-definition.xml
 /copy:config/tilemap-definition.xml

@@ -1,24 +1,17 @@
-using System.Text.Json.Serialization;
 using Microsoft.Xna.Framework;
 
 namespace epoch.Graphics.Tiles;
 
 /// <summary>
-/// Represents a single tile definition.
-/// This class focuses on holding tile indices for different textures/modes
+/// Represents a single tile definition with color data for rendering.
 /// </summary>
 public record Tile(
     int Id,
     string Name,
     int TileIndex,
-    string Background1ColorString,
-    string Background2ColorString,
-    string BaseColorString,
-    string AccentColorString,
-    string BorderColorString,
-    [property: JsonIgnore] Color Background1Color,
-    [property: JsonIgnore] Color Background2Color,
-    [property: JsonIgnore] Color BaseColor,
-    [property: JsonIgnore] Color AccentColor,
-    [property: JsonIgnore] Color BorderColor
+    Color Background1Color,
+    Color Background2Color,
+    Color BaseColor,
+    Color AccentColor,
+    Color BorderColor
 );

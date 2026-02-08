@@ -1,15 +1,15 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Xml.Linq;
 using epoch.Utilities;
 using Microsoft.Xna.Framework;
 
 namespace epoch.Graphics.Tiles;
 
 /// <summary>
-/// Registry of <see cref="Tile"/> definitions loaded from JSON. Provides lookup by index
+/// Registry of <see cref="Tile"/> definitions loaded from XML. Provides lookup by index
 /// or name and owns the <see cref="Tileset"/> used for texture regions.
-/// Color strings in the JSON are parsed to <see cref="Color"/> at load time.
 /// </summary>
 public class TileManager
 {
@@ -26,40 +26,26 @@ public class TileManager
         _tilesByName = Tiles.ToDictionary(t => t.Name);
     }
 
-    /// <summary>Loads tile definitions from a JSON file and parses color strings into <see cref="Color"/> values.</summary>
+    /// <summary>Loads tile definitions from an XML file and parses color attributes into <see cref="Color"/> values.</summary>
     public static TileManager FromFile(Tileset tileset, string path)
     {
-        // Load and parse the tile definitions from the specified file
-        List<Tile> tiles = new List<Tile>();
-
-        // Parse tile objects from json file specified by path
         using var stream = TitleContainer.OpenStream(path);
-        using var reader = new StreamReader(stream);
+        var doc = XDocument.Load(stream);
 
-        string json = reader.ReadToEnd();
-        tiles =
-            System.Text.Json.JsonSerializer.Deserialize<List<Tile>>(
-                json,
-                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
-            )
-            ?? new List<Tile>();
-
-        // Parse color strings into Color values
         static Color ParseOrDefault(string s) =>
             string.IsNullOrEmpty(s) ? Color.White : Utils.ParseColor(s);
 
-        for (int i = 0; i < tiles.Count; i++)
-        {
-            var tile = tiles[i];
-            tiles[i] = tile with
-            {
-                Background1Color = ParseOrDefault(tile.Background1ColorString),
-                Background2Color = ParseOrDefault(tile.Background2ColorString),
-                BaseColor = ParseOrDefault(tile.BaseColorString),
-                AccentColor = ParseOrDefault(tile.AccentColorString),
-                BorderColor = ParseOrDefault(tile.BorderColorString),
-            };
-        }
+        var tiles = doc.Root.Elements("tile").Select(el => new Tile(
+            Id: int.Parse(el.Attribute("id")?.Value ?? "0"),
+            Name: el.Attribute("name")?.Value ?? "",
+            TileIndex: int.Parse(el.Attribute("index")?.Value ?? "0"),
+            Background1Color: ParseOrDefault(el.Attribute("bg1")?.Value),
+            Background2Color: ParseOrDefault(el.Attribute("bg2")?.Value),
+            BaseColor: ParseOrDefault(el.Attribute("base")?.Value),
+            AccentColor: ParseOrDefault(el.Attribute("accent")?.Value),
+            BorderColor: ParseOrDefault(el.Attribute("border")?.Value)
+        )).ToList();
+
         return new TileManager(tileset, tiles);
     }
 
