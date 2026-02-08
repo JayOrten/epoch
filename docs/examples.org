@@ -1,0 +1,31 @@
+
+        // TODO: extract to example doc
+        // random map generation:
+        // EntityDefinition entityDefinition = new EntityDefinition(
+        //     new ComponentDefinition("Position")
+        // );
+        // List<string> comps = ["empty", "grass", "tree", "dirt", "water"];
+        // Random RandomUtil = new Random();
+
+        // var sw = Stopwatch.StartNew();
+        // for (int i = 0; i < 9; i++)
+        // {
+        //     for (int j = 0; j < 9; j++)
+        //     {
+        //         for (int k = 0; k < 1; k++)
+        //         {
+        //             // 3D coordinate string
+        //             string coord3D = string.Concat(i, ",", j, ",", k);
+
+        //             // pick a random component to add
+        //             string compToAdd = comps[RandomUtil.Next(0, comps.Count)];
+
+        //             _entityManager.Spawn(
+        //                 compToAdd,
+        //                 entityDefinition.Add("Position", "WorldCoordinate", coord3D)
+        //             );
+        //         }
+        //     }
+        // }
+        // sw.Stop();
+        // Log.Info($"Spawned grass in {sw.ElapsedMilliseconds} ms");

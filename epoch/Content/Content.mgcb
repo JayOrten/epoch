@@ -14,20 +14,17 @@
 
 #---------------------------------- Content ---------------------------------#
 
-#begin ScreenEffect.fx
+#begin EffectShader.fx
 /importer:EffectImporter
 /processor:EffectProcessor
 /processorParam:DebugMode=Auto
-/build:ScreenEffect.fx
+/build:EffectShader.fx
 
-#begin UberShader.fx
+#begin RenderShader.fx
 /importer:EffectImporter
 /processor:EffectProcessor
 /processorParam:DebugMode=Auto
-/build:UberShader.fx
-
-#begin config/ascii-tileset.json
-/copy:config/ascii-tileset.json
+/build:RenderShader.fx
 
 #begin config/atlas-definition.xml
 /copy:config/atlas-definition.xml
@@ -35,14 +32,14 @@
 #begin config/entity-definitions.xml
 /copy:config/entity-definitions.xml
 
-#begin config/graphical-tileset.json
-/copy:config/graphical-tileset.json
-
 #begin config/tile-definitions.json
 /copy:config/tile-definitions.json
 
 #begin config/tilemap-definition.xml
 /copy:config/tilemap-definition.xml
+
+#begin config/tileset.json
+/copy:config/tileset.json
 
 #begin images/Anikki_square_20x20.png
 /importer:TextureImporter
@@ -67,6 +64,30 @@
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
 /build:images/Terbert_7x7.png
+
+#begin images/tilesheet_24x24.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=False
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:images/tilesheet_24x24.png
+
+#begin images/tilesheet_wip.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:images/tilesheet_wip.png
 
 #begin images/urizen_onebit_tileset__v2d0.png
 /importer:TextureImporter

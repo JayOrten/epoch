@@ -1,0 +1,12 @@
+{
+    "file": "images/tilesheet_24x24",
+    "region": {
+        "x": 0,
+        "y": 0,
+        "width": 384,
+        "height": 384
+    },
+    "tile_width": 24,
+    "tile_height": 24,
+    "padding": 0
+}

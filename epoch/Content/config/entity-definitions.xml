@@ -15,24 +15,47 @@
       </component>
     </entity>
     <entity name="legs" id="1">
-      <component component_name="GraphicalTile" TileId="1"/>
+      <component component_name="GraphicalTileList">
+        <subparts>
+          <part component_name="GraphicalTile" TileId="11" InterpolateMovement="false"/>
+        </subparts>
+      </component>
       <component component_name="Position"/>
     </entity>
     <entity name="torso" id="2">
-      <component component_name="GraphicalTile" TileId="1"/>
+      <component component_name="GraphicalTileList">
+        <subparts>
+            <part component_name="GraphicalTile" TileId="10" InterpolateMovement="false"/>
+        </subparts>
+      </component>
       <component component_name="Position"/>
     </entity>
     <entity name="head" id="3">
-      <component component_name="GraphicalTile" TileId="1"/>
+      <component component_name="GraphicalTileList">
+        <subparts>
+            <part component_name="GraphicalTile" TileId="9" InterpolateMovement="false"/>
+        </subparts>
+      </component>
       <component component_name="Position"/>
     </entity>
 
     <entity name="empty" id="4">
-      <component component_name="GraphicalTile" TileId="0"/>
+      <component component_name="GraphicalTileList">
+        <subparts>
+            <part component_name="GraphicalTile" TileId="0"/>
+        </subparts>
+      </component>
       <component component_name="Position" Passable = "true"/>
     </entity>
     <entity name="grass" id="5">
-      <component component_name="GraphicalTile" TileId="2"/>
+      <component component_name="GraphicalTileList">
+        <subparts>
+          <part component_name="GraphicalTile" TileId="2" ForceDraw="true" Offset="0.05" Background1Color="0,0,0,0"/>
+          <part component_name="GraphicalTile" TileId="2" ForceDraw="true" Offset="0.15"/>
+          <part component_name="GraphicalTile" TileId="2" ForceDraw="true" Offset="0.30"/>
+          <part component_name="GraphicalTile" TileId="12" ForceDraw="true" Offset="0.45"/>
+        </subparts>
+      </component>
       <component component_name="Position" Passable = "true"/>
     </entity>
     <entity name="tree" id="6">
@@ -48,7 +71,15 @@
       <component component_name="Position" Passable = "false"/>
     </entity>
     <entity name="stone" id="9">
-      <component component_name="GraphicalTile" TileId="6" color="#222222"/>
-      <component component_name="Position" Passable = "false"/>
+      <component component_name="GraphicalTileList">
+        <subparts>
+          <part component_name="GraphicalTile" TileId="13" Offset="0" Background1Color="30,32,48,255" AutoTile="true" BorderType="Bottom"/>
+          <part component_name="GraphicalTile" TileId="13" Offset="0.25" Background1Color="30,32,48,255" AutoTile="true"/>
+          <part component_name="GraphicalTile" TileId="13" Offset="0.50" Background1Color="30,32,48,255" AutoTile="true"/>
+          <part component_name="GraphicalTile" TileId="13" Offset="0.75" Background1Color="30,32,48,255" AutoTile="true"/>
+          <part component_name="GraphicalTile" TileId="0" Offset="1.00" BorderType="Top"/>
+        </subparts>
+      </component>
+      <component component_name="Position" Passable = "false" IsBlock = "true"/>
     </entity>
 </entityDefinitions>

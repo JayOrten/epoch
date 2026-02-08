@@ -1,0 +1,16 @@
+tiles1: tile 6 in bottom/center only with corner tiles at .25 and .75
+tiles2: equal spaced grid tile with opaque background on all. I like the look of the grid but it's not very informative.
+tiles4: same as 2, but transparent backgrounds. I like how this makes a point cloud effect, but it's not very readable. Adding opaque to the base of each tile just creates a tiered look
+tiles5: same as 4, but with a thicker, more filled out tile texture.
+tiles6: opaque backgrounds with the "corner" texture, creating boxes.
+tiles7: a stagerred grid creates some variational pizzaz.
+tiles8: a tighter grid starts to look a little funky because the pixels are too close.
+tiles9: this highlights why you want the tiles to have a "continuous" texture effect. Otherwise, you can vertical lines just on the edges of blocks, or repeating patterns from certain angles.
+tiles10: varying tile patterns within blocks creates more interesting texture, but we still suffer from a non repeating pattern here
+tiles11: using a different texture on each layer of a block can create more organic textures. The challenges remains that the patterns don't repeat well in many places. Making all but the bottom transparent doens't change too much (and this goes for many of these tiles), mostly because there's nothing in the center to shine through, so you jsut see transparency on the edges.
+tiles12: making all layers transparent creates a fun holographic effect, not really sure how to use this though. It owuld really pop if the edges were smart, but at that point we might as well actually do real edge textures?
+tiles12 ( i think I overwrote the other one): just edges with two layers. each tile with a background. THe edges aren't an issue here, this looks nice, but a little hard on the eyes.
+tiles13: longer stripes on just the edges. All tiles with backgrounds. WIthout them it looked a little funky
+tiles14: stripes but varied on each side. I notice that it looks pretty nice if you setup the side correctly, this would benefit from logic in the edging.
+tiles15: two layer unique stripes on each edge, and layer. Adds a lot more variation, it's messier, and the main issue is the repeating texture becomes more apparent. not sure the best way to avoid this.
+tiles16: mixing and matching tiles: this is two different tiles on top and bottom, with solid background to differntiate.

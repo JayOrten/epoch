@@ -48,41 +48,59 @@ public class WorldScene : Scene
 
     public override void LoadContent()
     {
-        // Load textures; unnecessary for now.
-        // TextureAtlas atlas = TextureAtlas.FromFile(Core.Content, "images/atlas-definition.xml");
-
-        // Create the tilemap from the XML file
-        // _tilemap = Tilemap.FromFile(Content, "images/tilemap-definition.xml");
-        // _tilemap.Scale = new Vector2(8.0f, 8.0f);
-
-        TileMode mode = TileMode.Ascii;
         string tileDefinitionsPath = ContentPaths.Config("tile-definitions");
-        string tileSetPath = ContentPaths.Config("ascii-tileset");
+        string tileSetPath = ContentPaths.Config("tileset");
         string entityDefinitionsPath = ContentPaths.Config("entity-definitions");
-
-        // Load tile definitions
-        TileDefinitions tileDefinitions = TileDefinitions.FromFile(tileDefinitionsPath);
 
         // Load tileset
         Tileset tileset = Tileset.FromFile(Content, tileSetPath);
 
-        // Create the tile manager
-        GlobalContext.TileManager = new TileManager(tileset, tileDefinitions, mode);
+        // Load tile definitions
+        GlobalContext.TileManager = TileManager.FromFile(tileset, tileDefinitionsPath);
 
         // Create the world
         _world = World.Create();
 
         // Create empty map registry
-        GlobalContext.MapRegistry = new MapRegistry(_world, 20, 20, 9);
+        GlobalContext.MapRegistry = new MapRegistry(_world, 80, 80, 9);
 
         // Create the entity manager, loading in entity definitions from file
         GlobalContext.EntityManager = new EntityManager(_world, entityDefinitionsPath);
 
         // Create shaders and draw system
-        Effect uberShader = Content.Load<Effect>("UberShader");
-        Effect screenEffect = Content.Load<Effect>("ScreenEffect");
+        Effect renderShader = Content.Load<Effect>("RenderShader");
+        Effect effectShader = Content.Load<Effect>("EffectShader");
 
-        _drawSystem = new DrawSystem(_world, uberShader, screenEffect);
+        // Load shader values that don't change
+        var textureSizeParam = renderShader.Parameters["TextureSize"];
+        var tileSizeParam = renderShader.Parameters["TileSize"];
+        var viewportParam = renderShader.Parameters["ViewportSize"];
+        var spriteSheetParam = renderShader.Parameters["SpriteTexture"];
+
+        if (textureSizeParam != null)
+            textureSizeParam.SetValue(
+                new Vector2(
+                    GlobalContext.TileManager.Tileset.Rows
+                        * GlobalContext.TileManager.Tileset.TileHeight,
+                    GlobalContext.TileManager.Tileset.Columns
+                        * GlobalContext.TileManager.Tileset.TileWidth
+                )
+            );
+        if (tileSizeParam != null)
+            tileSizeParam.SetValue(
+                new Vector2(
+                    GlobalContext.TileManager.Tileset.TileHeight,
+                    GlobalContext.TileManager.Tileset.TileWidth
+                )
+            ); // Size of ONE
+        if (viewportParam != null)
+            viewportParam.SetValue(
+                new Vector2(Core.GraphicsDevice.Viewport.Width, Core.GraphicsDevice.Viewport.Height)
+            );
+        if (spriteSheetParam != null) // TODO: pass sprite sheet here
+            spriteSheetParam.SetValue(GlobalContext.TileManager.Tileset.GetTile(0).Texture); // TODO: this is super hacky, need to rework these classes.
+
+        _drawSystem = new DrawSystem(_world, renderShader, effectShader);
     }
 
     public override void BeginRun()
@@ -116,6 +134,18 @@ public class WorldScene : Scene
 
         GlobalContext.PlayerEntity = GlobalContext.EntityManager.Spawn("player", spawnPosition);
 
+        var compositeEntities = GlobalContext.PlayerEntity.Get<CompositeControllerComponent>();
+        foreach (var value in compositeEntities.Parts.Values)
+        {
+            Entity child = value;
+            if (child.Has<GraphicalTile>())
+            {
+                ref var graphicalTile = ref child.Get<GraphicalTile>();
+                // Change background2color
+                graphicalTile.Background2Color = new Color(30, 32, 48, 255);
+            }
+        }
+
         // Spawn Camera entity
         GlobalContext.CameraEntity = _world.Create(new CameraInput(), new CameraState());
 
@@ -125,41 +155,10 @@ public class WorldScene : Scene
         GlobalContext.Camera.LookAt(
             Utils.ConvertGridToWorldCoordinate(
                 new Vector2(pos.WorldCoordinate.X, pos.WorldCoordinate.Y),
-                GlobalContext.TileManager.TileWidth * GlobalContext.GlobalScale,
-                GlobalContext.TileManager.TileHeight * GlobalContext.GlobalScale
+                GlobalContext.TileManager.Tileset.TileWidth * GlobalContext.GlobalScale,
+                GlobalContext.TileManager.Tileset.TileHeight * GlobalContext.GlobalScale
             )
         );
-
-        // TODO: extract to example doc
-        // random map generation:
-        // EntityDefinition entityDefinition = new EntityDefinition(
-        //     new ComponentDefinition("Position")
-        // );
-        // List<string> comps = ["empty", "grass", "tree", "dirt", "water"];
-        // Random RandomUtil = new Random();
-
-        // var sw = Stopwatch.StartNew();
-        // for (int i = 0; i < 9; i++)
-        // {
-        //     for (int j = 0; j < 9; j++)
-        //     {
-        //         for (int k = 0; k < 1; k++)
-        //         {
-        //             // 3D coordinate string
-        //             string coord3D = string.Concat(i, ",", j, ",", k);
-
-        //             // pick a random component to add
-        //             string compToAdd = comps[RandomUtil.Next(0, comps.Count)];
-
-        //             _entityManager.Spawn(
-        //                 compToAdd,
-        //                 entityDefinition.Add("Position", "WorldCoordinate", coord3D)
-        //             );
-        //         }
-        //     }
-        // }
-        // sw.Stop();
-        // Log.Info($"Spawned grass in {sw.ElapsedMilliseconds} ms");
     }
 
     public override void Update(GameTime gameTime)

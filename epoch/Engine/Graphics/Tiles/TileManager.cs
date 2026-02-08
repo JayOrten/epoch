@@ -1,57 +1,100 @@
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using epoch.Utilities;
+using Microsoft.Xna.Framework;
+
 namespace epoch.Engine.Graphics.Tiles;
 
-public enum TileMode
-{
-    Ascii,
-    Graphical,
-}
-
-/// <summary>
-/// Holds the tile definitions, and the tileset for either ascii or graphical mode.
-/// Connects the tile data with the tile graphics.
-/// That way, the tilemap can use a unified tile idx regardless of mode.
 public class TileManager
 {
-    public Tileset TileSet { get; set; }
-    public TileDefinitions TileDefinitions { get; set; }
-    public TileMode Mode { get; set; }
+    public List<Tile> Tiles { get; set; } = new List<Tile>();
 
-    public TileManager(Tileset tileSet, TileDefinitions tileDefinitions, TileMode mode)
+    private Dictionary<string, Tile> _tilesByName;
+
+    public Tileset Tileset;
+
+    public TileManager(Tileset tileset, List<Tile> tiles)
     {
-        TileSet = tileSet;
-        TileDefinitions = tileDefinitions;
-        Mode = mode;
+        Tileset = tileset;
+        Tiles = tiles ?? new List<Tile>();
+        _tilesByName = Tiles.ToDictionary(t => t.Name);
     }
 
-    public int TileWidth => TileSet.TileWidth;
-
-    public int TileHeight => TileSet.TileHeight;
-
-    public TileRenderInfo? GetTile(string name)
+    public static TileManager FromFile(Tileset tileset, string path)
     {
-        Tile tile = TileDefinitions.GetTileByName(name);
-        return GetTile(tile);
+        // Load and parse the tile definitions from the specified file
+        List<Tile> tiles = new List<Tile>();
+
+        // Parse tile objects from json file specified by path
+        using var stream = TitleContainer.OpenStream(path);
+        using var reader = new StreamReader(stream);
+
+        string json = reader.ReadToEnd();
+        tiles =
+            System.Text.Json.JsonSerializer.Deserialize<List<Tile>>(
+                json,
+                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+            )
+            ?? new List<Tile>();
+
+        // Convert string color values to Color objects
+        for (int i = 0; i < tiles.Count; i++)
+        {
+            var tile = tiles[i];
+
+            Color background1Color = Color.White;
+            if (!string.IsNullOrEmpty(tile.Background1ColorString))
+            {
+                background1Color = Utils.ParseColor(tile.Background1ColorString);
+            }
+
+            Color background2Color = Color.White;
+            if (!string.IsNullOrEmpty(tile.Background2ColorString))
+            {
+                background2Color = Utils.ParseColor(tile.Background2ColorString);
+            }
+
+            Color baseColor = Color.White;
+            if (!string.IsNullOrEmpty(tile.BaseColorString))
+            {
+                baseColor = Utils.ParseColor(tile.BaseColorString);
+            }
+
+            Color accentColor = Color.White;
+            if (!string.IsNullOrEmpty(tile.AccentColorString))
+            {
+                accentColor = Utils.ParseColor(tile.AccentColorString);
+            }
+
+            Color borderColor = Color.White;
+            if (!string.IsNullOrEmpty(tile.BorderColorString))
+            {
+                borderColor = Utils.ParseColor(tile.BorderColorString);
+            }
+
+            tiles[i] = tile with
+            {
+                Background1Color = background1Color,
+                Background2Color = background2Color,
+                BaseColor = baseColor,
+                AccentColor = accentColor,
+                BorderColor = borderColor,
+            };
+        }
+        return new TileManager(tileset, tiles);
     }
 
-    public TileRenderInfo? GetTile(int index)
+    public Tile GetTile(int index)
     {
-        Tile tile = TileDefinitions.GetTile(index);
-        return GetTile(tile);
-    }
-
-    public TileRenderInfo? GetTile(Tile tile)
-    {
-        if (tile == null)
+        if (index < 0 || index >= Tiles.Count)
             return null;
 
-        return Mode switch
-        {
-            TileMode.Ascii => new TileRenderInfo(TileSet.GetTile(tile.AsciiTileIndex), tile.Color),
-            TileMode.Graphical => new TileRenderInfo(
-                TileSet.GetTile(tile.GraphicalTileIndex),
-                tile.Color
-            ),
-            _ => null,
-        };
+        return Tiles[index];
+    }
+
+    public Tile GetTileByName(string name)
+    {
+        return _tilesByName.TryGetValue(name, out var tile) ? tile : null;
     }
 }

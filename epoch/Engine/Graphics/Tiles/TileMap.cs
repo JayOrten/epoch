@@ -33,31 +33,103 @@ public static class TileMap
                 // OR if character is new line
                 if (character != '.' && character != '\n' && character != '\r')
                 {
-                    // Vector3 coordinates = new Vector3(column, row, z);
-                    string coordinates = $"{column},{row},{z}";
                     // Log.Info(
                     //     $"Spawning tile entity at {coordinates} with TileId {character - '0'}"
                     // );
-                    EntityDefinition spawnPosition = new EntityDefinition(
-                        new ComponentDefinition(
-                            "Position",
-                            new Dictionary<string, string> { { "WorldCoordinate", coordinates } }
-                        ),
-                        new ComponentDefinition(
-                            "GraphicalTile",
-                            new Dictionary<string, string>
-                            {
-                                { "BackgroundColor", "30,32,48,255" },
-                                { "BorderColor", "75,75,75,150" },
-                            }
-                        )
-                    );
+                    // Vector3 coordinates = new Vector3(column, row, z);
+                    string coordinates = $"{column},{row},{z}";
 
-                    GlobalContext.EntityManager.Spawn(character - '0', spawnPosition);
+                    generateTileList(coordinates, character);
+                    // if (character == '5')
+                    // {
+                    //     generateGrass(coordinates, character);
+                    // }
+                    // else
+                    // {
+                    //     generateEmpty(coordinates, character);
+                    // }
                 }
                 column++;
             }
             row++;
         }
     }
+
+    // public static void generateEmpty(string coordinates, char character)
+    // {
+    //     EntityDefinition spawnPosition = new EntityDefinition(
+    //         new ComponentDefinition(
+    //             "Position",
+    //             new Dictionary<string, string> { { "WorldCoordinate", coordinates } }
+    //         ),
+    //         new ComponentDefinition( // TODO: need a way to set this stuff dynamically at draw time.
+    //             "GraphicalTile",
+    //             new Dictionary<string, string>
+    //             {
+    //                 { "Background2Color", "30,32,48,255" },
+    //                 { "BorderColor", "108,112,134,255" },
+    //             }
+    //         )
+    //     );
+
+    //     GlobalContext.EntityManager.Spawn(character - '0', spawnPosition);
+    // }
+
+    public static void generateTileList(string coordinates, char character)
+    {
+        // Define each of the sub tiles that make up the grass tile
+        // ComponentDefinition tile1 = new ComponentDefinition(
+        //     "GraphicalTile",
+        //     new Dictionary<string, string>
+        //     {
+        //         { "Background1Color", "30,32,48,255" },
+        //         { "BorderColor", "108,112,134,255" },
+        //     }
+        // );
+
+        ComponentDefinition graphicalTileList = new ComponentDefinition( // TODO: need a way to set this stuff dynamically at draw time.
+            "GraphicalTileList"
+        );
+
+        // graphicalTileList.SubCompositeParts.Add(tile1);
+
+        EntityDefinition spawnPosition = new EntityDefinition(
+            new ComponentDefinition(
+                "Position",
+                new Dictionary<string, string> { { "WorldCoordinate", coordinates } }
+            ),
+            graphicalTileList
+        );
+
+        GlobalContext.EntityManager.Spawn(character - '0', spawnPosition);
+    }
+
+    // public static void generateGrass(string coordinates, char character)
+    // {
+    //     // Define each of the sub tiles that make up the grass tile
+    //     ComponentDefinition tile1 = new ComponentDefinition(
+    //         "GraphicalTile",
+    //         new Dictionary<string, string>
+    //         {
+    //             { "Background1Color", "30,32,48,255" },
+    //             { "BorderColor", "108,112,134,255" },
+    //         }
+    //     );
+
+    //     ComponentDefinition graphicalTileList = new ComponentDefinition( // TODO: need a way to set this stuff dynamically at draw time.
+    //         "GraphicalTileList"
+    //     );
+
+    //     graphicalTileList.SubCompositeParts.Add(tile1);
+
+    //     EntityDefinition spawnPosition = new EntityDefinition(
+    //         new ComponentDefinition(
+    //             "Position",
+    //             new Dictionary<string, string> { { "WorldCoordinate", coordinates } }
+    //         ),
+    //         graphicalTileList
+    //     );
+
+    //     GlobalContext.EntityManager.Spawn(character - '0', spawnPosition);
+    // }
 }

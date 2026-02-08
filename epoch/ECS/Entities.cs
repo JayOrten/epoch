@@ -61,6 +61,24 @@ public class EntityManager
                         );
                     }
                 }
+
+                var subpartsDef = compElem.Element("subparts");
+                if (subpartsDef != null)
+                {
+                    foreach (var subpartDef in subpartsDef.Elements("part"))
+                    {
+                        var subcompDef = new ComponentDefinition(
+                            subpartDef.Attribute("component_name")?.Value
+                        );
+
+                        foreach (var attr in subpartDef.Attributes())
+                            if (attr.Name != "component_name")
+                                subcompDef.Properties[attr.Name.LocalName] = attr.Value;
+
+                        compDef.SubCompositeParts.Add(subcompDef);
+                    }
+                }
+
                 entity.Components[compDef.TypeName] = compDef;
             }
             // Store the definition
@@ -70,6 +88,7 @@ public class EntityManager
     }
 
     // Simple helper to parse "0,0,1"
+    // TODO: move this to utilities
     private static Vector3 ParseVector3(string s)
     {
         var parts = s.Split(',');
@@ -97,6 +116,9 @@ public class EntityManager
         {
             entity.SetOnEntity(_world, componentDefinition);
         }
+
+        // Add the dirty tag to the new entity
+        entity.Add<DirtyTag>();
 
         // Check if there is a Position component, to see if we need to register it
         // TODO: only add if it's local? in a present chunk?

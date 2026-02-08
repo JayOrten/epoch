@@ -1,0 +1,25 @@
+#+title: Tiles
+
+I'll sort this out later.
+
+* Colors
+Each tile is represented by five colors:
+
+- Background 1 (transparent usually)
+- Background 2
+- Base
+- Accent
+- Border
+
+All of these are customized at runtime, not hardcoded.
+
+You can set them either in tile definitions, or programatically at draw time.
+
+These are color coded in the sprite with the following colors:
+- Background 1: (255, 0, 255) (magenta)
+- Background 2: (0, 255, 255) (cyan)
+- Base: (255, 255, 255) (white)
+- Accent: (255, 255, 0) (yellow)
+- Border: set in shader.
+
+The one gotcha is that the magenta color is automatically made transparent by MGCB - I'm disabling this.

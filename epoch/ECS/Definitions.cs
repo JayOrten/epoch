@@ -103,10 +103,11 @@ public class EntityDefinition
             if (Components.TryGetValue(kvp.Key, out var existingComponent))
             {
                 // Merge properties
-                foreach (var propKvp in kvp.Value.Properties)
-                {
-                    existingComponent.Properties[propKvp.Key] = propKvp.Value;
-                }
+                // foreach (var propKvp in kvp.Value.Properties)
+                // {
+                //     existingComponent.Properties[propKvp.Key] = propKvp.Value;
+                // }
+                existingComponent.Merge(kvp.Value);
             }
             else
             {
@@ -130,6 +131,8 @@ public class ComponentDefinition
     public Dictionary<string, string> Properties { get; } = new();
 
     public List<PartDefinition> CompositeParts { get; } = new();
+
+    public List<ComponentDefinition> SubCompositeParts { get; } = new();
 
     public string this[string property]
     {
@@ -167,6 +170,21 @@ public class ComponentDefinition
 
         foreach (var kvp in other.Properties)
             Properties[kvp.Key] = kvp.Value;
+
+        // Merge the SubCompositeParts: replace the existing parts in this one with the parts from the other at the same index
+        for (int i = 0; i < other.SubCompositeParts.Count; i++)
+        {
+            if (i < SubCompositeParts.Count)
+            {
+                // SubCompositeParts[i] = other.SubCompositeParts[i];
+                SubCompositeParts[i].Merge(other.SubCompositeParts[i]);
+            }
+            else
+            {
+                // SubCompositeParts.Add(other.SubCompositeParts[i]);
+                SubCompositeParts.Add(other.SubCompositeParts[i]);
+            }
+        }
 
         return this;
     }

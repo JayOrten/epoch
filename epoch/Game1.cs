@@ -9,7 +9,7 @@ namespace epoch;
 public class Game1 : Core
 {
     public Game1()
-        : base("epoch", 1280, 720, false) { }
+        : base("epoch", 1920, 1080, false) { }
 
     protected override void Initialize()
     {

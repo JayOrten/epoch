@@ -1,65 +1,172 @@
 [
     {
-        "id": 0,
-        "name": "empty",
-        "asciiTileIndex": 46,
-        "colorString": "#aab1b5",
-        "graphicalTileIndex": 0
+        "Id": 0,
+        "Name": "empty",
+        "TileIndex": 0,
+        "Background1ColorString": "0,0,0,0",
+        "Background2ColorString": "30,32,48,255",
+        "BaseColorString": "88,91,112,255",
+        "AccentColorString": "255,255,255",
+        "BorderColorString": "108,112,134,255"
     },
     {
-        "id": 1,
-        "name": "player",
-        "asciiTileIndex": 64,
-        "colorString": "#00ffff",
-        "graphicalTileIndex": 0
+        "Id": 1,
+        "Name": "player",
+        "TileIndex": 0,
+        "Background1ColorString": "100,100,100",
+        "Background2ColorString": "100,100,100",
+        "BaseColorString": "255,255,255",
+        "AccentColorString": "255,255,255",
+        "BorderColorString": "255,255,255"
     },
     {
-        "id": 2,
-        "name": "grass",
-        "asciiTileIndex": 119,
-        "colorString": "#0b4001",
-        "graphicalTileIndex": 0
+        "Id": 2,
+        "Name": "grass",
+        "TileIndex": 4,
+        "Background1ColorString": "0,0,0,0",
+        "Background2ColorString": "0,0,0,0",
+        "BaseColorString": "166,227,161,255",
+        "AccentColorString": "255,255,255,255",
+        "BorderColorString": "255,255,255,255"
     },
     {
-        "id": 3,
-        "name": "tree",
-        "asciiTileIndex": 244,
-        "colorString": "#5c3200",
-        "graphicalTileIndex": 0
+        "Id": 3,
+        "Name": "tree",
+        "TileIndex": 0,
+        "Background1ColorString": "100,100,100",
+        "Background2ColorString": "100,100,100",
+        "BaseColorString": "255,255,255",
+        "AccentColorString": "255,255,255",
+        "BorderColorString": "255,255,255"
     },
     {
-        "id": 4,
-        "name": "dirt",
-        "asciiTileIndex": 126,
-        "colorString": "#1c0f00",
-        "graphicalTileIndex": 0
+        "Id": 4,
+        "Name": "dirt",
+        "TileIndex": 0,
+        "Background1ColorString": "100,100,100",
+        "Background2ColorString": "100,100,100",
+        "BaseColorString": "255,255,255",
+        "AccentColorString": "255,255,255",
+        "BorderColorString": "255,255,255"
     },
     {
-        "id": 5,
-        "name": "water",
-        "asciiTileIndex": 177,
-        "colorString": "#000745",
-        "graphicalTileIndex": 0
+        "Id": 5,
+        "Name": "water",
+        "TileIndex": 0,
+        "Background1ColorString": "100,100,100",
+        "Background2ColorString": "100,100,100",
+        "BaseColorString": "255,255,255",
+        "AccentColorString": "255,255,255",
+        "BorderColorString": "255,255,255"
     },
     {
-        "id": 6,
-        "name": "hashtag",
-        "asciiTileIndex": 35,
-        "colorString": "#6b6b6b",
-        "graphicalTileIndex": 0
+        "Id": 6,
+        "Name": "hashtag",
+        "TileIndex": 36,
+        "Background1ColorString": "0,0,0,0",
+        "Background2ColorString": "0,0,0,0",
+        "BaseColorString": "108,112,134,255",
+        "AccentColorString": "255,255,255",
+        "BorderColorString": "255,255,255"
     },
     {
-        "id": 7,
-        "name": "circle",
-        "asciiTileIndex": 9,
-        "colorString": "#ffffff",
-        "graphicalTileIndex": 0
+        "Id": 7,
+        "Name": "circle",
+        "TileIndex": 0,
+        "Background1ColorString": "100,100,100",
+        "Background2ColorString": "100,100,100",
+        "BaseColorString": "255,255,255",
+        "AccentColorString": "255,255,255",
+        "BorderColorString": "255,255,255"
     },
     {
-        "id": 8,
-        "name": "plus",
-        "asciiTileIndex": 43,
-        "colorString": "#ffffff",
-        "graphicalTileIndex": 0
+        "Id": 8,
+        "Name": "plus",
+        "TileIndex": 0,
+        "Background1ColorString": "100,100,100",
+        "Background2ColorString": "100,100,100",
+        "BaseColorString": "255,255,255",
+        "AccentColorString": "255,255,255",
+        "BorderColorString": "255,255,255"
+    },
+    {
+        "Id": 9,
+        "Name": "head",
+        "TileIndex": 3,
+        "Background1ColorString": "0,0,0,0",
+        "Background2ColorString": "0,0,0,0",
+        "BaseColorString": "255,255,255,255",
+        "AccentColorString": "243,139,168,255",
+        "BorderColorString": "0,0,0,0"
+    },
+    {
+        "Id": 10,
+        "Name": "torso",
+        "TileIndex": 2,
+        "Background1ColorString": "0,0,0,0",
+        "Background2ColorString": "0,0,0,0",
+        "BaseColorString": "255,255,255,255",
+        "AccentColorString": "255,255,255,255",
+        "BorderColorString": "0,0,0,0"
+    },
+    {
+        "Id": 11,
+        "Name": "legs",
+        "TileIndex": 1,
+        "Background1ColorString": "0,0,0,0",
+        "Background2ColorString": "0,0,0,0",
+        "BaseColorString": "255,255,255,255",
+        "AccentColorString": "255,255,255,255",
+        "BorderColorString": "0,0,0,0"
+    },
+    {
+        "Id": 12,
+        "Name": "grass2",
+        "TileIndex": 5,
+        "Background1ColorString": "0,0,0,0",
+        "Background2ColorString": "0,0,0,0",
+        "BaseColorString": "166,227,161,255",
+        "AccentColorString": "255,255,255,255",
+        "BorderColorString": "255,255,255,255"
+    },
+    {
+        "Id": 13,
+        "Name": "stone1",
+        "TileIndex": 16,
+        "Background1ColorString": "0,0,0,0",
+        "Background2ColorString": "30,32,48,255",
+        "BaseColorString": "108,112,134,255",
+        "AccentColorString": "255,255,255",
+        "BorderColorString": "108,112,134,255"
+    },
+    {
+        "Id": 14,
+        "Name": "stone2",
+        "TileIndex": 20,
+        "Background1ColorString": "0,0,0,0",
+        "Background2ColorString": "0,0,0,0",
+        "BaseColorString": "108,112,134,255",
+        "AccentColorString": "255,255,255",
+        "BorderColorString": "108,112,134,255"
+    },
+    {
+        "Id": 15,
+        "Name": "stone3",
+        "TileIndex": 36,
+        "Background1ColorString": "0,0,0,0",
+        "Background2ColorString": "0,0,0,0",
+        "BaseColorString": "108,112,134,255",
+        "AccentColorString": "255,255,255",
+        "BorderColorString": "108,112,134,255"
+    },
+    {
+        "Id": 16,
+        "Name": "stone4",
+        "TileIndex": 22,
+        "Background1ColorString": "0,0,0,0",
+        "Background2ColorString": "0,0,0,0",
+        "BaseColorString": "108,112,134,255",
+        "AccentColorString": "255,255,255",
+        "BorderColorString": "108,112,134,255"
     }
 ]

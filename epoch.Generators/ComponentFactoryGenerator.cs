@@ -10,7 +10,6 @@ public class ComponentFactoryGenerator : IIncrementalGenerator
 {
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        // 1. Find all structs with [Component]
         var components = context
             .SyntaxProvider.CreateSyntaxProvider(
                 predicate: (s, _) => s is StructDeclarationSyntax sd && sd.AttributeLists.Count > 0,
@@ -20,7 +19,6 @@ public class ComponentFactoryGenerator : IIncrementalGenerator
 
         var compilationAndComponents = context.CompilationProvider.Combine(components.Collect());
 
-        // 2. Output the source
         context.RegisterSourceOutput(
             compilationAndComponents,
             static (spc, source) => Execute(source.Left, source.Right, spc)
@@ -48,7 +46,6 @@ public class ComponentFactoryGenerator : IIncrementalGenerator
         if (components.IsDefaultOrEmpty)
             return;
 
-        // 1. Setup the list of unique symbols
         var uniqueComponents = components
             .Where(c => c is not null)
             .Select(c => (INamedTypeSymbol)c!)
@@ -58,8 +55,8 @@ public class ComponentFactoryGenerator : IIncrementalGenerator
 
         var sb = new StringBuilder();
 
-        // Imports
         sb.AppendLine("using System;");
+        sb.AppendLine("using System.Runtime.CompilerServices;"); // Needed for Unsafe
         sb.AppendLine("using Arch.Core;");
         sb.AppendLine("using Arch.Core.Utils;");
         sb.AppendLine("using epoch.ECS;");
@@ -72,35 +69,91 @@ public class ComponentFactoryGenerator : IIncrementalGenerator
         sb.AppendLine("    public static partial class ComponentFactory");
         sb.AppendLine("    {");
 
-        // CHANGE 2: Define a partial method hook
-        // If you don't implement this in your manual file, the compiler removes calls to it.
+        // Hooks
         sb.AppendLine(
             "        static partial void TrySetCustom(Entity entity, World world, ComponentDefinition def, ref bool handled);"
         );
+        sb.AppendLine(
+            "        static partial void TryCreateCustom(ComponentDefinition def, ref object component, ref bool handled);"
+        );
         sb.AppendLine("");
+
         // --- METHOD 1: GetArchType ---
-        // Generates: return Component<epoch.Components.Position>.ComponentType;
         sb.AppendLine("        public static ComponentType GetArchType(string typeName)");
         sb.AppendLine("        {");
         sb.AppendLine("            switch (typeName)");
         sb.AppendLine("            {");
         foreach (var comp in uniqueComponents)
         {
-            sb.AppendLine($"                case \"{comp.Name}\":");
             sb.AppendLine(
-                $"                    return Component<{comp.ToDisplayString()}>.ComponentType;"
+                $"                case \"{comp.Name}\": return Component<{comp.ToDisplayString()}>.ComponentType;"
             );
         }
-        sb.AppendLine("                default:");
         sb.AppendLine(
-            "                    throw new ArgumentException($\"Unknown component: {typeName}\");"
+            "                default: throw new ArgumentException($\"Unknown component: {typeName}\");"
         );
         sb.AppendLine("            }");
         sb.AppendLine("        }");
         sb.AppendLine("");
 
-        // --- METHOD 2: SetOnEntity ---
-        // Generates: world.Set<T>(entity, component);
+        // --- METHOD 2: Generic Create<T> (Zero Boxing) ---
+        // This is the specific version you call when you know the type: var t = Factory.Create<GraphicalTile>(def);
+        sb.AppendLine(
+            "        public static T Create<T>(ComponentDefinition def) where T : struct"
+        );
+        sb.AppendLine("        {");
+
+        // Generate if-checks for T. Since T is known at JIT time, the JIT removes the dead branches.
+        // This is extremely fast (essentially a direct method call).
+        foreach (var comp in uniqueComponents)
+        {
+            if (ShouldUseCustomFactory(comp))
+                continue;
+
+            sb.AppendLine($"            if (typeof(T) == typeof({comp.ToDisplayString()}))");
+            sb.AppendLine("            {");
+            sb.AppendLine($"                var val = new {comp.ToDisplayString()}();");
+            GenerateParsingLogic(sb, comp, "val"); // Helper method to keep things clean
+            // Unsafe.As casts the reference without boxing.
+            sb.AppendLine(
+                "                return Unsafe.As<" + comp.ToDisplayString() + ", T>(ref val);"
+            );
+            sb.AppendLine("            }");
+        }
+
+        sb.AppendLine(
+            "            throw new ArgumentException($\"Unknown or non-component type: {typeof(T).Name}\");"
+        );
+        sb.AppendLine("        }");
+        sb.AppendLine("");
+
+        // --- METHOD 3: CreateComponent (Boxed Fallback) ---
+        // Used when you only have the string name at runtime.
+        sb.AppendLine("        public static object CreateComponent(ComponentDefinition def)");
+        sb.AppendLine("        {");
+        sb.AppendLine("            object customComponent = null;");
+        sb.AppendLine("            bool handled = false;");
+        sb.AppendLine("            TryCreateCustom(def, ref customComponent, ref handled);");
+        sb.AppendLine("            if (handled) return customComponent;");
+        sb.AppendLine("");
+        sb.AppendLine("            switch (def.TypeName)");
+        sb.AppendLine("            {");
+        foreach (var comp in uniqueComponents)
+        {
+            // We just call the generic version and box the result.
+            // This prevents duplicating the parsing logic in two places.
+            sb.AppendLine(
+                $"                case \"{comp.Name}\": return Create<{comp.ToDisplayString()}>(def);"
+            );
+        }
+        sb.AppendLine(
+            "                default: throw new ArgumentException($\"Unknown component: {def.TypeName}\");"
+        );
+        sb.AppendLine("            }");
+        sb.AppendLine("        }");
+        sb.AppendLine("");
+
+        // --- METHOD 4: SetOnEntity ---
         sb.AppendLine(
             "        public static void SetOnEntity(this Entity entity, World world, ComponentDefinition def)"
         );
@@ -109,34 +162,22 @@ public class ComponentFactoryGenerator : IIncrementalGenerator
         sb.AppendLine("            TrySetCustom(entity, world, def, ref handled);");
         sb.AppendLine("            if (handled) return;");
         sb.AppendLine("");
-
         sb.AppendLine("            switch (def.TypeName)");
         sb.AppendLine("            {");
         foreach (var comp in uniqueComponents)
         {
-            // Check custom factory flag
-            // We look for the attribute and check the 'UseCustomFactory' named argument
-            var attr = comp.GetAttributes()
-                .FirstOrDefault(a => a.AttributeClass?.Name == "ComponentAttribute");
-            var useCustom = false;
-
-            if (attr != null)
-            {
-                // Check named arguments (e.g. [Component(UseCustomFactory = true)])
-                var arg = attr.NamedArguments.FirstOrDefault(kvp => kvp.Key == "UseCustomFactory");
-                if (arg.Value.Value is bool b)
-                    useCustom = b;
-            }
-
-            // If custom, we SKIP generating the case.
-            // The default case will throw an error if the partial method didn't handle it.
-            if (useCustom)
+            if (ShouldUseCustomFactory(comp))
                 continue;
-            GenerateSetCase(sb, comp);
+            // Uses the Generic Create to get the struct, then sets it.
+            // Minimal overhead.
+            sb.AppendLine($"                case \"{comp.Name}\":");
+            sb.AppendLine(
+                $"                    world.Set<{comp.ToDisplayString()}>(entity, Create<{comp.ToDisplayString()}>(def));"
+            );
+            sb.AppendLine("                    break;");
         }
-        sb.AppendLine("                default:");
         sb.AppendLine(
-            "                    throw new ArgumentException($\"Unknown component: {def.TypeName}\");"
+            "                default: throw new ArgumentException($\"Unknown component: {def.TypeName}\");"
         );
         sb.AppendLine("            }");
         sb.AppendLine("        }");
@@ -147,21 +188,30 @@ public class ComponentFactoryGenerator : IIncrementalGenerator
         context.AddSource("ComponentFactory.g.cs", SourceText.From(sb.ToString(), Encoding.UTF8));
     }
 
-    // Helper method to write the specific property parsing logic
-    private static void GenerateSetCase(StringBuilder sb, INamedTypeSymbol comp)
+    private static bool ShouldUseCustomFactory(INamedTypeSymbol comp)
     {
-        sb.AppendLine($"                case \"{comp.Name}\":");
-        sb.AppendLine("                {");
+        var attr = comp.GetAttributes()
+            .FirstOrDefault(a => a.AttributeClass?.Name == "ComponentAttribute");
+        if (attr != null)
+        {
+            var arg = attr.NamedArguments.FirstOrDefault(kvp => kvp.Key == "UseCustomFactory");
+            if (arg.Value.Value is bool b)
+                return b;
+        }
+        return false;
+    }
 
-        // 1. Create the struct
-        sb.AppendLine($"                    var component = new {comp.ToDisplayString()}();");
-
-        // 2. Scan public properties/fields to generate assignments
+    private static void GenerateParsingLogic(
+        StringBuilder sb,
+        INamedTypeSymbol comp,
+        string varName
+    )
+    {
         var members = comp.GetMembers()
             .Where(m =>
                 (
                     m is IFieldSymbol f
-                    && f.IsReadOnly == false
+                    && !f.IsReadOnly
                     && f.DeclaredAccessibility == Accessibility.Public
                 )
                 || (
@@ -176,25 +226,15 @@ public class ComponentFactoryGenerator : IIncrementalGenerator
             var type = member is IFieldSymbol f ? f.Type : ((IPropertySymbol)member).Type;
             string parseFunc = GetParseMethodName(type);
 
-            // Generates: if (def.TryGet("TileId", out var val_TileId))
             sb.AppendLine(
-                $"                    if (def.TryGet(\"{member.Name}\", out var val_{member.Name}))"
+                $"                if (def.TryGet(\"{member.Name}\", out var val_{member.Name}))"
             );
-            // Generates:     component.TileId = ComponentParsers.ParseInt(val_TileId);
             sb.AppendLine(
-                $"                        component.{member.Name} = ComponentParsers.{parseFunc}(val_{member.Name});"
+                $"                    {varName}.{member.Name} = Utils.{parseFunc}(val_{member.Name});"
             );
         }
-
-        // 3. Use world.Set
-        sb.AppendLine(
-            $"                    world.Set<{comp.ToDisplayString()}>(entity, component);"
-        );
-        sb.AppendLine("                    break;");
-        sb.AppendLine("                }");
     }
 
-    // Helper to map types to your parser methods
     private static string GetParseMethodName(ITypeSymbol type)
     {
         if (
@@ -204,6 +244,9 @@ public class ComponentFactoryGenerator : IIncrementalGenerator
         {
             type = namedType.TypeArguments[0];
         }
+
+        if (type.TypeKind == TypeKind.Enum)
+            return $"ParseEnum<{type.ToDisplayString()}>";
 
         return type.Name switch
         {
