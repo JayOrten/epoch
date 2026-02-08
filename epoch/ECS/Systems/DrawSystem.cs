@@ -266,15 +266,7 @@ public sealed class DrawSystem : SystemBase<GameTime>
         if (tileInfo != null)
         {
             // First add the bordermask to the tile id if auto tiling is on
-            int tileId;
-            if (graphicalTile.AutoTile)
-            {
-                tileId = tileInfo.TileIndex + graphicalTile.AutoTileMask;
-            }
-            else
-            {
-                tileId = tileInfo.TileIndex;
-            }
+            int tileId = tileInfo.TileIndex + (graphicalTile.AutoTile ? graphicalTile.AutoTileMask : 0);
 
             TextureRegion region = GlobalContext.TileManager.Tileset.GetTile(tileId);
 
