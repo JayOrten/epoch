@@ -1,7 +1,10 @@
 using Microsoft.Xna.Framework.Input;
 
-namespace epoch.Engine.Input;
+namespace epoch.Input;
 
+/// <summary>
+/// Tracks current and previous frame keyboard state for press/release detection.
+/// </summary>
 public class KeyboardInfo
 {
     /// <summary>

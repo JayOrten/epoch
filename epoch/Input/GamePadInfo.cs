@@ -2,8 +2,12 @@ using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 
-namespace epoch.Engine.Input;
+namespace epoch.Input;
 
+/// <summary>
+/// Tracks current and previous frame gamepad state for a single player slot.
+/// Supports button press/release detection and timed vibration.
+/// </summary>
 public class GamePadInfo
 {
     private TimeSpan _vibrationTimeRemaining = TimeSpan.Zero;

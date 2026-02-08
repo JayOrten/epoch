@@ -2,8 +2,14 @@ using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 
-namespace epoch.Engine.Scenes;
+namespace epoch.Scenes;
 
+/// <summary>
+/// Base class for game scenes. Each scene gets its own <see cref="ContentManager"/>
+/// whose assets are automatically unloaded on disposal. Lifecycle:
+/// <see cref="Initialize"/> → <see cref="LoadContent"/> → <see cref="BeginRun"/>
+/// → per-frame <see cref="Update"/>/<see cref="Draw"/> → <see cref="Dispose()"/>.
+/// </summary>
 public abstract class Scene : IDisposable
 {
     /// <summary>

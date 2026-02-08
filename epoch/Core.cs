@@ -1,16 +1,21 @@
 using System;
-using epoch.Engine.Audio;
-using epoch.Engine.Graphics.Tiles.TileInstancing;
-using epoch.Engine.Input;
-using epoch.Engine.Scenes;
+using epoch.Audio;
+using epoch.Graphics.Tiles.TileInstancing;
+using epoch.Input;
+using epoch.Scenes;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using MonoGame.Extended;
 
-namespace epoch.Engine;
+namespace epoch;
 
+/// <summary>
+/// Singleton game host. Owns the MonoGame <see cref="Game"/> lifecycle (init, update, draw),
+/// global resources (graphics, input, audio, content), and scene management.
+/// Only one instance may exist at a time.
+/// </summary>
 public class Core : Game
 {
     internal static Core s_instance;
@@ -179,6 +184,10 @@ public class Core : Game
         base.Draw(gameTime);
     }
 
+    /// <summary>
+    /// Queues a scene transition. The actual swap happens at the start of the next
+    /// <see cref="Update"/> frame (old scene is disposed, new scene is initialized).
+    /// </summary>
     public static void ChangeScene(Scene next)
     {
         // Only set the next scene value if it is not the same

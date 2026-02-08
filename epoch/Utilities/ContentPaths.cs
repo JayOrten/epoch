@@ -1,11 +1,16 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using epoch.Engine;
 
 namespace epoch.Utilities;
 
-// TODO: cleanup the extension handling here, so you don't have to change the code in three places
+/// <summary>
+/// Resolves content asset paths by category (images, config, audio, fonts).
+/// Probes known extensions for each category and returns the first match.
+/// Config files return the full path (with extension); other categories return
+/// the extensionless path (as required by MonoGame's ContentManager).
+/// </summary>
+/// <remarks>TODO: cleanup the extension handling so you don't have to change code in three places.</remarks>
 public static class ContentPaths
 {
     private static readonly Dictionary<string, string[]> _extensions = new()
@@ -16,10 +21,10 @@ public static class ContentPaths
     };
 
     public static string Root { get; private set; } = Core.Content.RootDirectory;
-    public static string ImagesDir = Path.Combine(Root, "images");
-    public static string ConfigDir = Path.Combine(Root, "config");
-    public static string AudioDir = Path.Combine(Root, "audio");
-    public static string FontsDir = Path.Combine(Root, "fonts");
+    public static string ImagesDir => Path.Combine(Root, "images");
+    public static string ConfigDir => Path.Combine(Root, "config");
+    public static string AudioDir => Path.Combine(Root, "audio");
+    public static string FontsDir => Path.Combine(Root, "fonts");
 
     public static void SetRoot(string root)
     {
@@ -58,7 +63,6 @@ public static class ContentPaths
         foreach (var ext in _extensions[category])
         {
             string path = Path.Combine(dir, $"{name}{ext}");
-            Console.WriteLine($"Checking for file: {path}");
             if (File.Exists(path))
                 // If it's a config file, return the full path with extension
                 // Otherwise, return the path without extension

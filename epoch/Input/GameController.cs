@@ -1,9 +1,7 @@
-using epoch.Engine;
-using epoch.Engine.Input;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 
-namespace epoch;
+namespace epoch.Input;
 
 /// <summary>
 /// Provides a game-specific input abstraction that maps physical inputs

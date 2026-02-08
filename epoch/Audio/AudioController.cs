@@ -3,8 +3,12 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Media;
 
-namespace epoch.Engine.Audio;
+namespace epoch.Audio;
 
+/// <summary>
+/// Manages song and sound effect playback, including muting, pausing, and automatic
+/// cleanup of finished <see cref="SoundEffectInstance"/>s each frame.
+/// </summary>
 public class AudioController : IDisposable
 {
     // Tracks sound effect instances created so they can be paused, unpaused, and/or disposed.

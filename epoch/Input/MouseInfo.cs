@@ -1,8 +1,12 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 
-namespace epoch.Engine.Input;
+namespace epoch.Input;
 
+/// <summary>
+/// Tracks current and previous frame mouse state for button press/release
+/// detection, position deltas, and scroll wheel changes.
+/// </summary>
 public class MouseInfo
 {
     /// <summary>

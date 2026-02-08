@@ -3,9 +3,8 @@ using System.Collections.Generic;
 using Arch.Core;
 using Arch.Core.Extensions;
 using epoch.ECS;
-using epoch.Engine;
-using epoch.Engine.Graphics.Tiles;
-using epoch.Engine.Scenes;
+using epoch.Graphics.Tiles;
+using epoch.Input;
 using epoch.Utilities;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -15,6 +14,11 @@ using MonoGame.Extended.ViewportAdapters;
 
 namespace epoch.Scenes;
 
+/// <summary>
+/// Main gameplay scene. Wires up the ECS world, loads the tilemap and entity definitions,
+/// spawns the player and camera, configures shaders, and drives the system update order:
+/// Input → TileAdjacency → Movement → CameraLogic → CameraApply (update) and Draw (draw).
+/// </summary>
 public class WorldScene : Scene
 {
     private World _world;

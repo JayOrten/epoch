@@ -1,8 +1,13 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace epoch.Engine.Graphics.Tiles.TileInstancing
+namespace epoch.Graphics.Tiles.TileInstancing
 {
+    /// <summary>
+    /// Per-instance vertex data sent to the GPU for tile instancing (68 bytes).
+    /// Packs transform, border props, source rect, and 5 colors into texture coordinate slots.
+    /// Layout must match the HLSL shader's input semantics exactly.
+    /// </summary>
     public struct TileVertex : IVertexType
     {
         // --- Group 1: Transform (Slot 1) ---

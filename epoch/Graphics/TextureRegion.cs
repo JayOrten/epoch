@@ -1,8 +1,8 @@
-using epoch.Engine.Graphics.Tiles.TileInstancing;
+using epoch.Graphics.Tiles.TileInstancing;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace epoch.Engine.Graphics;
+namespace epoch.Graphics;
 
 /// <summary>
 /// Represents a rectangular region within a texture.

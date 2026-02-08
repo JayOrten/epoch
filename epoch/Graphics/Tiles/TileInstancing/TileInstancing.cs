@@ -18,8 +18,14 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace epoch.Engine.Graphics.Tiles.TileInstancing;
+namespace epoch.Graphics.Tiles.TileInstancing;
 
+/// <summary>
+/// GPU-instanced batch renderer for tiles. Collects per-tile data (position, colors, borders)
+/// between <see cref="Begin"/> and <see cref="End"/>, then issues a single
+/// <c>DrawInstancedPrimitives</c> call. Auto-grows its instance buffer as needed.
+/// Sorts back-to-front by depth before submitting.
+/// </summary>
 public class TileInstancing
 {
     private GraphicsDevice graphicsDevice;

@@ -2,6 +2,10 @@ using Microsoft.Extensions.Logging;
 
 namespace epoch.Utilities.Logging;
 
+/// <summary>
+/// Thin static facade over <see cref="ILogger"/>. Call <see cref="Initialize"/> once at startup
+/// to wire up console logging. All methods are null-safe before initialization.
+/// </summary>
 public static class Log
 {
     private static ILoggerFactory? _factory;

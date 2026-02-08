@@ -1,4 +1,4 @@
-﻿using Engine;
+﻿using epoch;
 using epoch.Utilities;
 using Xunit;
 
@@ -17,7 +17,7 @@ public class UtilitiesTests
     public void ContentPaths_SetsRootCorrectly()
     {
         // Arrange
-        using var core = new Engine.Core("Test", 800, 600, false);
+        using var core = new Core("Test", 800, 600, false);
         ResetForTests();
         string newRoot = "NewContentRootdjdjd";
 
@@ -32,7 +32,7 @@ public class UtilitiesTests
     public void ContentPaths_GetPath()
     {
         // Arrange
-        using var core = new Engine.Core("Test", 800, 600, false);
+        using var core = new Core("Test", 800, 600, false);
         ResetForTests();
 
         string testImageName = "test_image";

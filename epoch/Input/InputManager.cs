@@ -1,7 +1,12 @@
 using Microsoft.Xna.Framework;
 
-namespace epoch.Engine.Input;
+namespace epoch.Input;
 
+/// <summary>
+/// Aggregates keyboard, mouse, and up to 4 gamepad states.
+/// Polled once per frame via <see cref="Update"/>; previous-frame state is retained
+/// for "just pressed" / "just released" detection.
+/// </summary>
 public class InputManager
 {
     /// <summary>

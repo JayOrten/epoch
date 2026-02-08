@@ -5,7 +5,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace epoch.Engine.Graphics.Tiles;
+namespace epoch.Graphics.Tiles;
 
 /// <summary>
 /// Represents a tileset, a collection of tiles extracted from a single texture region.
@@ -74,6 +74,10 @@ public class Tileset
         }
     }
 
+    /// <summary>
+    /// Loads a tileset from a JSON definition file that specifies texture path,
+    /// region bounds, tile dimensions, and padding.
+    /// </summary>
     public static Tileset FromFile(ContentManager contentManager, string tilesetPath)
     {
         using var stream = TitleContainer.OpenStream(tilesetPath);
@@ -118,6 +122,7 @@ public class Tileset
     }
 }
 
+/// <summary>JSON DTO: pixel bounds within the tileset texture.</summary>
 public class Region
 {
     public int x { get; set; }
@@ -126,6 +131,7 @@ public class Region
     public int height { get; set; }
 }
 
+/// <summary>JSON DTO: tileset definition file schema (texture path, region, tile size, padding).</summary>
 public class TilesetDefinition
 {
     public string file { get; set; }
