@@ -59,6 +59,9 @@ public static class Utils
 
     public static string ParseString(string value) => value;
 
+    public static T ParseEnum<T>(string value) where T : struct, Enum =>
+        Enum.Parse<T>(value, ignoreCase: true);
+
     public static Vector2 ParseVector2(string value)
     {
         var parts = value.Split(',');

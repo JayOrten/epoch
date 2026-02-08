@@ -3,11 +3,11 @@
         "Id": 0,
         "Name": "empty",
         "TileIndex": 0,
-        "Background1ColorString": "100,100,100",
-        "Background2ColorString": "100,100,100",
+        "Background1ColorString": "0,0,0,0",
+        "Background2ColorString": "30,32,48,255",
         "BaseColorString": "88,91,112,255",
         "AccentColorString": "255,255,255",
-        "BorderColorString": "255,255,255"
+        "BorderColorString": "108,112,134,255"
     },
     {
         "Id": 1,
@@ -18,7 +18,6 @@
         "BaseColorString": "255,255,255",
         "AccentColorString": "255,255,255",
         "BorderColorString": "255,255,255"
-
     },
     {
         "Id": 2,
@@ -63,13 +62,12 @@
     {
         "Id": 6,
         "Name": "hashtag",
-        "TileIndex": 0,
-        "Background1ColorString": "100,100,100",
-        "Background2ColorString": "100,100,100",
-        "BaseColorString": "255,255,255",
+        "TileIndex": 36,
+        "Background1ColorString": "0,0,0,0",
+        "Background2ColorString": "0,0,0,0",
+        "BaseColorString": "108,112,134,255",
         "AccentColorString": "255,255,255",
         "BorderColorString": "255,255,255"
-
     },
     {
         "Id": 7,
@@ -130,5 +128,45 @@
         "BaseColorString": "166,227,161,255",
         "AccentColorString": "255,255,255,255",
         "BorderColorString": "255,255,255,255"
+    },
+    {
+        "Id": 13,
+        "Name": "stone1",
+        "TileIndex": 16,
+        "Background1ColorString": "0,0,0,0",
+        "Background2ColorString": "30,32,48,255",
+        "BaseColorString": "108,112,134,255",
+        "AccentColorString": "255,255,255",
+        "BorderColorString": "108,112,134,255"
+    },
+    {
+        "Id": 14,
+        "Name": "stone2",
+        "TileIndex": 20,
+        "Background1ColorString": "0,0,0,0",
+        "Background2ColorString": "0,0,0,0",
+        "BaseColorString": "108,112,134,255",
+        "AccentColorString": "255,255,255",
+        "BorderColorString": "108,112,134,255"
+    },
+    {
+        "Id": 15,
+        "Name": "stone3",
+        "TileIndex": 36,
+        "Background1ColorString": "0,0,0,0",
+        "Background2ColorString": "0,0,0,0",
+        "BaseColorString": "108,112,134,255",
+        "AccentColorString": "255,255,255",
+        "BorderColorString": "108,112,134,255"
+    },
+    {
+        "Id": 16,
+        "Name": "stone4",
+        "TileIndex": 22,
+        "Background1ColorString": "0,0,0,0",
+        "Background2ColorString": "0,0,0,0",
+        "BaseColorString": "108,112,134,255",
+        "AccentColorString": "255,255,255",
+        "BorderColorString": "108,112,134,255"
     }
 ]

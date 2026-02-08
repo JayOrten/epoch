@@ -120,15 +120,16 @@ float4 MainPS(VertexShaderOutput input) : COLOR
     color.rgb -= scanline;
 
     // --- 3. Film Grain Effect ---
-    float nR = frac(sin(dot(distortedUV * Time, float2(12.9898, 78.233))) * 43758.5453);
-    float nG = frac(sin(dot(distortedUV * Time + 13.0, float2(12.9898, 78.233))) * 43758.5453);
-    float nB = frac(sin(dot(distortedUV * Time + 47.0, float2(12.9898, 78.233))) * 43758.5453);
+    float timeStep = Time % 100.0; 
+
+    float nR = frac(sin(dot(distortedUV, float2(12.9898, 78.233)) + timeStep) * 43758.5453);
+    float nG = frac(sin(dot(distortedUV, float2(12.9898, 78.233)) + timeStep + 13.0) * 43758.5453);
+    float nB = frac(sin(dot(distortedUV, float2(12.9898, 78.233)) + timeStep + 47.0) * 43758.5453);
 
     float3 noise = float3(nR, nG, nB);
     float monoNoise = (nR + nG + nB) / 3.0;
 
     float3 finalNoise = lerp(float3(monoNoise, monoNoise, monoNoise), noise, 1.0f);
-
     float grainIntensity = 0.23;
     float luminance = dot(color.rgb, float3(0.299, 0.587, 0.114));
     float luminanceMask = pow(1.0 - luminance, 5.0); 

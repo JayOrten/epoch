@@ -16,7 +16,6 @@ public record Tile(
     string BaseColorString,
     string AccentColorString,
     string BorderColorString,
-    [property: JsonIgnore] TextureRegion TextureRegion,
     [property: JsonIgnore] Color Background1Color,
     [property: JsonIgnore] Color Background2Color,
     [property: JsonIgnore] Color BaseColor,

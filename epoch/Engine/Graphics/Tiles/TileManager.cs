@@ -75,7 +75,6 @@ public class TileManager
 
             tiles[i] = tile with
             {
-                TextureRegion = tileset.GetTile(tile.TileIndex),
                 Background1Color = background1Color,
                 Background2Color = background2Color,
                 BaseColor = baseColor,

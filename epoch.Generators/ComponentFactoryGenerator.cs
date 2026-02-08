@@ -245,6 +245,9 @@ public class ComponentFactoryGenerator : IIncrementalGenerator
             type = namedType.TypeArguments[0];
         }
 
+        if (type.TypeKind == TypeKind.Enum)
+            return $"ParseEnum<{type.ToDisplayString()}>";
+
         return type.Name switch
         {
             "Int32" => "ParseInt",

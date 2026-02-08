@@ -140,10 +140,8 @@ PixelInput MainVS(VertexInput v, InstanceInput i)
     pixelUV += float2(I_RectangleX, I_RectangleY);
     pixelUV /= TextureSize; // Normalize back to 0..1
 
-    // Camera snap to pixel grid:
-    // We convert from Clip Space (-1.0 to 1.0) to Screen
-    // Space (0 to ViewportSize), round to nearest pixel, then convert back to Clip Space.
-    // This eliminates border shimmering.
+    // Snap vertex positions to pixel grid to eliminate tile seam shimmering.
+    // Convert clip space (-1 to 1) to pixels, round, convert back.
     float2 pixelScale = ViewportSize / 2.0;
     v.V_Position.xy = round(v.V_Position.xy * pixelScale) / pixelScale;
 
@@ -251,22 +249,23 @@ float4 MainPS(PixelInput input) : SV_TARGET
     float4 borderCol = input.P_BorderColor / 255.0;
     float appliedAlpha = borderStrength * saturate(borderCol.a);
 
-    float3 fogColor = float3(0.1, 0.1, 0.1);
+    // 3. Prepare Brightness Versions (Hue-Preserving)
+    // Darken: multiply to reduce brightness while keeping hue
+    // Brighten: screen blend to lift brightness without clipping to white
 
-    // 3. Prepare Brightness Versions 
     // -- Base Color --
-    float3 baseFar  = lerp(baseCol.rgb, fogColor * baseCol.a, layerFactor);
-    float3 baseNear = baseCol.rgb * (1.0 + layerFactor); // Scale up to 2x brightness
+    float3 baseFar  = baseCol.rgb * (1.0 - layerFactor);
+    float3 baseNear = 1.0 - (1.0 - baseCol.rgb) * (1.0 - layerFactor);
     float3 baseResult = lerp(baseFar, baseNear, isBrightening);
 
     // -- Accent Color --
-    float3 accentFar  = lerp(accentCol.rgb, fogColor * accentCol.a, layerFactor);
-    float3 accentNear = accentCol.rgb * (1.0 + layerFactor);
+    float3 accentFar  = accentCol.rgb * (1.0 - layerFactor);
+    float3 accentNear = 1.0 - (1.0 - accentCol.rgb) * (1.0 - layerFactor);
     float3 accentResult = lerp(accentFar, accentNear, isBrightening);
 
     // -- Border Color --
-    float3 borderFar  = lerp(borderCol.rgb, fogColor, layerFactor);
-    float3 borderNear = borderCol.rgb * (1.0 + layerFactor);
+    float3 borderFar  = borderCol.rgb * (1.0 - layerFactor);
+    float3 borderNear = 1.0 - (1.0 - borderCol.rgb) * (1.0 - layerFactor);
     float3 borderResult = lerp(borderFar, borderNear, isBrightening);
 
     // Apply alpha to border result

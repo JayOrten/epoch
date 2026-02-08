@@ -117,6 +117,9 @@ public class EntityManager
             entity.SetOnEntity(_world, componentDefinition);
         }
 
+        // Add the dirty tag to the new entity
+        entity.Add<DirtyTag>();
+
         // Check if there is a Position component, to see if we need to register it
         // TODO: only add if it's local? in a present chunk?
         if (entity.Has<Position>())
