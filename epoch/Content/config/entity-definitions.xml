@@ -1,71 +1,71 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <entityDefinitions>
     <entity name="player" id="0">
-      <PlayerTag/>
-      <Position/>
-      <Direction FaceDirection="0,0"/>
-      <MovementInput/>
-      <Movement/>
-      <CompositeController>
-        <child key="Legs" template="legs" offset="0,0,0"/>
-        <child key="Torso" template="torso" offset="0,0,1"/>
-        <child key="Head" template="head" offset="0,0,2"/>
-      </CompositeController>
+        <PlayerTag />
+        <Position />
+        <Direction FaceDirection="0,0" />
+        <MovementInput />
+        <Movement />
+        <CompositeController>
+            <child key="Legs" template="legs" offset="0,0,0" />
+            <child key="Torso" template="torso" offset="0,0,1" />
+            <child key="Head" template="head" offset="0,0,2" />
+        </CompositeController>
     </entity>
     <entity name="legs" id="1">
-      <GraphicalTileList>
-        <tile TileId="11" InterpolateMovement="false"/>
-      </GraphicalTileList>
-      <Position/>
+        <GraphicalTileList>
+            <tile TileId="11" InterpolateMovement="false" />
+        </GraphicalTileList>
+        <Position />
     </entity>
     <entity name="torso" id="2">
-      <GraphicalTileList>
-        <tile TileId="10" InterpolateMovement="false"/>
-      </GraphicalTileList>
-      <Position/>
+        <GraphicalTileList>
+            <tile TileId="10" InterpolateMovement="false" />
+        </GraphicalTileList>
+        <Position />
     </entity>
     <entity name="head" id="3">
-      <GraphicalTileList>
-        <tile TileId="9" InterpolateMovement="false"/>
-      </GraphicalTileList>
-      <Position/>
+        <GraphicalTileList>
+            <tile TileId="9" InterpolateMovement="false" />
+        </GraphicalTileList>
+        <Position />
     </entity>
-
     <entity name="empty" id="4">
-      <GraphicalTileList>
-        <tile TileId="0"/>
-      </GraphicalTileList>
-      <Position Passable="true"/>
+        <GraphicalTileList>
+            <tile TileId="0" />
+        </GraphicalTileList>
+        <Position Passable="true" />
     </entity>
     <entity name="grass" id="5">
-      <GraphicalTileList>
-        <tile TileId="2" ForceDraw="true" Offset="0.05" Background1Color="0,0,0,0"/>
-        <tile TileId="2" ForceDraw="true" Offset="0.15"/>
-        <tile TileId="2" ForceDraw="true" Offset="0.30"/>
-        <tile TileId="12" ForceDraw="true" Offset="0.45"/>
-      </GraphicalTileList>
-      <Position Passable="true"/>
+        <GraphicalTileList>
+            <tile TileId="2" ForceDraw="true" Offset="0.05" Background1Color="0,0,0,0" />
+            <tile TileId="2" ForceDraw="true" Offset="0.15" />
+            <tile TileId="2" ForceDraw="true" Offset="0.30" />
+            <tile TileId="12" ForceDraw="true" Offset="0.45" />
+        </GraphicalTileList>
+        <Position Passable="true" />
     </entity>
     <entity name="tree" id="6">
-      <GraphicalTile TileId="3"/>
-      <Position Passable="false"/>
+        <GraphicalTile TileId="3" />
+        <Position Passable="false" />
     </entity>
     <entity name="dirt" id="7">
-      <GraphicalTile TileId="4"/>
-      <Position Passable="false"/>
+        <GraphicalTile TileId="4" />
+        <Position Passable="false" />
     </entity>
     <entity name="water" id="8">
-      <GraphicalTile TileId="5" color="#ff0000"/>
-      <Position Passable="false"/>
+        <GraphicalTile TileId="5" color="#ff0000" />
+        <Position Passable="false" />
     </entity>
     <entity name="stone" id="9">
-      <GraphicalTileList>
-        <tile TileId="13" Offset="0" Background1Color="30,32,48,255" AutoTile="true" BorderType="Bottom"/>
-        <tile TileId="13" Offset="0.25" Background1Color="30,32,48,255" AutoTile="true"/>
-        <tile TileId="13" Offset="0.50" Background1Color="30,32,48,255" AutoTile="true"/>
-        <tile TileId="13" Offset="0.75" Background1Color="30,32,48,255" AutoTile="true"/>
-        <tile TileId="0" Offset="1.00" BorderType="Top"/>
-      </GraphicalTileList>
-      <Position Passable="false" IsBlock="true"/>
+        <GraphicalTileList>
+            <tile TileId="13" Offset="0" Background1Color="30,32,48,255" AutoTile="true" BorderType="Bottom" />
+            <tile TileId="13" Offset="0.25" Background1Color="30,32,48,255" AutoTile="true" />
+            <tile TileId="13" Offset="0.5" Background1Color="30,32,48,255" AutoTile="true" />
+            <tile TileId="13" Offset="0.75" Background1Color="30,32,48,255" AutoTile="true" />
+            <tile TileId="0" Offset="1" BorderType="Top" />
+        </GraphicalTileList>
+        <Position Passable="false" IsBlock="true" />
     </entity>
 </entityDefinitions>
+

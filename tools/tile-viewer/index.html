@@ -1,0 +1,1556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Epoch Tile Viewer</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='32' r='14' fill='%2389b4fa'/><ellipse cx='32' cy='32' rx='28' ry='8' fill='none' stroke='%23a6e3a1' stroke-width='3' transform='rotate(-20 32 32)'/></svg>">
+<style>
+:root {
+  --bg: #1e1e2e;
+  --surface: #313244;
+  --surface2: #45475a;
+  --text: #cdd6f4;
+  --subtext: #a6adc8;
+  --accent: #89b4fa;
+  --accent2: #f38ba8;
+  --green: #a6e3a1;
+  --border: #585b70;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+/* Scrollbars */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--surface2); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border); }
+* { scrollbar-width: thin; scrollbar-color: var(--surface2) var(--bg); }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Top bar */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.toolbar label { color: var(--subtext); font-size: 13px; }
+.toolbar select, .toolbar input[type="range"] { accent-color: var(--accent); }
+.toolbar select {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+.toolbar input[type="color"] {
+  width: 28px; height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  background: none;
+  padding: 0;
+}
+
+/* Main layout */
+.main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Left panel - tile stack */
+.panel-left {
+  width: 200px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  min-width: 120px;
+}
+.panel-header {
+  padding: 8px 12px;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--subtext);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.panel-header button {
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.panel-header button:hover { opacity: 0.8; }
+.tile-stack {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px;
+}
+.tile-stack-item {
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  margin-bottom: 2px;
+  user-select: none;
+}
+.tile-stack-item:hover { background: var(--surface2); }
+.tile-stack-item.selected { background: var(--accent); color: var(--bg); }
+.tile-stack-item .tile-preview {
+  width: 24px;
+  height: 24px;
+  image-rendering: pixelated;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.tile-stack-item .tile-label { flex: 1; }
+.tile-stack-item .tile-remove {
+  opacity: 0;
+  background: none;
+  border: none;
+  color: var(--accent2);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 2px;
+}
+.tile-stack-item:hover .tile-remove { opacity: 1; }
+
+/* Center - canvas */
+.panel-center {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+#preview-canvas {
+  image-rendering: pixelated;
+  border: 1px solid var(--border);
+}
+.crt-overlay {
+  display: none;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent 1px,
+      rgba(0, 0, 0, 0.12) 1px,
+      rgba(0, 0, 0, 0.12) 2px
+    ),
+    radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, 0.4) 100%);
+  mix-blend-mode: multiply;
+}
+.crt-overlay.active { display: block; }
+
+/* Right panel - properties */
+.panel-right {
+  width: 280px;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow-y: auto;
+  min-width: 200px;
+}
+.prop-section {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.prop-section h3 {
+  font-size: 12px;
+  color: var(--subtext);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+.prop-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.prop-row label {
+  width: 60px;
+  font-size: 12px;
+  color: var(--subtext);
+  flex-shrink: 0;
+  text-align: right;
+}
+.prop-row input[type="color"] {
+  width: 32px; height: 24px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+  background: none;
+  padding: 0;
+}
+.prop-row input[type="number"], .prop-row input[type="text"] {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 3px 6px;
+  font-size: 12px;
+  width: 70px;
+}
+.prop-row input[type="range"] {
+  flex: 1;
+  accent-color: var(--accent);
+}
+.prop-row .range-val {
+  font-size: 11px;
+  color: var(--subtext);
+  width: 36px;
+  text-align: right;
+}
+
+/* Tileset grid */
+.tileset-grid {
+  display: grid;
+  grid-template-columns: repeat(16, 32px);
+  gap: 1px;
+  padding: 4px;
+  image-rendering: pixelated;
+}
+.tileset-cell {
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  image-rendering: pixelated;
+}
+.tileset-cell:hover { border-color: var(--accent); }
+.tileset-cell.selected { border-color: var(--accent2); box-shadow: 0 0 0 1px var(--accent2); }
+
+/* Bottom bar */
+.bottombar {
+  padding: 8px 16px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+/* VP Joystick */
+.vp-control {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.vp-pad {
+  width: 100px;
+  height: 100px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  position: relative;
+  cursor: crosshair;
+  flex-shrink: 0;
+}
+.vp-pad-crosshair-h, .vp-pad-crosshair-v {
+  position: absolute;
+  background: var(--surface2);
+  pointer-events: none;
+}
+.vp-pad-crosshair-h { width: 100%; height: 1px; top: 50%; }
+.vp-pad-crosshair-v { height: 100%; width: 1px; left: 50%; }
+.vp-pad-dot {
+  width: 10px;
+  height: 10px;
+  background: var(--accent);
+  border-radius: 50%;
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  box-shadow: 0 0 4px var(--accent);
+}
+.vp-pad-label {
+  font-size: 11px;
+  color: var(--subtext);
+  text-align: center;
+  margin-top: 2px;
+}
+.vp-keys-hint {
+  font-size: 11px;
+  color: var(--surface2);
+  line-height: 1.4;
+}
+.vp-keys-hint kbd {
+  background: var(--surface2);
+  color: var(--text);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-family: monospace;
+}
+
+.no-selection {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--subtext);
+  font-size: 13px;
+  padding: 20px;
+  text-align: center;
+}
+
+/* Resize handles */
+.resize-handle {
+  width: 5px;
+  cursor: col-resize;
+  background: var(--border);
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.resize-handle:hover, .resize-handle.active {
+  background: var(--accent);
+}
+
+/* Toolbar buttons */
+.toolbar-btn {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.toolbar-btn:hover { background: var(--accent); color: var(--bg); }
+.toolbar-btn.active { background: var(--accent); color: var(--bg); }
+.toolbar-input {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 13px;
+  width: 120px;
+}
+
+/* XML sidebar */
+.panel-xml {
+  width: 340px;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  display: none;
+  flex-direction: column;
+  flex-shrink: 0;
+  min-width: 200px;
+}
+.panel-xml.visible { display: flex; }
+.xml-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+}
+.xml-tab {
+  flex: 1;
+  padding: 6px 8px;
+  font-size: 12px;
+  text-align: center;
+  cursor: pointer;
+  color: var(--subtext);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.xml-tab:hover { color: var(--text); }
+.xml-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.xml-preview {
+  flex: 1;
+  overflow: auto;
+  padding: 8px;
+  background: #181825;
+  margin: 4px;
+  border-radius: 4px;
+}
+.xml-preview pre {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre;
+  margin: 0;
+}
+.xml-preview .xml-tag { color: var(--accent); }
+.xml-preview .xml-attr { color: var(--subtext); }
+.xml-preview .xml-val { color: var(--green); }
+.xml-actions {
+  padding: 8px;
+  display: flex;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+}
+.xml-actions button {
+  flex: 1;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.save-btn {
+  background: var(--green);
+  color: var(--bg);
+}
+.save-btn:hover { opacity: 0.85; }
+.flash-msg {
+  padding: 4px 8px;
+  font-size: 11px;
+  text-align: center;
+  border-radius: 4px;
+  margin: 0 8px;
+  display: none;
+}
+.flash-msg.success { display: block; background: #1e3a2f; color: var(--green); }
+.flash-msg.error { display: block; background: #3a1e1e; color: var(--accent2); }
+</style>
+</head>
+<body>
+
+<!-- Top toolbar -->
+<div class="toolbar">
+  <label>Entity:</label>
+  <select id="entity-select"><option>Loading...</option></select>
+  <input type="text" id="entity-name" class="toolbar-input" placeholder="entity name">
+  <button class="toolbar-btn" id="new-entity-btn">+ New Entity</button>
+  <label>BG:</label>
+  <input type="color" id="bg-color" value="#1e1e2e">
+  <label>Scale:</label>
+  <input type="range" id="render-scale" min="2" max="16" value="8" step="1">
+  <span id="scale-val" style="color:var(--subtext);font-size:12px;">8x</span>
+  <label style="margin-left:auto;"><input type="checkbox" id="crt-toggle" style="accent-color:var(--accent);vertical-align:middle;"> CRT</label>
+  <button class="toolbar-btn" id="xml-toggle-btn">XML</button>
+</div>
+
+<!-- Main panels -->
+<div class="main">
+  <!-- Left: tile stack -->
+  <div class="panel-left">
+    <div class="panel-header">
+      Tile Stack
+      <button id="add-tile-btn">+ Add</button>
+    </div>
+    <div class="tile-stack" id="tile-stack"></div>
+  </div>
+  <div class="resize-handle" data-target="panel-left" data-side="right"></div>
+
+  <!-- Center: canvas -->
+  <div class="panel-center">
+    <canvas id="preview-canvas"></canvas>
+    <div class="crt-overlay" id="crt-overlay"></div>
+  </div>
+  <div class="resize-handle" data-target="panel-right" data-side="left"></div>
+
+  <!-- Right: properties -->
+  <div class="panel-right">
+    <div class="prop-section">
+      <h3>Tileset Index</h3>
+      <div class="tileset-grid" id="tileset-grid"></div>
+    </div>
+    <div class="prop-section" id="tile-props">
+      <h3>Entity Tile</h3>
+      <div class="no-selection" id="no-tile-selected">Select a tile from the stack</div>
+      <div id="tile-props-entity" style="display:none;">
+        <div class="prop-row">
+          <label>Tile Def:</label>
+          <select id="prop-tiledef" style="flex:1;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:3px;padding:3px 6px;font-size:12px;"></select>
+        </div>
+        <div class="prop-row">
+          <label>Offset:</label>
+          <input type="range" id="prop-offset" min="0" max="2" value="0" step="0.05">
+          <input type="number" id="prop-offset-num" min="0" max="10" value="0" step="0.05" style="width:55px">
+        </div>
+        <div class="prop-row">
+          <label>Border:</label>
+          <input type="checkbox" id="prop-show-border" checked style="accent-color:var(--accent);">
+        </div>
+      </div>
+    </div>
+    <div class="prop-section" id="tiledef-props" style="display:none;">
+      <h3>Tile Definition</h3>
+      <div class="prop-row">
+        <label>Name:</label>
+        <input type="text" id="prop-tiledef-name" style="flex:1" value="">
+      </div>
+      <div class="prop-row">
+        <label>Index:</label>
+        <input type="number" id="prop-index" min="0" max="255" value="0">
+      </div>
+      <div class="prop-row">
+        <label>bg1:</label>
+        <input type="color" id="prop-bg1" value="#000000">
+        <label style="width:auto">a:</label>
+        <input type="range" id="prop-bg1-a" min="0" max="255" value="0" style="width:60px">
+      </div>
+      <div class="prop-row">
+        <label>bg2:</label>
+        <input type="color" id="prop-bg2" value="#1e2030">
+        <label style="width:auto">a:</label>
+        <input type="range" id="prop-bg2-a" min="0" max="255" value="255" style="width:60px">
+      </div>
+      <div class="prop-row">
+        <label>base:</label>
+        <input type="color" id="prop-base" value="#6c7086">
+        <label style="width:auto">a:</label>
+        <input type="range" id="prop-base-a" min="0" max="255" value="255" style="width:60px">
+      </div>
+      <div class="prop-row">
+        <label>accent:</label>
+        <input type="color" id="prop-accent" value="#ffffff">
+        <label style="width:auto">a:</label>
+        <input type="range" id="prop-accent-a" min="0" max="255" value="255" style="width:60px">
+      </div>
+      <div class="prop-row">
+        <label>border:</label>
+        <input type="color" id="prop-border" value="#6c7086">
+        <label style="width:auto">a:</label>
+        <input type="range" id="prop-border-a" min="0" max="255" value="255" style="width:60px">
+      </div>
+    </div>
+  </div>
+
+  <div class="resize-handle" data-target="panel-xml" data-side="left" id="xml-resize-handle" style="display:none;"></div>
+  <!-- XML sidebar -->
+  <div class="panel-xml" id="panel-xml">
+    <div class="xml-tabs">
+      <button class="xml-tab active" data-tab="entity">Entity XML</button>
+      <button class="xml-tab" data-tab="tiledef">Tile Def XML</button>
+    </div>
+    <div class="xml-preview" id="xml-preview"><pre id="xml-code"></pre></div>
+    <div class="flash-msg" id="save-flash"></div>
+    <div class="xml-actions" id="xml-actions-entity">
+      <button class="save-btn" id="save-entity-btn">Save Entity</button>
+    </div>
+    <div class="xml-actions" id="xml-actions-tiledef" style="display:none;">
+      <button class="save-btn" id="save-tiledef-btn">Save Tile Def</button>
+      <button class="toolbar-btn" id="new-tiledef-btn">+ New Tile Def</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bottom bar -->
+<div class="bottombar">
+  <div class="vp-control">
+    <div>
+      <div class="vp-pad" id="vp-pad">
+        <div class="vp-pad-crosshair-h"></div>
+        <div class="vp-pad-crosshair-v"></div>
+        <div class="vp-pad-dot" id="vp-pad-dot"></div>
+      </div>
+      <div class="vp-pad-label">VP: <span id="vp-x-val">0</span>, <span id="vp-y-val">0</span></div>
+    </div>
+    <div class="vp-keys-hint">
+      <kbd>U</kbd> up &nbsp;<kbd>J</kbd> down<br>
+      <kbd>H</kbd> left <kbd>K</kbd> right<br>
+      <kbd>Esc</kbd> reset
+    </div>
+  </div>
+  <label>Depth:</label>
+  <input type="range" id="depth-strength" min="0" max="0.2" value="0.03" step="0.005">
+  <span id="depth-val" style="color:var(--subtext);font-size:12px;">0.030</span>
+</div>
+
+<script>
+// ─── State ───────────────────────────────────────────────────────────
+const state = {
+  tileDefs: [],       // from tile-definitions.xml
+  entityDefs: [],     // from entity-definitions.xml
+  tileStack: [],      // current working stack
+  selectedTileIdx: -1,
+  tilesheetImg: null,
+  tilesheetData: null,
+  renderScale: 8,
+  bgColor: '#1e1e2e',
+  vpX: 0,
+  vpY: 0,
+  depthStrength: 0.03,
+  crtEnabled: false,
+  xmlSidebarVisible: false,
+  xmlActiveTab: 'entity',  // 'entity' or 'tiledef'
+  currentEntityId: null,
+  currentEntityName: '',
+};
+
+const TILE_W = 24;
+const TILE_H = 24;
+const SHEET_COLS = 16;
+const SHEET_ROWS = 16;
+
+// ─── DOM refs ────────────────────────────────────────────────────────
+const $ = (s) => document.querySelector(s);
+const canvas = $('#preview-canvas');
+const ctx = canvas.getContext('2d');
+
+// ─── Parsing helpers ─────────────────────────────────────────────────
+function parseColor(str) {
+  if (!str) return [0, 0, 0, 255];
+  const parts = str.split(',').map(Number);
+  return [parts[0] || 0, parts[1] || 0, parts[2] || 0, parts.length > 3 ? parts[3] : 255];
+}
+
+function colorToHex([r, g, b]) {
+  return '#' + [r, g, b].map(c => c.toString(16).padStart(2, '0')).join('');
+}
+
+function hexToRgb(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+// ─── Load data files ─────────────────────────────────────────────────
+async function loadTileDefinitions() {
+  const resp = await fetch('../../epoch/Content/config/tile-definitions.xml');
+  const text = await resp.text();
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(text, 'text/xml');
+  state.tileDefs = [];
+  for (const t of doc.querySelectorAll('tile')) {
+    state.tileDefs.push({
+      id: parseInt(t.getAttribute('id')),
+      name: t.getAttribute('name'),
+      index: parseInt(t.getAttribute('index')),
+      bg1: parseColor(t.getAttribute('bg1')),
+      bg2: parseColor(t.getAttribute('bg2')),
+      base: parseColor(t.getAttribute('base')),
+      accent: parseColor(t.getAttribute('accent')),
+      border: parseColor(t.getAttribute('border')),
+    });
+  }
+}
+
+async function loadEntityDefinitions() {
+  const resp = await fetch('../../epoch/Content/config/entity-definitions.xml');
+  const text = await resp.text();
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(text, 'text/xml');
+  state.entityDefs = [];
+  for (const e of doc.querySelectorAll('entity')) {
+    const name = e.getAttribute('name');
+    const id = parseInt(e.getAttribute('id'));
+    const tiles = [];
+    // GraphicalTileList
+    const tileList = e.querySelector('GraphicalTileList');
+    if (tileList) {
+      for (const t of tileList.querySelectorAll('tile')) {
+        const entry = {
+          tileId: parseInt(t.getAttribute('TileId')),
+          offset: parseFloat(t.getAttribute('Offset') || '0'),
+          bg1Override: t.getAttribute('Background1Color') ? parseColor(t.getAttribute('Background1Color')) : null,
+          bg2Override: t.getAttribute('Background2Color') ? parseColor(t.getAttribute('Background2Color')) : null,
+          baseOverride: t.getAttribute('BaseColor') ? parseColor(t.getAttribute('BaseColor')) : null,
+          accentOverride: t.getAttribute('AccentColor') ? parseColor(t.getAttribute('AccentColor')) : null,
+          borderOverride: t.getAttribute('BorderColor') ? parseColor(t.getAttribute('BorderColor')) : null,
+        };
+        if (t.getAttribute('ForceDraw')) entry.forceDraw = t.getAttribute('ForceDraw') === 'true';
+        if (t.getAttribute('AutoTile')) entry.autoTile = t.getAttribute('AutoTile') === 'true';
+        if (t.getAttribute('BorderType')) entry.borderType = t.getAttribute('BorderType');
+        if (t.getAttribute('InterpolateMovement')) entry.interpolateMovement = t.getAttribute('InterpolateMovement') === 'true';
+        tiles.push(entry);
+      }
+    }
+    // Single GraphicalTile
+    const single = e.querySelector('GraphicalTile');
+    if (single && tiles.length === 0) {
+      tiles.push({
+        tileId: parseInt(single.getAttribute('TileId')),
+        offset: 0,
+        bg1Override: null,
+      });
+    }
+    // CompositeController — resolve children
+    const composite = e.querySelector('CompositeController');
+    if (composite && tiles.length === 0) {
+      for (const child of composite.querySelectorAll('child')) {
+        const template = child.getAttribute('template');
+        const offsetParts = (child.getAttribute('offset') || '0,0,0').split(',');
+        const zOffset = parseFloat(offsetParts[2] || '0');
+        // We'll resolve these after all entities are loaded
+        tiles.push({ template, zOffset });
+      }
+    }
+    state.entityDefs.push({ name, id, tiles, isComposite: !!composite });
+  }
+}
+
+async function loadTilesheet() {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      state.tilesheetImg = img;
+      // Get pixel data
+      const c = document.createElement('canvas');
+      c.width = img.width;
+      c.height = img.height;
+      const cx = c.getContext('2d');
+      cx.drawImage(img, 0, 0);
+      state.tilesheetData = cx.getImageData(0, 0, img.width, img.height);
+      resolve();
+    };
+    img.onerror = reject;
+    img.src = '../../epoch/Content/images/tilesheet_24x24.png';
+  });
+}
+
+// ─── Build tile stack from entity ────────────────────────────────────
+function buildStackFromEntity(entityDef) {
+  state.tileStack = [];
+  state.currentEntityId = entityDef.id;
+  state.currentEntityName = entityDef.name;
+  $('#entity-name').value = entityDef.name;
+
+  if (entityDef.isComposite) {
+    for (const child of entityDef.tiles) {
+      const childEntity = state.entityDefs.find(e => e.name === child.template);
+      if (childEntity) {
+        for (const t of childEntity.tiles) {
+          const tileDef = state.tileDefs.find(td => td.id === t.tileId);
+          if (tileDef) {
+            state.tileStack.push(makeTileEntry(tileDef, t.offset + child.zOffset, t));
+          }
+        }
+      }
+    }
+  } else {
+    for (const t of entityDef.tiles) {
+      const tileDef = state.tileDefs.find(td => td.id === t.tileId);
+      if (tileDef) {
+        state.tileStack.push(makeTileEntry(tileDef, t.offset, t));
+      }
+    }
+  }
+  // Border on for top and bottom tiles only
+  if (state.tileStack.length > 0) {
+    state.tileStack[0].showBorder = true;
+    state.tileStack[state.tileStack.length - 1].showBorder = true;
+  }
+  state.selectedTileIdx = state.tileStack.length > 0 ? 0 : -1;
+}
+
+function makeTileEntry(tileDef, offset, meta) {
+  return {
+    tileDefId: tileDef.id,
+    name: tileDef.name,
+    index: tileDef.index,
+    offset: offset,
+    bg1: meta?.bg1Override ? [...meta.bg1Override] : [...tileDef.bg1],
+    bg2: meta?.bg2Override ? [...meta.bg2Override] : [...tileDef.bg2],
+    base: meta?.baseOverride ? [...meta.baseOverride] : [...tileDef.base],
+    accent: meta?.accentOverride ? [...meta.accentOverride] : [...tileDef.accent],
+    border: meta?.borderOverride ? [...meta.borderOverride] : [...tileDef.border],
+    showBorder: false,
+    // Entity-tile metadata
+    forceDraw: meta?.forceDraw || false,
+    autoTile: meta?.autoTile || false,
+    borderType: meta?.borderType || null,
+    interpolateMovement: meta?.interpolateMovement ?? null,
+  };
+}
+
+// ─── Color-masked tile rendering ─────────────────────────────────────
+function renderColorMaskedTile(tileIndex, bg1, bg2, base, accent) {
+  const sx = (tileIndex % SHEET_COLS) * TILE_W;
+  const sy = Math.floor(tileIndex / SHEET_COLS) * TILE_H;
+  const out = document.createElement('canvas');
+  out.width = TILE_W;
+  out.height = TILE_H;
+  const octx = out.getContext('2d');
+  const imgData = octx.createImageData(TILE_W, TILE_H);
+  const src = state.tilesheetData.data;
+  const srcW = state.tilesheetData.width;
+
+  for (let y = 0; y < TILE_H; y++) {
+    for (let x = 0; x < TILE_W; x++) {
+      const si = ((sy + y) * srcW + (sx + x)) * 4;
+      const di = (y * TILE_W + x) * 4;
+      const sr = src[si], sg = src[si + 1], sb = src[si + 2], sa = src[si + 3];
+
+      if (sa === 0) {
+        imgData.data[di + 3] = 0;
+        continue;
+      }
+
+      // Classify using step(0.5) thresholds — same as shader
+      const r = sr >= 128 ? 1 : 0;
+      const g = sg >= 128 ? 1 : 0;
+      const b = sb >= 128 ? 1 : 0;
+
+      const isBg1    = r * (1 - g) * b;      // magenta
+      const isBg2    = (1 - r) * g * b;      // cyan
+      const isBase   = r * g * b;            // white
+      const isAccent = r * g * (1 - b);      // yellow
+
+      let cr = 0, cg = 0, cb = 0, ca = 0;
+      if (isBg1) { cr = bg1[0]; cg = bg1[1]; cb = bg1[2]; ca = bg1[3]; }
+      else if (isBg2) { cr = bg2[0]; cg = bg2[1]; cb = bg2[2]; ca = bg2[3]; }
+      else if (isBase) { cr = base[0]; cg = base[1]; cb = base[2]; ca = base[3]; }
+      else if (isAccent) { cr = accent[0]; cg = accent[1]; cb = accent[2]; ca = accent[3]; }
+      else { ca = 0; } // black or unrecognized → transparent
+
+      imgData.data[di]     = cr;
+      imgData.data[di + 1] = cg;
+      imgData.data[di + 2] = cb;
+      imgData.data[di + 3] = ca;
+    }
+  }
+
+  octx.putImageData(imgData, 0, 0);
+  return out;
+}
+
+// ─── Main canvas render ──────────────────────────────────────────────
+function render(timestamp) {
+  const scale = state.renderScale;
+  // Canvas fills the center panel
+  const panel = $('.panel-center');
+  const cw = panel.clientWidth - 2; // account for border
+  const ch = panel.clientHeight - 2;
+  if (canvas.width !== cw || canvas.height !== ch) {
+    canvas.width = cw;
+    canvas.height = ch;
+    canvas.style.width = cw + 'px';
+    canvas.style.height = ch + 'px';
+  }
+
+  ctx.imageSmoothingEnabled = false;
+  ctx.fillStyle = state.bgColor;
+  ctx.fillRect(0, 0, cw, ch);
+
+  // Base position: center of canvas
+  const baseX = (cw - TILE_W * scale) / 2;
+  const baseY = (ch - TILE_H * scale) / 2;
+
+  // Vanishing point — scale with renderScale so zooming in doesn't weaken the VP
+  const vpX = cw / 2 + state.vpX * scale;
+  const vpY = ch / 2 + state.vpY * scale;
+
+  // Sort by offset (draw lowest first)
+  const sorted = state.tileStack
+    .map((t, i) => ({ ...t, stackIdx: i }))
+    .sort((a, b) => a.offset - b.offset);
+
+  for (const tile of sorted) {
+    const maskedCanvas = renderColorMaskedTile(
+      tile.index, tile.bg1, tile.bg2, tile.base, tile.accent
+    );
+
+    const depth = tile.offset;
+    const perspectiveScale = 1.0 + depth * state.depthStrength;
+    const tileW = TILE_W * scale * perspectiveScale;
+    const tileH = TILE_H * scale * perspectiveScale;
+
+    // VP offset: same formula as DrawSystem
+    const fx = vpX * (1 - perspectiveScale) + baseX * perspectiveScale;
+    const fy = vpY * (1 - perspectiveScale) + baseY * perspectiveScale;
+
+    ctx.drawImage(maskedCanvas, fx, fy, tileW, tileH);
+
+    // 1px border at screen resolution
+    if (tile.showBorder) {
+      const [br, bg, bb, ba] = tile.border;
+      ctx.strokeStyle = `rgba(${br},${bg},${bb},${ba / 255})`;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(Math.round(fx) + 0.5, Math.round(fy) + 0.5,
+        Math.round(tileW) - 1, Math.round(tileH) - 1);
+    }
+  }
+
+  updateVpFromKeyboard(timestamp);
+  requestAnimationFrame(render);
+}
+
+// ─── UI: Tile stack list ─────────────────────────────────────────────
+function refreshTileStack() {
+  const container = $('#tile-stack');
+  container.innerHTML = '';
+  state.tileStack.forEach((tile, i) => {
+    const item = document.createElement('div');
+    item.className = 'tile-stack-item' + (i === state.selectedTileIdx ? ' selected' : '');
+
+    // Mini preview
+    const preview = renderColorMaskedTile(tile.index, tile.bg1, tile.bg2, tile.base, tile.accent);
+    preview.className = 'tile-preview';
+    item.appendChild(preview);
+
+    const label = document.createElement('span');
+    label.className = 'tile-label';
+    label.textContent = `${tile.name} (${tile.offset.toFixed(2)})`;
+    item.appendChild(label);
+
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'tile-remove';
+    removeBtn.textContent = '\u00d7';
+    removeBtn.onclick = (e) => {
+      e.stopPropagation();
+      state.tileStack.splice(i, 1);
+      if (state.selectedTileIdx >= state.tileStack.length) {
+        state.selectedTileIdx = state.tileStack.length - 1;
+      }
+      refreshTileStack();
+      refreshProps();
+    };
+    item.appendChild(removeBtn);
+
+    item.onclick = () => {
+      state.selectedTileIdx = i;
+      refreshTileStack();
+      refreshProps();
+      refreshTilesetSelection();
+    };
+    container.appendChild(item);
+  });
+  refreshXmlSidebar();
+}
+
+// ─── UI: Property panel ──────────────────────────────────────────────
+function refreshProps() {
+  const tile = state.tileStack[state.selectedTileIdx];
+  if (!tile) {
+    $('#no-tile-selected').style.display = '';
+    $('#tile-props-entity').style.display = 'none';
+    $('#tiledef-props').style.display = 'none';
+    return;
+  }
+  $('#no-tile-selected').style.display = 'none';
+  $('#tile-props-entity').style.display = '';
+  $('#tiledef-props').style.display = '';
+
+  // Populate tile def dropdown
+  const sel = $('#prop-tiledef');
+  sel.innerHTML = '';
+  for (const td of state.tileDefs) {
+    const opt = document.createElement('option');
+    opt.value = td.id;
+    opt.textContent = `${td.name} (id=${td.id})`;
+    sel.appendChild(opt);
+  }
+  sel.value = tile.tileDefId;
+
+  // Entity tile props
+  $('#prop-offset').value = tile.offset;
+  $('#prop-offset-num').value = tile.offset;
+  $('#prop-show-border').checked = tile.showBorder;
+
+  // Tile definition props
+  $('#prop-tiledef-name').value = tile.name;
+  $('#prop-index').value = tile.index;
+  $('#prop-bg1').value = colorToHex(tile.bg1);
+  $('#prop-bg1-a').value = tile.bg1[3];
+  $('#prop-bg2').value = colorToHex(tile.bg2);
+  $('#prop-bg2-a').value = tile.bg2[3];
+  $('#prop-base').value = colorToHex(tile.base);
+  $('#prop-base-a').value = tile.base[3];
+  $('#prop-accent').value = colorToHex(tile.accent);
+  $('#prop-accent-a').value = tile.accent[3];
+  $('#prop-border').value = colorToHex(tile.border);
+  $('#prop-border-a').value = tile.border[3];
+}
+
+function getTile() {
+  return state.tileStack[state.selectedTileIdx];
+}
+
+function bindPropInputs() {
+  // Tile def selector — changing this resets colors to the new def's defaults
+  $('#prop-tiledef').onchange = (e) => {
+    const t = getTile(); if (!t) return;
+    const newDefId = parseInt(e.target.value);
+    const newDef = state.tileDefs.find(td => td.id === newDefId);
+    if (!newDef) return;
+    t.tileDefId = newDef.id;
+    t.name = newDef.name;
+    t.index = newDef.index;
+    t.bg1 = [...newDef.bg1];
+    t.bg2 = [...newDef.bg2];
+    t.base = [...newDef.base];
+    t.accent = [...newDef.accent];
+    t.border = [...newDef.border];
+    refreshTileStack();
+    refreshProps();
+    refreshTilesetSelection();
+  };
+
+  // Tile def name
+  $('#prop-tiledef-name').oninput = (e) => {
+    const t = getTile(); if (!t) return;
+    t.name = e.target.value;
+    refreshTileStack();
+  };
+
+  $('#prop-index').oninput = (e) => {
+    const t = getTile(); if (!t) return;
+    t.index = parseInt(e.target.value) || 0;
+    refreshTileStack();
+    refreshTilesetSelection();
+  };
+  function setOffset(val) {
+    const t = getTile(); if (!t) return;
+    t.offset = parseFloat(val) || 0;
+    $('#prop-offset').value = t.offset;
+    $('#prop-offset-num').value = t.offset;
+    sortTileStack();
+    state.selectedTileIdx = state.tileStack.indexOf(t);
+    refreshTileStack();
+  }
+  $('#prop-offset').oninput = (e) => setOffset(e.target.value);
+  $('#prop-offset-num').onchange = (e) => setOffset(e.target.value);
+
+  $('#prop-show-border').onchange = (e) => {
+    const t = getTile(); if (!t) return;
+    t.showBorder = e.target.checked;
+    refreshTileStack();
+  };
+
+  for (const key of ['bg1', 'bg2', 'base', 'accent', 'border']) {
+    $(`#prop-${key}`).oninput = (e) => {
+      const t = getTile(); if (!t) return;
+      const rgb = hexToRgb(e.target.value);
+      t[key][0] = rgb[0]; t[key][1] = rgb[1]; t[key][2] = rgb[2];
+      refreshTileStack();
+    };
+    $(`#prop-${key}-a`).oninput = (e) => {
+      const t = getTile(); if (!t) return;
+      t[key][3] = parseInt(e.target.value);
+      refreshTileStack();
+    };
+  }
+}
+
+// ─── UI: Tileset grid ────────────────────────────────────────────────
+function buildTilesetGrid() {
+  const grid = $('#tileset-grid');
+  grid.innerHTML = '';
+  // Use first tile def's colors for preview, or sensible fallback
+  const previewDef = state.tileDefs[0] || {
+    bg1: [0,0,0,0], bg2: [30,32,48,255], base: [108,112,134,255], accent: [255,255,255,255]
+  };
+  for (let i = 0; i < SHEET_COLS * SHEET_ROWS; i++) {
+    const masked = renderColorMaskedTile(i, previewDef.bg1, previewDef.bg2, previewDef.base, previewDef.accent);
+    masked.className = 'tileset-cell';
+    masked.dataset.idx = i;
+
+    masked.onclick = () => {
+      const t = getTile();
+      if (!t) return;
+      t.index = i;
+      $('#prop-index').value = i;
+      refreshTileStack();
+      refreshTilesetSelection();
+    };
+    grid.appendChild(masked);
+  }
+}
+
+function refreshTilesetSelection() {
+  const t = getTile();
+  const cells = document.querySelectorAll('.tileset-cell');
+  cells.forEach(c => {
+    c.classList.toggle('selected', t && parseInt(c.dataset.idx) === t.index);
+  });
+}
+
+// ─── UI: Entity selector ─────────────────────────────────────────────
+function populateEntitySelect() {
+  const sel = $('#entity-select');
+  sel.innerHTML = '';
+  for (const e of state.entityDefs) {
+    const opt = document.createElement('option');
+    opt.value = e.name;
+    opt.textContent = e.name;
+    sel.appendChild(opt);
+  }
+  sel.onchange = () => {
+    const eDef = state.entityDefs.find(e => e.name === sel.value);
+    if (eDef) {
+      buildStackFromEntity(eDef);
+      refreshTileStack();
+      refreshProps();
+      refreshTilesetSelection();
+    }
+  };
+}
+
+function sortTileStack() {
+  state.tileStack.sort((a, b) => a.offset - b.offset);
+}
+
+// ─── UI: Toolbar bindings ────────────────────────────────────────────
+function bindToolbar() {
+  $('#bg-color').oninput = (e) => { state.bgColor = e.target.value; };
+  $('#render-scale').oninput = (e) => {
+    state.renderScale = parseInt(e.target.value);
+    $('#scale-val').textContent = state.renderScale + 'x';
+  };
+  $('#crt-toggle').onchange = (e) => {
+    state.crtEnabled = e.target.checked;
+    $('#crt-overlay').classList.toggle('active', state.crtEnabled);
+  };
+  $('#depth-strength').oninput = (e) => {
+    state.depthStrength = parseFloat(e.target.value);
+    $('#depth-val').textContent = state.depthStrength.toFixed(3);
+  };
+
+  $('#add-tile-btn').onclick = () => {
+    const defaultDef = state.tileDefs[0] || {
+      name: 'new', index: 0,
+      bg1: [0,0,0,0], bg2: [0,0,0,255], base: [255,255,255,255],
+      accent: [255,255,255,255], border: [255,255,255,255]
+    };
+    const maxOffset = state.tileStack.reduce((m, t) => Math.max(m, t.offset), 0);
+    const newTile = makeTileEntry(defaultDef, maxOffset + 0.25, null);
+    state.tileStack.push(newTile);
+    sortTileStack();
+    state.selectedTileIdx = state.tileStack.indexOf(newTile);
+    refreshTileStack();
+    refreshProps();
+    refreshTilesetSelection();
+  };
+}
+
+// ─── VP: Keyboard look (UHJK) ───────────────────────────────────────
+const VP_CLAMP = 1500;
+const VP_LOOK_SPEED = 800; // pixels per second
+const keysHeld = {};
+
+function isInputFocused() {
+  const tag = document.activeElement?.tagName;
+  return tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA';
+}
+
+document.addEventListener('keydown', (e) => {
+  if (isInputFocused()) return;
+  keysHeld[e.key.toLowerCase()] = true;
+  if (e.key === 'Escape') {
+    state.vpX = 0;
+    state.vpY = 0;
+    updateVpDisplay();
+  }
+});
+document.addEventListener('keyup', (e) => {
+  keysHeld[e.key.toLowerCase()] = false;
+});
+
+let lastFrameTime = 0;
+function updateVpFromKeyboard(timestamp) {
+  if (!lastFrameTime) { lastFrameTime = timestamp; return; }
+  const dt = (timestamp - lastFrameTime) / 1000;
+  lastFrameTime = timestamp;
+
+  let dx = 0, dy = 0;
+  if (keysHeld['h']) dx += 1;
+  if (keysHeld['k']) dx -= 1;
+  if (keysHeld['u']) dy += 1;
+  if (keysHeld['j']) dy -= 1;
+
+  if (dx !== 0 || dy !== 0) {
+    // Normalize diagonal
+    const len = Math.sqrt(dx * dx + dy * dy);
+    dx /= len; dy /= len;
+    state.vpX += dx * VP_LOOK_SPEED * dt;
+    state.vpY += dy * VP_LOOK_SPEED * dt;
+    clampVp();
+    updateVpDisplay();
+  }
+}
+
+function clampVp() {
+  const len = Math.sqrt(state.vpX * state.vpX + state.vpY * state.vpY);
+  if (len > VP_CLAMP) {
+    state.vpX = (state.vpX / len) * VP_CLAMP;
+    state.vpY = (state.vpY / len) * VP_CLAMP;
+  }
+}
+
+function updateVpDisplay() {
+  $('#vp-x-val').textContent = Math.round(state.vpX);
+  $('#vp-y-val').textContent = Math.round(state.vpY);
+  updateVpDot();
+}
+
+// ─── VP: Joystick pad ───────────────────────────────────────────────
+function updateVpDot() {
+  const pad = $('#vp-pad');
+  const dot = $('#vp-pad-dot');
+  const w = pad.clientWidth, h = pad.clientHeight;
+  const nx = (-state.vpX / VP_CLAMP) * (w / 2) + (w / 2);
+  const ny = (-state.vpY / VP_CLAMP) * (h / 2) + (h / 2);
+  dot.style.left = Math.max(0, Math.min(w, nx)) + 'px';
+  dot.style.top = Math.max(0, Math.min(h, ny)) + 'px';
+}
+
+function bindVpPad() {
+  const pad = $('#vp-pad');
+  let dragging = false;
+
+  function setFromMouse(e) {
+    const rect = pad.getBoundingClientRect();
+    const nx = ((e.clientX - rect.left) / rect.width - 0.5) * -2;
+    const ny = ((e.clientY - rect.top) / rect.height - 0.5) * -2;
+    state.vpX = nx * VP_CLAMP;
+    state.vpY = ny * VP_CLAMP;
+    clampVp();
+    updateVpDisplay();
+  }
+
+  pad.addEventListener('mousedown', (e) => { dragging = true; setFromMouse(e); });
+  document.addEventListener('mousemove', (e) => { if (dragging) setFromMouse(e); });
+  document.addEventListener('mouseup', () => { dragging = false; });
+
+  // Double-click to reset
+  pad.addEventListener('dblclick', () => {
+    state.vpX = 0; state.vpY = 0;
+    updateVpDisplay();
+  });
+
+  updateVpDot();
+}
+
+// ─── XML Generation ──────────────────────────────────────────────────
+function colorStr(c) {
+  return c.join(',');
+}
+
+function generateEntityXml() {
+  const name = state.currentEntityName || 'unnamed';
+  const id = state.currentEntityId;
+  const idAttr = id != null ? ` id="${id}"` : '';
+  let xml = `<entity name="${name}"${idAttr}>\n`;
+  xml += `  <GraphicalTileList>\n`;
+  for (const t of state.tileStack) {
+    let attrs = `TileId="${t.tileDefId}"`;
+    if (t.offset !== 0) attrs += ` Offset="${t.offset}"`;
+    // Color overrides: emit only colors that differ from the tile def
+    const tileDef = state.tileDefs.find(td => td.id === t.tileDefId);
+    const overrides = [
+      ['bg1', 'Background1Color'], ['bg2', 'Background2Color'],
+      ['base', 'BaseColor'], ['accent', 'AccentColor'], ['border', 'BorderColor'],
+    ];
+    for (const [key, xmlAttr] of overrides) {
+      if (tileDef && colorStr(t[key]) !== colorStr(tileDef[key])) {
+        attrs += ` ${xmlAttr}="${colorStr(t[key])}"`;
+      }
+    }
+    if (t.forceDraw) attrs += ` ForceDraw="true"`;
+    if (t.autoTile) attrs += ` AutoTile="true"`;
+    if (t.borderType) attrs += ` BorderType="${t.borderType}"`;
+    if (t.interpolateMovement != null) attrs += ` InterpolateMovement="${t.interpolateMovement}"`;
+    xml += `    <tile ${attrs}/>\n`;
+  }
+  xml += `  </GraphicalTileList>\n`;
+  xml += `  <Position/>\n`;
+  xml += `</entity>`;
+  return xml;
+}
+
+function generateTileDefXml() {
+  const t = getTile();
+  if (!t) return '<!-- select a tile -->';
+  let xml = `<tile\n`;
+  xml += `    id="${t.tileDefId}"\n`;
+  xml += `    name="${t.name}"\n`;
+  xml += `    index="${t.index}"\n`;
+  xml += `    bg1="${colorStr(t.bg1)}"\n`;
+  xml += `    bg2="${colorStr(t.bg2)}"\n`;
+  xml += `    base="${colorStr(t.base)}"\n`;
+  xml += `    accent="${colorStr(t.accent)}"\n`;
+  xml += `    border="${colorStr(t.border)}"/>`;
+  return xml;
+}
+
+function highlightXml(xml) {
+  const esc = xml.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  // Single-pass regex — no replacement can match another's output
+  return esc.replace(
+    /(&lt;\/?)([\w]+)|(\w+)="([^"]*)"|(\/?&gt;)/g,
+    (m, bracket, tag, attr, val, close) => {
+      if (tag) return `<span class="xml-tag">${bracket}${tag}</span>`;
+      if (attr != null) return `<span class="xml-attr">${attr}</span>="<span class="xml-val">${val}</span>"`;
+      if (close) return `<span class="xml-tag">${close}</span>`;
+      return m;
+    }
+  );
+}
+
+function refreshXmlSidebar() {
+  if (!state.xmlSidebarVisible) return;
+  const code = $('#xml-code');
+  const xml = state.xmlActiveTab === 'entity' ? generateEntityXml() : generateTileDefXml();
+  code.innerHTML = highlightXml(xml);
+
+  // Show correct action buttons
+  $('#xml-actions-entity').style.display = state.xmlActiveTab === 'entity' ? '' : 'none';
+  $('#xml-actions-tiledef').style.display = state.xmlActiveTab === 'tiledef' ? '' : 'none';
+}
+
+// ─── XML Sidebar Bindings ────────────────────────────────────────────
+function bindXmlSidebar() {
+  const panel = $('#panel-xml');
+  const toggleBtn = $('#xml-toggle-btn');
+
+  toggleBtn.onclick = () => {
+    state.xmlSidebarVisible = !state.xmlSidebarVisible;
+    panel.classList.toggle('visible', state.xmlSidebarVisible);
+    toggleBtn.classList.toggle('active', state.xmlSidebarVisible);
+    $('#xml-resize-handle').style.display = state.xmlSidebarVisible ? '' : 'none';
+    refreshXmlSidebar();
+  };
+
+  // Tab switching
+  for (const tab of document.querySelectorAll('.xml-tab')) {
+    tab.onclick = () => {
+      document.querySelectorAll('.xml-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      state.xmlActiveTab = tab.dataset.tab;
+      refreshXmlSidebar();
+    };
+  }
+
+  // Entity name input
+  $('#entity-name').oninput = (e) => {
+    state.currentEntityName = e.target.value;
+    refreshXmlSidebar();
+  };
+}
+
+// ─── Save Functions ──────────────────────────────────────────────────
+function showFlash(msg, type) {
+  const el = $('#save-flash');
+  el.textContent = msg;
+  el.className = 'flash-msg ' + type;
+  setTimeout(() => { el.className = 'flash-msg'; }, 3000);
+}
+
+async function saveEntity() {
+  const name = state.currentEntityName || 'unnamed';
+  const tiles = state.tileStack.map(t => {
+    const tileDef = state.tileDefs.find(td => td.id === t.tileDefId);
+    const entry = { tileId: t.tileDefId, offset: t.offset };
+    // Color overrides — only include colors that differ from tile def
+    const colorKeys = [
+      ['bg1', 'bg1Override'], ['bg2', 'bg2Override'],
+      ['base', 'baseOverride'], ['accent', 'accentOverride'], ['border', 'borderOverride'],
+    ];
+    for (const [key, jsonKey] of colorKeys) {
+      if (tileDef && colorStr(t[key]) !== colorStr(tileDef[key])) {
+        entry[jsonKey] = colorStr(t[key]);
+      }
+    }
+    if (t.forceDraw) entry.forceDraw = true;
+    if (t.autoTile) entry.autoTile = true;
+    if (t.borderType) entry.borderType = t.borderType;
+    if (t.interpolateMovement != null) entry.interpolateMovement = t.interpolateMovement;
+    return entry;
+  });
+
+  const body = { name, tiles };
+  if (state.currentEntityId != null) body.id = state.currentEntityId;
+
+  try {
+    const resp = await fetch('/api/save-entity', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const result = await resp.json();
+    if (result.ok) {
+      state.currentEntityId = result.id;
+      showFlash(`Saved entity "${name}" (id=${result.id})`, 'success');
+      // Refresh entity defs
+      await loadEntityDefinitions();
+      populateEntitySelect();
+      $('#entity-select').value = name;
+    } else {
+      showFlash('Error: ' + (result.error || 'unknown'), 'error');
+    }
+  } catch (e) {
+    showFlash('Save failed: ' + e.message, 'error');
+  }
+}
+
+async function saveTileDef(forceNewId) {
+  const t = getTile();
+  if (!t) return;
+
+  const body = {
+    name: t.name,
+    index: t.index,
+    bg1: colorStr(t.bg1),
+    bg2: colorStr(t.bg2),
+    base: colorStr(t.base),
+    accent: colorStr(t.accent),
+    border: colorStr(t.border),
+  };
+  if (!forceNewId && t.tileDefId != null) body.id = t.tileDefId;
+
+  try {
+    const resp = await fetch('/api/save-tile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const result = await resp.json();
+    if (result.ok) {
+      t.tileDefId = result.id;
+      showFlash(`Saved tile def "${t.name}" (id=${result.id})`, 'success');
+      await loadTileDefinitions();
+      refreshProps();
+      refreshXmlSidebar();
+    } else {
+      showFlash('Error: ' + (result.error || 'unknown'), 'error');
+    }
+  } catch (e) {
+    showFlash('Save failed: ' + e.message, 'error');
+  }
+}
+
+function bindSaveButtons() {
+  $('#save-entity-btn').onclick = saveEntity;
+  $('#save-tiledef-btn').onclick = () => saveTileDef(false);
+  $('#new-tiledef-btn').onclick = () => saveTileDef(true);
+}
+
+// ─── New Entity ──────────────────────────────────────────────────────
+function bindNewEntity() {
+  $('#new-entity-btn').onclick = () => {
+    // Auto-assign next ID
+    const maxId = state.entityDefs.reduce((m, e) => Math.max(m, e.id), -1);
+    state.currentEntityId = null; // null = server assigns
+    state.currentEntityName = 'new_entity';
+    $('#entity-name').value = 'new_entity';
+
+    // Start with one default tile
+    const defaultDef = state.tileDefs[0] || {
+      id: 0, name: 'empty', index: 0,
+      bg1: [0,0,0,0], bg2: [0,0,0,255], base: [255,255,255,255],
+      accent: [255,255,255,255], border: [255,255,255,255]
+    };
+    state.tileStack = [makeTileEntry(defaultDef, 0, null)];
+    state.selectedTileIdx = 0;
+
+    refreshTileStack();
+    refreshProps();
+    refreshTilesetSelection();
+    refreshXmlSidebar();
+  };
+}
+
+// ─── Resize Handles ──────────────────────────────────────────────────
+function bindResizeHandles() {
+  for (const handle of document.querySelectorAll('.resize-handle')) {
+    const targetClass = handle.dataset.target;
+    const side = handle.dataset.side; // 'left' = panel is to the right of handle
+    const panel = document.querySelector('.' + targetClass);
+
+    handle.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      handle.classList.add('active');
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+
+      function onMove(e) {
+        if (side === 'right') {
+          // Panel is to the left, drag its right edge
+          const rect = panel.getBoundingClientRect();
+          const newWidth = e.clientX - rect.left;
+          panel.style.width = Math.max(parseInt(getComputedStyle(panel).minWidth) || 100, newWidth) + 'px';
+        } else {
+          // Panel is to the right, drag its left edge
+          const rect = panel.getBoundingClientRect();
+          const newWidth = rect.right - e.clientX;
+          panel.style.width = Math.max(parseInt(getComputedStyle(panel).minWidth) || 100, newWidth) + 'px';
+        }
+      }
+
+      function onUp() {
+        handle.classList.remove('active');
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      }
+
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+  }
+}
+
+// ─── Init ────────────────────────────────────────────────────────────
+async function init() {
+  try {
+    await Promise.all([loadTileDefinitions(), loadEntityDefinitions(), loadTilesheet()]);
+  } catch (e) {
+    document.body.innerHTML = `<div style="padding:40px;color:#f38ba8;font-size:16px;">
+      Failed to load assets. Run the tile viewer server:<br><br>
+      <code style="color:#a6e3a1">./tools/tile-viewer/run.sh</code><br><br>
+      Then open <code style="color:#a6e3a1">http://localhost:8080/tools/tile-viewer/</code><br><br>
+      Error: ${e.message}
+    </div>`;
+    return;
+  }
+
+  populateEntitySelect();
+  buildTilesetGrid();
+  bindToolbar();
+  bindPropInputs();
+  bindVpPad();
+  bindXmlSidebar();
+  bindSaveButtons();
+  bindNewEntity();
+  bindResizeHandles();
+
+  // Load first entity
+  if (state.entityDefs.length > 0) {
+    const first = state.entityDefs[0];
+    buildStackFromEntity(first);
+    refreshTileStack();
+    refreshProps();
+    refreshTilesetSelection();
+  }
+
+  requestAnimationFrame(render);
+}
+
+init();
+</script>
+</body>
+</html>

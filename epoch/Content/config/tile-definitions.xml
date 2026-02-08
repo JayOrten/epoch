@@ -1,156 +1,21 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <tileDefinitions>
-    <tile
-        id="0"
-        name="empty"
-        index="0"
-        bg1="0,0,0,0"
-        bg2="30,32,48,255"
-        base="88,91,112,255"
-        accent="255,255,255"
-        border="108,112,134,255"/>
-    <tile
-        id="1"
-        name="player"
-        index="0"
-        bg1="100,100,100"
-        bg2="100,100,100"
-        base="255,255,255"
-        accent="255,255,255"
-        border="255,255,255"/>
-    <tile
-        id="2"
-        name="grass"
-        index="4"
-        bg1="0,0,0,0"
-        bg2="0,0,0,0"
-        base="166,227,161,255"
-        accent="255,255,255,255"
-        border="255,255,255,255"/>
-    <tile
-        id="3"
-        name="tree"
-        index="0"
-        bg1="100,100,100"
-        bg2="100,100,100"
-        base="255,255,255"
-        accent="255,255,255"
-        border="255,255,255"/>
-    <tile
-        id="4"
-        name="dirt"
-        index="0"
-        bg1="100,100,100"
-        bg2="100,100,100"
-        base="255,255,255"
-        accent="255,255,255"
-        border="255,255,255"/>
-    <tile
-        id="5"
-        name="water"
-        index="0"
-        bg1="100,100,100"
-        bg2="100,100,100"
-        base="255,255,255"
-        accent="255,255,255"
-        border="255,255,255"/>
-    <tile
-        id="6"
-        name="hashtag"
-        index="36"
-        bg1="0,0,0,0"
-        bg2="0,0,0,0"
-        base="108,112,134,255"
-        accent="255,255,255"
-        border="255,255,255"/>
-    <tile
-        id="7"
-        name="circle"
-        index="0"
-        bg1="100,100,100"
-        bg2="100,100,100"
-        base="255,255,255"
-        accent="255,255,255"
-        border="255,255,255"/>
-    <tile
-        id="8"
-        name="plus"
-        index="0"
-        bg1="100,100,100"
-        bg2="100,100,100"
-        base="255,255,255"
-        accent="255,255,255"
-        border="255,255,255"/>
-    <tile
-        id="9"
-        name="head"
-        index="3"
-        bg1="0,0,0,0"
-        bg2="0,0,0,0"
-        base="255,255,255,255"
-        accent="243,139,168,255"
-        border="0,0,0,0"/>
-    <tile
-        id="10"
-        name="torso"
-        index="2"
-        bg1="0,0,0,0"
-        bg2="0,0,0,0"
-        base="255,255,255,255"
-        accent="255,255,255,255"
-        border="0,0,0,0"/>
-    <tile
-        id="11"
-        name="legs"
-        index="1"
-        bg1="0,0,0,0"
-        bg2="0,0,0,0"
-        base="255,255,255,255"
-        accent="255,255,255,255"
-        border="0,0,0,0"/>
-    <tile
-        id="12"
-        name="grass2"
-        index="5"
-        bg1="0,0,0,0"
-        bg2="0,0,0,0"
-        base="166,227,161,255"
-        accent="255,255,255,255"
-        border="255,255,255,255"/>
-    <tile
-        id="13"
-        name="stone1"
-        index="16"
-        bg1="0,0,0,0"
-        bg2="30,32,48,255"
-        base="108,112,134,255"
-        accent="255,255,255"
-        border="108,112,134,255"/>
-    <tile
-        id="14"
-        name="stone2"
-        index="20"
-        bg1="0,0,0,0"
-        bg2="0,0,0,0"
-        base="108,112,134,255"
-        accent="255,255,255"
-        border="108,112,134,255"/>
-    <tile
-        id="15"
-        name="stone3"
-        index="36"
-        bg1="0,0,0,0"
-        bg2="0,0,0,0"
-        base="108,112,134,255"
-        accent="255,255,255"
-        border="108,112,134,255"/>
-    <tile
-        id="16"
-        name="stone4"
-        index="22"
-        bg1="0,0,0,0"
-        bg2="0,0,0,0"
-        base="108,112,134,255"
-        accent="255,255,255"
-        border="108,112,134,255"/>
+    <tile id="0" name="empty" index="1" bg1="0,0,0,0" bg2="30,32,48,255" base="88,91,112,255" accent="255,255,255,255" border="108,112,134,255" />
+    <tile id="1" name="player" index="0" bg1="100,100,100" bg2="100,100,100" base="255,255,255" accent="255,255,255" border="255,255,255" />
+    <tile id="2" name="grass" index="4" bg1="0,0,0,0" bg2="0,0,0,0" base="166,227,161,255" accent="255,255,255,255" border="255,255,255,255" />
+    <tile id="3" name="tree" index="0" bg1="100,100,100" bg2="100,100,100" base="255,255,255" accent="255,255,255" border="255,255,255" />
+    <tile id="4" name="dirt" index="0" bg1="100,100,100" bg2="100,100,100" base="255,255,255" accent="255,255,255" border="255,255,255" />
+    <tile id="5" name="water" index="0" bg1="100,100,100" bg2="100,100,100" base="255,255,255" accent="255,255,255" border="255,255,255" />
+    <tile id="6" name="hashtag" index="36" bg1="0,0,0,0" bg2="0,0,0,0" base="108,112,134,255" accent="255,255,255" border="255,255,255" />
+    <tile id="7" name="circle" index="0" bg1="100,100,100" bg2="100,100,100" base="255,255,255" accent="255,255,255" border="255,255,255" />
+    <tile id="8" name="plus" index="0" bg1="100,100,100" bg2="100,100,100" base="255,255,255" accent="255,255,255" border="255,255,255" />
+    <tile id="9" name="head" index="3" bg1="0,0,0,0" bg2="0,0,0,0" base="255,255,255,255" accent="243,139,168,255" border="0,0,0,0" />
+    <tile id="10" name="torso" index="2" bg1="0,0,0,0" bg2="0,0,0,0" base="255,255,255,255" accent="255,255,255,255" border="0,0,0,0" />
+    <tile id="11" name="legs" index="1" bg1="0,0,0,0" bg2="0,0,0,0" base="255,255,255,255" accent="255,255,255,255" border="0,0,0,0" />
+    <tile id="12" name="grass2" index="5" bg1="0,0,0,0" bg2="0,0,0,0" base="166,227,161,255" accent="255,255,255,255" border="255,255,255,255" />
+    <tile id="13" name="stone1" index="16" bg1="0,0,0,0" bg2="30,32,48,255" base="108,112,134,255" accent="255,255,255" border="108,112,134,255" />
+    <tile id="14" name="stone2" index="20" bg1="0,0,0,0" bg2="0,0,0,0" base="108,112,134,255" accent="255,255,255" border="108,112,134,255" />
+    <tile id="15" name="stone3" index="36" bg1="0,0,0,0" bg2="0,0,0,0" base="108,112,134,255" accent="255,255,255" border="108,112,134,255" />
+    <tile id="16" name="stone4" index="22" bg1="0,0,0,0" bg2="0,0,0,0" base="108,112,134,255" accent="255,255,255" border="108,112,134,255" />
 </tileDefinitions>
+
