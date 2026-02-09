@@ -30,12 +30,6 @@
         </GraphicalTileList>
         <Position />
     </entity>
-    <entity name="empty" id="4">
-        <GraphicalTileList>
-            <tile TileId="0" />
-        </GraphicalTileList>
-        <Position Passable="true" />
-    </entity>
     <entity name="grass" id="5">
         <GraphicalTileList>
             <tile TileId="2" ForceDraw="true" Offset="0.05" Background1Color="0,0,0,0" />
@@ -47,15 +41,11 @@
     </entity>
     <entity name="tree" id="6">
         <GraphicalTile TileId="3" />
-        <Position Passable="false" />
+        <Position Passable="false" IsBlock="true"/>
     </entity>
     <entity name="dirt" id="7">
         <GraphicalTile TileId="4" />
-        <Position Passable="false" />
-    </entity>
-    <entity name="water" id="8">
-        <GraphicalTile TileId="5" color="#ff0000" />
-        <Position Passable="false" />
+        <Position Passable="false" IsBlock="true"/>
     </entity>
     <entity name="stone" id="9">
         <GraphicalTileList>
