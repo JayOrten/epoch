@@ -571,6 +571,102 @@ body {
 }
 .prop-row:hover .color-reset-btn.visible { opacity: 1; }
 .color-reset-btn:hover { color: var(--accent2); }
+
+/* Color palette */
+.palette-section {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.palette-section h3 {
+  font-size: 12px;
+  color: var(--subtext);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.palette-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.palette-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  position: relative;
+  transition: border-color 0.1s, transform 0.1s;
+}
+.palette-swatch:hover {
+  border-color: var(--text);
+  transform: scale(1.15);
+  z-index: 1;
+}
+.palette-swatch .swatch-remove {
+  display: none;
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 14px;
+  height: 14px;
+  background: var(--accent2);
+  color: var(--bg);
+  border: none;
+  border-radius: 50%;
+  font-size: 9px;
+  line-height: 14px;
+  text-align: center;
+  cursor: pointer;
+  padding: 0;
+  z-index: 2;
+}
+.palette-swatch:hover .swatch-remove { display: block; }
+.palette-add {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: 2px dashed var(--border);
+  background: none;
+  color: var(--subtext);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s, color 0.15s;
+}
+.palette-add:hover { border-color: var(--accent); color: var(--accent); }
+.palette-target-hint {
+  font-size: 10px;
+  color: var(--surface2);
+  margin-top: 6px;
+  font-style: italic;
+}
+.palette-target-hint span { color: var(--accent); }
+.palette-reset-btn {
+  background: none;
+  border: none;
+  color: var(--subtext);
+  cursor: pointer;
+  font-size: 10px;
+  padding: 0 2px;
+}
+.palette-reset-btn:hover { color: var(--accent2); }
+.color-label-selectable {
+  cursor: pointer;
+  padding: 1px 4px;
+  border-radius: 3px;
+  transition: background 0.1s, color 0.1s;
+}
+.color-label-selectable:hover { color: var(--text); }
+.color-label-selectable.active {
+  background: var(--accent);
+  color: var(--bg);
+}
 </style>
 </head>
 <body>
@@ -718,6 +814,11 @@ body {
         <button class="color-reset-btn" id="reset-border" title="Reset to tile def">&circlearrowleft;</button>
       </div>
     </div>
+    <div class="palette-section" id="palette-section" style="display:none;">
+      <h3>Palette <button class="palette-reset-btn" id="palette-reset-btn" title="Reset to default">&circlearrowleft;</button></h3>
+      <div class="palette-grid" id="palette-grid"></div>
+      <div class="palette-target-hint">Click a color label above, then a swatch. Target: <span id="palette-target">none</span></div>
+    </div>
   </div>
 
   <div class="resize-handle" data-target="panel-xml" data-side="left" id="xml-resize-handle"></div>
@@ -780,6 +881,7 @@ const state = {
   xmlActiveTab: 'entity',  // 'entity' or 'tiledef'
   currentEntityId: null,
   currentEntityName: '',
+  palette: [],
 };
 
 // ─── Undo/Redo ──────────────────────────────────────────────────────
@@ -951,7 +1053,7 @@ async function loadTilesheet() {
       resolve();
     };
     img.onerror = reject;
-    img.src = '../../epoch/Content/images/tilesheet_24x24.png';
+    img.src = '../../epoch/Content/images/tilesheet_24x24.png?' + Date.now();
   });
 }
 
@@ -1347,6 +1449,127 @@ function bindPropInputs() {
     };
   }
 }
+
+// ─── Color Palette ────────────────────────────────────────────────────
+const CATPPUCCIN_MOCHA = [
+  '#f5e0dc', '#f2cdcd', '#f5c2e7', '#cba6f7', '#f38ba8', '#eba0ac',
+  '#fab387', '#f9e2af', '#a6e3a1', '#94e2d5', '#89dcfe', '#74c7ec',
+  '#89b4fa', '#b4befe', '#cdd6f4', '#bac2de', '#a6adc8', '#9399b2',
+  '#7f849c', '#6c7086', '#585b70', '#45475a', '#313244', '#1e1e2e',
+  '#181825', '#11111b',
+];
+
+let activeColorKey = null; // which color channel the palette targets
+
+function getDefaultPalette() { return [...CATPPUCCIN_MOCHA]; }
+
+function loadPalette() {
+  try {
+    const saved = localStorage.getItem('epoch-tile-viewer-palette');
+    if (saved) return JSON.parse(saved);
+  } catch {}
+  return getDefaultPalette();
+}
+
+function savePalette() {
+  localStorage.setItem('epoch-tile-viewer-palette', JSON.stringify(state.palette));
+}
+
+function setActiveColorKey(key) {
+  activeColorKey = key;
+  $('#palette-target').textContent = key || 'none';
+  document.querySelectorAll('.color-label-selectable').forEach(l =>
+    l.classList.toggle('active', l.dataset.colorKey === key)
+  );
+}
+
+function refreshPalette() {
+  const grid = $('#palette-grid');
+  grid.innerHTML = '';
+  for (let i = 0; i < state.palette.length; i++) {
+    const hex = state.palette[i];
+    const swatch = document.createElement('div');
+    swatch.className = 'palette-swatch';
+    swatch.style.background = hex;
+    swatch.title = hex;
+
+    swatch.onclick = () => {
+      if (!activeColorKey) return;
+      const t = getTile(); if (!t) return;
+      pushUndo();
+      const rgb = hexToRgb(hex);
+      t[activeColorKey][0] = rgb[0];
+      t[activeColorKey][1] = rgb[1];
+      t[activeColorKey][2] = rgb[2];
+      refreshTileStack();
+      refreshProps();
+    };
+
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'swatch-remove';
+    removeBtn.textContent = '\u00d7';
+    removeBtn.onclick = (e) => {
+      e.stopPropagation();
+      state.palette.splice(i, 1);
+      savePalette();
+      refreshPalette();
+    };
+    swatch.appendChild(removeBtn);
+    grid.appendChild(swatch);
+  }
+
+  // Add button
+  const addBtn = document.createElement('button');
+  addBtn.className = 'palette-add';
+  addBtn.textContent = '+';
+  addBtn.title = 'Add color';
+  const hiddenInput = document.createElement('input');
+  hiddenInput.type = 'color';
+  hiddenInput.style.display = 'none';
+  addBtn.onclick = () => hiddenInput.click();
+  hiddenInput.onchange = (e) => {
+    state.palette.push(e.target.value);
+    savePalette();
+    refreshPalette();
+  };
+  addBtn.appendChild(hiddenInput);
+  grid.appendChild(addBtn);
+}
+
+function bindPalette() {
+  state.palette = loadPalette();
+
+  // Make the color labels clickable palette targets (avoids opening the native color picker)
+  for (const key of ['bg1', 'bg2', 'base', 'accent', 'border']) {
+    const colorInput = $(`#prop-${key}`);
+    // Find the label sibling right before the color input
+    const label = colorInput.previousElementSibling;
+    if (label && label.tagName === 'LABEL') {
+      label.classList.add('color-label-selectable');
+      label.dataset.colorKey = key;
+      label.addEventListener('click', (e) => {
+        e.preventDefault();
+        setActiveColorKey(key);
+      });
+    }
+  }
+
+  $('#palette-reset-btn').onclick = () => {
+    state.palette = getDefaultPalette();
+    savePalette();
+    refreshPalette();
+  };
+
+  refreshPalette();
+}
+
+// Show/hide palette with tiledef-props
+const _origRefreshProps = refreshProps;
+refreshProps = function() {
+  _origRefreshProps();
+  const tile = state.tileStack[state.selectedTileIdx];
+  $('#palette-section').style.display = tile ? '' : 'none';
+};
 
 // ─── UI: Tileset grid ────────────────────────────────────────────────
 function buildTilesetGrid() {
@@ -1875,6 +2098,7 @@ async function init() {
   buildTilesetGrid();
   bindToolbar();
   bindPropInputs();
+  bindPalette();
   bindVpPad();
   bindXmlSidebar();
   bindSaveButtons();

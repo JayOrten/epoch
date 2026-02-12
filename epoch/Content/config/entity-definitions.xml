@@ -1,6 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <entityDefinitions>
     <entity name="player" id="0">
+        <GraphicalTileList />
         <PlayerTag />
         <Position />
         <Direction FaceDirection="0,0" />
@@ -41,18 +42,18 @@
     </entity>
     <entity name="tree" id="6">
         <GraphicalTile TileId="3" />
-        <Position Passable="false" IsBlock="true"/>
+        <Position Passable="false" IsBlock="true" />
     </entity>
     <entity name="dirt" id="7">
         <GraphicalTile TileId="4" />
-        <Position Passable="false" IsBlock="true"/>
+        <Position Passable="false" IsBlock="true" />
     </entity>
     <entity name="stone" id="9">
         <GraphicalTileList>
-            <tile TileId="13" Offset="0" Background1Color="30,32,48,255" AutoTile="true" BorderType="Bottom" />
-            <tile TileId="13" Offset="0.25" Background1Color="30,32,48,255" AutoTile="true" />
-            <tile TileId="13" Offset="0.5" Background1Color="30,32,48,255" AutoTile="true" />
-            <tile TileId="13" Offset="0.75" Background1Color="30,32,48,255" AutoTile="true" />
+            <tile TileId="5" Offset="0" AutoTile="true" BorderType="Bottom" />
+            <tile TileId="5" Offset="0.25" AutoTile="true" />
+            <tile TileId="5" Offset="0.5" AutoTile="true" />
+            <tile TileId="5" Offset="0.75" AutoTile="true" />
             <tile TileId="0" Offset="1" BorderType="Top" />
         </GraphicalTileList>
         <Position Passable="false" IsBlock="true" />
