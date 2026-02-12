@@ -26,17 +26,11 @@
 /processorParam:DebugMode=Auto
 /build:RenderShader.fx
 
-#begin config/atlas-definition.xml
-/copy:config/atlas-definition.xml
-
 #begin config/entity-definitions.xml
 /copy:config/entity-definitions.xml
 
 #begin config/tile-definitions.xml
 /copy:config/tile-definitions.xml
-
-#begin config/tilemap-definition.xml
-/copy:config/tilemap-definition.xml
 
 #begin config/tileset.json
 /copy:config/tileset.json
