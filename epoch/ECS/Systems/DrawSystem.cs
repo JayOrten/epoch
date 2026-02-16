@@ -265,10 +265,11 @@ public sealed class DrawSystem : SystemBase<GameTime>
         // If tileInfo is null, skip drawing
         if (tileInfo != null)
         {
-            // First add the bordermask to the tile id if auto tiling is on
-            int tileId = tileInfo.TileIndex + (graphicalTile.AutoTile ? graphicalTile.AutoTileMask : 0);
-
-            TextureRegion region = GlobalContext.TileManager.Tileset.GetTile(tileId);
+            // Get texture region and rotation
+            (TextureRegion region, float rotation) = GlobalContext.TileManager.Tileset.GetTile(
+                tileInfo.TileIndex,
+                graphicalTile.AutoTileMask
+            );
 
             var (finalPosition, finalScale) = ComputeTileTransform(
                 position.WorldCoordinate,
@@ -292,11 +293,7 @@ public sealed class DrawSystem : SystemBase<GameTime>
 
             // Smoothly interpolate position to prevent popping on z-level transitions
             var targetPosition = graphicalTile.InterpolateMovement
-                ? Vector2.Lerp(
-                    graphicalTile.CurrentDrawPosition,
-                    finalPosition,
-                    lerpFactor
-                )
+                ? Vector2.Lerp(graphicalTile.CurrentDrawPosition, finalPosition, lerpFactor)
                 : finalPosition;
 
             graphicalTile.CurrentDrawPosition = targetPosition;
@@ -323,7 +320,7 @@ public sealed class DrawSystem : SystemBase<GameTime>
                 graphicalTile.CurrentDrawPosition, // Position
                 sortingLevel, // Depth
                 graphicalTile.CurrentDrawScale, // Scale
-                0.0f, // Rotation
+                rotation, // Rotation
                 graphicalTile.BorderMask,
                 graphicalTile.BorderWidth,
                 layerDifference,

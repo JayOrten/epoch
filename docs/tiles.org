@@ -23,3 +23,16 @@ These are color coded in the sprite with the following colors:
 - Border: set in shader.
 
 The one gotcha is that the magenta color is automatically made transparent by MGCB - I'm disabling this.
+
+* Orientations
+For efficiency and convenience, the tilesets are arranges in the following way:
+
+Each "block" tile that has autotiling capability is arranges in a row in the following order:
+1. full "top" tile
+2. Bottom single edge
+3. Bottom left corner edge
+4. bottom single edge and top single edge
+5. bottom edge, left edge, and top edge
+6. all edges
+
+The tile is then rotated according the binary autotiling mask from some custom map logic. Thus, we can rotate obtain variations for the different edges and not have to manually draw every possible autotile. See DrawSystem.cs and TileSet.cs
