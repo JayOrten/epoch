@@ -1,6 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <entityDefinitions>
     <entity name="player" id="0">
+        <GraphicalTileList />
         <PlayerTag />
         <Position />
         <Direction FaceDirection="0,0" />
@@ -14,19 +15,19 @@
     </entity>
     <entity name="legs" id="1">
         <GraphicalTileList>
-            <tile TileId="11" InterpolateMovement="false" />
+            <tile TileId="31" Offset="0" InterpolateMovement="false" />
         </GraphicalTileList>
         <Position />
     </entity>
     <entity name="torso" id="2">
         <GraphicalTileList>
-            <tile TileId="10" InterpolateMovement="false" />
+            <tile TileId="32" Offset="0" InterpolateMovement="false" />
         </GraphicalTileList>
         <Position />
     </entity>
     <entity name="head" id="3">
         <GraphicalTileList>
-            <tile TileId="9" InterpolateMovement="false" />
+            <tile TileId="33" Offset="0" InterpolateMovement="false" />
         </GraphicalTileList>
         <Position />
     </entity>
@@ -39,23 +40,111 @@
         </GraphicalTileList>
         <Position Passable="true" />
     </entity>
-    <entity name="tree" id="6">
-        <GraphicalTile TileId="3" />
-        <Position Passable="false" IsBlock="true"/>
-    </entity>
-    <entity name="dirt" id="7">
-        <GraphicalTile TileId="4" />
-        <Position Passable="false" IsBlock="true"/>
-    </entity>
     <entity name="stone" id="9">
         <GraphicalTileList>
-            <tile TileId="13" Offset="0" Background1Color="30,32,48,255" AutoTile="true" BorderType="Bottom" />
-            <tile TileId="13" Offset="0.25" Background1Color="30,32,48,255" AutoTile="true" />
-            <tile TileId="13" Offset="0.5" Background1Color="30,32,48,255" AutoTile="true" />
-            <tile TileId="13" Offset="0.75" Background1Color="30,32,48,255" AutoTile="true" />
+            <tile TileId="5" Offset="0" AutoTile="true" BorderType="Bottom" />
+            <tile TileId="5" Offset="0.25" AutoTile="true" />
+            <tile TileId="5" Offset="0.5" AutoTile="true" />
+            <tile TileId="5" Offset="0.75" AutoTile="true" />
             <tile TileId="0" Offset="1" BorderType="Top" />
         </GraphicalTileList>
         <Position Passable="false" IsBlock="true" />
+    </entity>
+    <entity name="grass_2" id="10">
+        <GraphicalTileList>
+            <tile TileId="5" Offset="0" />
+            <tile TileId="5" Offset="0.15" />
+            <tile TileId="5" Offset="0.3" />
+            <tile TileId="6" Offset="0.45" />
+        </GraphicalTileList>
+        <Position Passable="true" />
+    </entity>
+    <entity name="grass_1" id="11">
+        <GraphicalTileList>
+            <tile TileId="3" Offset="0" />
+            <tile TileId="3" Offset="0.15" />
+            <tile TileId="3" Offset="0.3" />
+            <tile TileId="4" Offset="0.45" />
+        </GraphicalTileList>
+        <Position Passable="true" />
+    </entity>
+    <entity name="inorganic_1" id="12">
+        <GraphicalTileList>
+            <tile TileId="7" Offset="0" AutoTile="true" BorderType="Bottom" />
+            <tile TileId="8" Offset="0.25" AutoTile="true" />
+            <tile TileId="7" Offset="0.5" AutoTile="true" />
+            <tile TileId="8" Offset="0.75" AutoTile="true" />
+            <tile TileId="7" Offset="1" BorderType="Top" />
+        </GraphicalTileList>
+        <Position IsBlock="true" />
+    </entity>
+    <entity name="inorganic_2" id="13">
+        <GraphicalTileList>
+            <tile TileId="10" Offset="0" AutoTile="true" BorderType="Bottom" />
+            <tile TileId="10" Offset="0.25" AutoTile="true" />
+            <tile TileId="10" Offset="0.5" AutoTile="true" />
+            <tile TileId="10" Offset="0.75" AutoTile="true" />
+            <tile TileId="10" Offset="1" BorderType="Top" />
+        </GraphicalTileList>
+        <Position IsBlock="true" />
+    </entity>
+    <entity name="inorganic_3" id="14">
+        <GraphicalTileList>
+            <tile TileId="11" Offset="0" AutoTile="true" BorderType="Bottom" />
+            <tile TileId="11" Offset="0.25" AutoTile="true" />
+            <tile TileId="11" Offset="0.5" AutoTile="true" />
+            <tile TileId="11" Offset="0.75" AutoTile="true" />
+            <tile TileId="10" Offset="1" BorderType="Top" />
+        </GraphicalTileList>
+        <Position IsBlock="true" />
+    </entity>
+    <entity name="inorganic_4" id="15">
+        <GraphicalTileList>
+            <tile TileId="12" Offset="0" AutoTile="true" BorderType="Bottom" />
+            <tile TileId="13" Offset="0.25" AutoTile="true" />
+            <tile TileId="12" Offset="0.5" AutoTile="true" />
+            <tile TileId="13" Offset="0.75" AutoTile="true" />
+            <tile TileId="12" Offset="1" BorderType="Top" />
+        </GraphicalTileList>
+        <Position IsBlock="true" />
+    </entity>
+    <entity name="inorganic_5_dirt" id="16">
+        <GraphicalTileList>
+            <tile TileId="21" Offset="0" AutoTile="true" BorderType="Bottom" />
+            <tile TileId="20" Offset="0.125" AutoTile="true" />
+            <tile TileId="19" Offset="0.25" AutoTile="true" />
+            <tile TileId="18" Offset="0.375" AutoTile="true" />
+            <tile TileId="17" Offset="0.5" AutoTile="true" />
+            <tile TileId="16" Offset="0.625" AutoTile="true" />
+            <tile TileId="15" Offset="0.75" AutoTile="true" />
+            <tile TileId="14" Offset="0.875" AutoTile="true" />
+            <tile TileId="14" Offset="1" BorderType="Top" />
+        </GraphicalTileList>
+        <Position IsBlock="true" />
+    </entity>
+    <entity name="inorganic_6_stone" id="17">
+        <GraphicalTileList>
+            <tile TileId="29" Offset="0" AutoTile="true" BorderType="Bottom" />
+            <tile TileId="28" Offset="0.125" AutoTile="true" />
+            <tile TileId="27" Offset="0.25" AutoTile="true" />
+            <tile TileId="26" Offset="0.375" AutoTile="true" />
+            <tile TileId="25" Offset="0.5" AutoTile="true" />
+            <tile TileId="24" Offset="0.625" AutoTile="true" />
+            <tile TileId="23" Offset="0.75" AutoTile="true" />
+            <tile TileId="22" Offset="0.875" AutoTile="true" />
+            <tile TileId="22" Offset="1" BorderType="Top" />
+        </GraphicalTileList>
+        <Position IsBlock="true" />
+    </entity>
+    <entity name="organic_1" id="18">
+        <GraphicalTileList>
+            <tile TileId="30" Offset="0" AutoTile="true" BorderType="Bottom" />
+            <tile TileId="30" Offset="0.25" AutoTile="true" />
+            <tile TileId="30" Offset="0.5" AutoTile="true" />
+            <tile TileId="30" Offset="0.75" AutoTile="true" />
+            <tile TileId="30" Offset="1" BorderType="Top" />
+        </GraphicalTileList>
+        <Position IsBlock="true" />
     </entity>
 </entityDefinitions>
 

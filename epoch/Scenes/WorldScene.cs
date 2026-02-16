@@ -84,10 +84,10 @@ public class WorldScene : Scene
         if (textureSizeParam != null)
             textureSizeParam.SetValue(
                 new Vector2(
-                    GlobalContext.TileManager.Tileset.Rows
-                        * GlobalContext.TileManager.Tileset.TileHeight,
                     GlobalContext.TileManager.Tileset.Columns
-                        * GlobalContext.TileManager.Tileset.TileWidth
+                        * GlobalContext.TileManager.Tileset.TileWidth,
+                    GlobalContext.TileManager.Tileset.Rows
+                        * GlobalContext.TileManager.Tileset.TileHeight
                 )
             );
         if (tileSizeParam != null)

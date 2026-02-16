@@ -44,6 +44,12 @@ class TileViewerHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=REPO_ROOT, **kwargs)
 
+    def do_GET(self):
+        if self.path == "/api/tilesheets":
+            self._handle_list_tilesheets()
+        else:
+            super().do_GET()
+
     def do_POST(self):
         if self.path == "/api/save-tile":
             self._handle_save_tile()
@@ -63,6 +69,18 @@ class TileViewerHandler(SimpleHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    def _handle_list_tilesheets(self):
+        images_dir = os.path.join(REPO_ROOT, "epoch", "Content", "images")
+        try:
+            files = [
+                f for f in os.listdir(images_dir)
+                if f.lower().endswith(".png") and "tilesheet" in f.lower()
+            ]
+            files.sort()
+            self._json_response(200, {"files": files})
+        except Exception as e:
+            self._json_response(500, {"error": str(e)})
 
     def _handle_save_tile(self):
         try:
@@ -129,11 +147,23 @@ class TileViewerHandler(SimpleHTTPRequestHandler):
                 existing = ET.SubElement(root, "entity")
                 existing.set("name", entity_name)
                 existing.set("id", str(entity_id))
-                # New entities get Position
                 ET.SubElement(existing, "Position")
             else:
                 existing.set("name", entity_name)
                 existing.set("id", str(entity_id))
+
+            # Update Position attributes
+            pos_el = existing.find("Position")
+            if pos_el is None:
+                pos_el = ET.SubElement(existing, "Position")
+            # Clear old attrs, then set from data
+            for attr in ("Passable", "IsBlock"):
+                if attr in pos_el.attrib:
+                    del pos_el.attrib[attr]
+            if data.get("passable"):
+                pos_el.set("Passable", "true")
+            if data.get("isBlock"):
+                pos_el.set("IsBlock", "true")
 
             # Remove old GraphicalTileList (preserve other components)
             old_gtl = existing.find("GraphicalTileList")

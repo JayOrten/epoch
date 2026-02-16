@@ -102,6 +102,27 @@ public class Tileset
         return new Tileset(textureRegion, tiledef.tile_width, tiledef.tile_height, tiledef.padding);
     }
 
+    // Custom mapping for index and rotation in the tileset.
+    (int, float)[] rotationMap =
+    [
+        (0, 0.0f),
+        (1, 180.0f),
+        (1, 270.0f),
+        (2, 180.0f),
+        (1, 0.0f),
+        (3, 0.0f),
+        (2, 270.0f),
+        (4, 180.0f),
+        (1, 90.0f),
+        (2, 90.0f),
+        (3, 90.0f),
+        (4, 90.0f),
+        (2, 0.0f),
+        (4, 0.0f),
+        (4, 270.0f),
+        (5, 0.0f),
+    ];
+
     /// <summary>
     /// Gets the texture region for the tile from this tileset at the given index.
     /// </summary>
@@ -110,15 +131,17 @@ public class Tileset
     public TextureRegion GetTile(int index) => _tiles[index];
 
     /// <summary>
-    /// Gets the texture region for the tile from this tileset at the given location.
+    /// Gets the texture region for the tile from this tileset at the given index.
     /// </summary>
-    /// <param name="column">The column in this tileset of the texture region.</param>
-    /// <param name="row">The row in this tileset of the texture region.</param>
-    /// <returns>The texture region for the tile from this tileset at given location.</returns>
-    public TextureRegion GetTile(int column, int row)
+    /// <param name="index">The index of the texture region in this tile set.</param>
+    /// <param name="autoTileMask">The mask for autotiling.</param>
+    /// <returns>The texture region for the tile form this tileset at the given index.</returns>
+    public (TextureRegion textureRegion, float rotation) GetTile(int index, int autoTileMask)
     {
-        int index = row * Columns + column;
-        return GetTile(index);
+        // Add the bordermask to the tile id if auto tiling is on
+        (int increment, float rotation) = rotationMap[autoTileMask];
+        int tileId = index + increment;
+        return (_tiles[tileId], rotation);
     }
 }
 

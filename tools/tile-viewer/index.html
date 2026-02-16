@@ -341,10 +341,11 @@ body {
 /* Tileset grid */
 .tileset-grid {
   display: grid;
-  grid-template-columns: repeat(16, 32px);
   gap: 1px;
   padding: 4px;
   image-rendering: pixelated;
+  overflow-y: auto;
+  max-height: 400px;
 }
 .tileset-cell {
   width: 32px;
@@ -515,36 +516,6 @@ body {
 .xml-preview .xml-tag { color: var(--accent); }
 .xml-preview .xml-attr { color: var(--subtext); }
 .xml-preview .xml-val { color: var(--green); }
-.xml-actions {
-  padding: 8px;
-  display: flex;
-  gap: 8px;
-  border-top: 1px solid var(--border);
-}
-.xml-actions button {
-  flex: 1;
-  padding: 6px 12px;
-  border: none;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.save-btn {
-  background: var(--green);
-  color: var(--bg);
-}
-.save-btn:hover { opacity: 0.85; }
-.flash-msg {
-  padding: 4px 8px;
-  font-size: 11px;
-  text-align: center;
-  border-radius: 4px;
-  margin: 0 8px;
-  display: none;
-}
-.flash-msg.success { display: block; background: #1e3a2f; color: var(--green); }
-.flash-msg.error { display: block; background: #3a1e1e; color: var(--accent2); }
 
 /* Color override indicator */
 .color-override-pip {
@@ -571,9 +542,261 @@ body {
 }
 .prop-row:hover .color-reset-btn.visible { opacity: 1; }
 .color-reset-btn:hover { color: var(--accent2); }
+
+/* Color palette */
+.palette-section {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.palette-section h3 {
+  font-size: 12px;
+  color: var(--subtext);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.palette-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.palette-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  position: relative;
+  transition: border-color 0.1s, transform 0.1s;
+}
+.palette-swatch:hover {
+  border-color: var(--text);
+  transform: scale(1.15);
+  z-index: 1;
+}
+.palette-swatch .swatch-remove {
+  display: none;
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 14px;
+  height: 14px;
+  background: var(--accent2);
+  color: var(--bg);
+  border: none;
+  border-radius: 50%;
+  font-size: 9px;
+  line-height: 14px;
+  text-align: center;
+  cursor: pointer;
+  padding: 0;
+  z-index: 2;
+}
+.palette-swatch:hover .swatch-remove { display: block; }
+.palette-add {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: 2px dashed var(--border);
+  background: none;
+  color: var(--subtext);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s, color 0.15s;
+}
+.palette-add:hover { border-color: var(--accent); color: var(--accent); }
+.palette-target-hint {
+  font-size: 10px;
+  color: var(--surface2);
+  margin-top: 6px;
+  font-style: italic;
+}
+.palette-target-hint span { color: var(--accent); }
+.palette-reset-btn {
+  background: none;
+  border: none;
+  color: var(--subtext);
+  cursor: pointer;
+  font-size: 10px;
+  padding: 0 2px;
+}
+.palette-reset-btn:hover { color: var(--accent2); }
+.color-label-selectable {
+  cursor: pointer;
+  padding: 1px 4px;
+  border-radius: 3px;
+  transition: background 0.1s, color 0.1s;
+}
+.color-label-selectable:hover { color: var(--text); }
+.color-label-selectable.active {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+/* Entity section in left panel */
+.entity-section {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.entity-section h3 {
+  font-size: 12px;
+  color: var(--subtext);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+.entity-section .entity-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.entity-section .entity-row label {
+  font-size: 12px;
+  color: var(--subtext);
+  flex-shrink: 0;
+}
+.entity-section .entity-row input[type="text"] {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 3px 6px;
+  font-size: 12px;
+  flex: 1;
+}
+.entity-section .entity-row input[type="checkbox"] {
+  accent-color: var(--accent);
+}
+.entity-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.entity-actions button {
+  flex: 1;
+  padding: 5px 8px;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.entity-save-btn {
+  background: var(--green);
+  color: var(--bg);
+}
+.entity-save-btn:hover { opacity: 0.85; }
+.entity-save-new-btn {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border) !important;
+}
+.entity-save-new-btn:hover { background: var(--accent); color: var(--bg); }
+
+/* Collapsible section headers */
+.collapsible-header {
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.collapsible-header::before {
+  content: '\25BC';
+  font-size: 9px;
+  color: var(--subtext);
+  transition: transform 0.15s;
+  display: inline-block;
+}
+.collapsible-header.collapsed::before {
+  transform: rotate(-90deg);
+}
+
+/* Accent borders for right panel sections */
+.prop-section.tile-settings-section {
+  border-left: 3px solid var(--accent);
+  padding-left: 9px;
+}
+.prop-section.tiledef-section {
+  border-left: 3px solid var(--accent2);
+  padding-left: 9px;
+}
+
+/* Tile def save buttons in right panel */
+.tiledef-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.tiledef-actions button {
+  flex: 1;
+  padding: 5px 8px;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.tiledef-save-btn {
+  background: var(--green);
+  color: var(--bg);
+}
+.tiledef-save-btn:hover { opacity: 0.85; }
+.tiledef-save-new-btn {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border) !important;
+}
+.tiledef-save-new-btn:hover { background: var(--accent); color: var(--bg); }
+
+/* Fixed toast for flash messages */
+.toast-container {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  pointer-events: none;
+}
+.toast-msg {
+  padding: 8px 16px;
+  font-size: 12px;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  pointer-events: auto;
+  opacity: 0;
+  transition: opacity 0.2s;
+  white-space: nowrap;
+}
+.toast-msg.visible { opacity: 1; }
+.toast-msg.success { background: #1e3a2f; color: var(--green); }
+.toast-msg.error { background: #3a1e1e; color: var(--accent2); }
+
+/* New entity button in toolbar */
+.toolbar-btn-small {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.toolbar-btn-small:hover { background: var(--accent); color: var(--bg); }
 </style>
 </head>
 <body>
+
+<!-- Toast notifications -->
+<div class="toast-container" id="toast-container"></div>
 
 <!-- Menu bar -->
 <div class="menubar">
@@ -586,6 +809,8 @@ body {
       <button class="menu-action" id="menu-new-entity"><span>New Entity</span></button>
       <div class="menu-sep"></div>
       <button class="menu-action" id="menu-save-entity"><span>Save Entity</span><span class="menu-shortcut">Ctrl+S</span></button>
+      <button class="menu-action" id="menu-save-entity-new"><span>Save as New Entity</span><span class="menu-shortcut">Ctrl+Shift+S</span></button>
+      <div class="menu-sep"></div>
       <button class="menu-action" id="menu-save-tiledef"><span>Save Tile Def</span></button>
       <button class="menu-action" id="menu-new-tiledef"><span>Save as New Tile Def</span></button>
     </div>
@@ -616,17 +841,37 @@ body {
   </div>
 </div>
 
-<!-- Toolbar: entity controls -->
+<!-- Toolbar: selectors only -->
 <div class="toolbar">
+  <label>Tilesheet:</label>
+  <select id="tilesheet-select"><option>Loading...</option></select>
+  <div class="toolbar-sep"></div>
   <label>Entity:</label>
   <select id="entity-select"><option>Loading...</option></select>
-  <input type="text" id="entity-name" class="toolbar-input" placeholder="entity name">
+  <button class="toolbar-btn-small" id="toolbar-new-entity-btn">+ New</button>
 </div>
 
 <!-- Main panels -->
 <div class="main">
-  <!-- Left: tile stack -->
+  <!-- Left: entity + tile stack -->
   <div class="panel-left">
+    <div class="entity-section">
+      <h3>Entity</h3>
+      <div class="entity-row">
+        <label>Name:</label>
+        <input type="text" id="entity-name" placeholder="entity name">
+      </div>
+      <div class="entity-row">
+        <input type="checkbox" id="prop-passable">
+        <label>Passable</label>
+        <input type="checkbox" id="prop-isblock" style="margin-left:8px;">
+        <label>IsBlock</label>
+      </div>
+      <div class="entity-actions">
+        <button class="entity-save-btn" id="save-entity-btn">Save Entity</button>
+        <button class="entity-save-new-btn" id="save-entity-new-btn">Save as New</button>
+      </div>
+    </div>
     <div class="panel-header">
       Tile Stack
       <button id="add-tile-btn">+ Add</button>
@@ -645,11 +890,11 @@ body {
   <!-- Right: properties -->
   <div class="panel-right">
     <div class="prop-section">
-      <h3>Tileset Index</h3>
+      <h3 class="collapsible-header" id="tileset-header">Tileset Index</h3>
       <div class="tileset-grid" id="tileset-grid"></div>
     </div>
-    <div class="prop-section" id="tile-props">
-      <h3>Entity Tile</h3>
+    <div class="prop-section tile-settings-section" id="tile-props">
+      <h3>Tile Settings</h3>
       <div class="no-selection" id="no-tile-selected">Select a tile from the stack</div>
       <div id="tile-props-entity" style="display:none;">
         <div class="prop-row">
@@ -658,16 +903,24 @@ body {
         </div>
         <div class="prop-row">
           <label>Offset:</label>
-          <input type="range" id="prop-offset" min="0" max="2" value="0" step="0.05">
-          <input type="number" id="prop-offset-num" min="0" max="10" value="0" step="0.05" style="width:55px">
+          <input type="range" id="prop-offset" min="0" max="2" value="0" step="0.005">
+          <input type="number" id="prop-offset-num" min="0" max="10" value="0" step="0.005" style="width:55px">
         </div>
         <div class="prop-row">
           <label>Border:</label>
-          <input type="checkbox" id="prop-show-border" checked style="accent-color:var(--accent);">
+          <select id="prop-border-type" style="flex:1;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:3px;padding:3px 6px;font-size:12px;">
+            <option value="">None</option>
+            <option value="Top">Top</option>
+            <option value="Bottom">Bottom</option>
+          </select>
+        </div>
+        <div class="prop-row">
+          <label>AutoTile:</label>
+          <input type="checkbox" id="prop-autotile" style="accent-color:var(--accent);">
         </div>
       </div>
     </div>
-    <div class="prop-section" id="tiledef-props" style="display:none;">
+    <div class="prop-section tiledef-section" id="tiledef-props" style="display:none;">
       <h3>Tile Definition</h3>
       <div class="prop-row">
         <label>Name:</label>
@@ -717,6 +970,15 @@ body {
         <input type="range" id="prop-border-a" min="0" max="255" value="255" style="width:60px">
         <button class="color-reset-btn" id="reset-border" title="Reset to tile def">&circlearrowleft;</button>
       </div>
+      <div class="tiledef-actions">
+        <button class="tiledef-save-btn" id="save-tiledef-btn">Save Tile Def</button>
+        <button class="tiledef-save-new-btn" id="new-tiledef-btn">Save as New</button>
+      </div>
+    </div>
+    <div class="palette-section" id="palette-section" style="display:none;">
+      <h3>Palette <button class="palette-reset-btn" id="palette-reset-btn" title="Reset to default">&circlearrowleft;</button></h3>
+      <div class="palette-grid" id="palette-grid"></div>
+      <div class="palette-target-hint">Click a color label above, then a swatch. Target: <span id="palette-target">none</span></div>
     </div>
   </div>
 
@@ -728,14 +990,6 @@ body {
       <button class="xml-tab" data-tab="tiledef">Tile Def XML</button>
     </div>
     <div class="xml-preview" id="xml-preview"><pre id="xml-code"></pre></div>
-    <div class="flash-msg" id="save-flash"></div>
-    <div class="xml-actions" id="xml-actions-entity">
-      <button class="save-btn" id="save-entity-btn">Save Entity</button>
-    </div>
-    <div class="xml-actions" id="xml-actions-tiledef" style="display:none;">
-      <button class="save-btn" id="save-tiledef-btn">Save Tile Def</button>
-      <button class="toolbar-btn" id="new-tiledef-btn">+ New Tile Def</button>
-    </div>
   </div>
 </div>
 
@@ -780,6 +1034,9 @@ const state = {
   xmlActiveTab: 'entity',  // 'entity' or 'tiledef'
   currentEntityId: null,
   currentEntityName: '',
+  entityPassable: false,
+  entityIsBlock: false,
+  palette: [],
 };
 
 // ─── Undo/Redo ──────────────────────────────────────────────────────
@@ -793,6 +1050,8 @@ function snapshotState() {
     selectedTileIdx: state.selectedTileIdx,
     currentEntityId: state.currentEntityId,
     currentEntityName: state.currentEntityName,
+    entityPassable: state.entityPassable,
+    entityIsBlock: state.entityIsBlock,
   });
 }
 
@@ -808,7 +1067,11 @@ function restoreSnapshot(json) {
   state.selectedTileIdx = snap.selectedTileIdx;
   state.currentEntityId = snap.currentEntityId;
   state.currentEntityName = snap.currentEntityName;
+  state.entityPassable = snap.entityPassable || false;
+  state.entityIsBlock = snap.entityIsBlock || false;
   $('#entity-name').value = state.currentEntityName;
+  $('#prop-passable').checked = state.entityPassable;
+  $('#prop-isblock').checked = state.entityIsBlock;
   refreshTileStack();
   refreshProps();
   refreshTilesetSelection();
@@ -837,8 +1100,8 @@ function rearmUndo() { _undoArmed = true; }
 
 const TILE_W = 24;
 const TILE_H = 24;
-const SHEET_COLS = 16;
-const SHEET_ROWS = 16;
+let SHEET_COLS = 16;
+let SHEET_ROWS = 16;
 
 // ─── DOM refs ────────────────────────────────────────────────────────
 const $ = (s) => document.querySelector(s);
@@ -863,7 +1126,7 @@ function hexToRgb(hex) {
 
 // ─── Load data files ─────────────────────────────────────────────────
 async function loadTileDefinitions() {
-  const resp = await fetch('../../epoch/Content/config/tile-definitions.xml');
+  const resp = await fetch('../../epoch/Content/config/tile-definitions.xml?' + Date.now());
   const text = await resp.text();
   const parser = new DOMParser();
   const doc = parser.parseFromString(text, 'text/xml');
@@ -883,7 +1146,7 @@ async function loadTileDefinitions() {
 }
 
 async function loadEntityDefinitions() {
-  const resp = await fetch('../../epoch/Content/config/entity-definitions.xml');
+  const resp = await fetch('../../epoch/Content/config/entity-definitions.xml?' + Date.now());
   const text = await resp.text();
   const parser = new DOMParser();
   const doc = parser.parseFromString(text, 'text/xml');
@@ -932,11 +1195,38 @@ async function loadEntityDefinitions() {
         tiles.push({ template, zOffset });
       }
     }
-    state.entityDefs.push({ name, id, tiles, isComposite: !!composite });
+    // Position attributes
+    const posEl = e.querySelector('Position');
+    const passable = posEl?.getAttribute('Passable') === 'true';
+    const isBlock = posEl?.getAttribute('IsBlock') === 'true';
+    state.entityDefs.push({ name, id, tiles, isComposite: !!composite, passable, isBlock });
   }
 }
 
-async function loadTilesheet() {
+async function loadTilesheetList() {
+  const resp = await fetch('/api/tilesheets');
+  const data = await resp.json();
+  const sel = $('#tilesheet-select');
+  sel.innerHTML = '';
+  for (const f of data.files) {
+    const opt = document.createElement('option');
+    opt.value = f;
+    opt.textContent = f;
+    sel.appendChild(opt);
+  }
+  // Restore last selection or default to first
+  const saved = localStorage.getItem('epoch-tile-viewer-tilesheet');
+  if (saved && data.files.includes(saved)) sel.value = saved;
+  sel.onchange = async () => {
+    localStorage.setItem('epoch-tile-viewer-tilesheet', sel.value);
+    await loadTilesheet(sel.value);
+    buildTilesetGrid();
+    refreshTileStack();
+  };
+}
+
+async function loadTilesheet(filename) {
+  filename = filename || $('#tilesheet-select').value || 'tilesheet_24x24.png';
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
@@ -948,10 +1238,12 @@ async function loadTilesheet() {
       const cx = c.getContext('2d');
       cx.drawImage(img, 0, 0);
       state.tilesheetData = cx.getImageData(0, 0, img.width, img.height);
+      SHEET_COLS = Math.floor(img.width / TILE_W);
+      SHEET_ROWS = Math.floor(img.height / TILE_H);
       resolve();
     };
     img.onerror = reject;
-    img.src = '../../epoch/Content/images/tilesheet_24x24.png';
+    img.src = '../../epoch/Content/images/' + filename + '?' + Date.now();
   });
 }
 
@@ -960,7 +1252,11 @@ function buildStackFromEntity(entityDef) {
   state.tileStack = [];
   state.currentEntityId = entityDef.id;
   state.currentEntityName = entityDef.name;
+  state.entityPassable = entityDef.passable || false;
+  state.entityIsBlock = entityDef.isBlock || false;
   $('#entity-name').value = entityDef.name;
+  $('#prop-passable').checked = state.entityPassable;
+  $('#prop-isblock').checked = state.entityIsBlock;
 
   if (entityDef.isComposite) {
     for (const child of entityDef.tiles) {
@@ -982,10 +1278,9 @@ function buildStackFromEntity(entityDef) {
       }
     }
   }
-  // Border on for top and bottom tiles only
-  if (state.tileStack.length > 0) {
-    state.tileStack[0].showBorder = true;
-    state.tileStack[state.tileStack.length - 1].showBorder = true;
+  // Show border on tiles that have a BorderType set
+  for (const t of state.tileStack) {
+    t.showBorder = !!t.borderType;
   }
   state.selectedTileIdx = state.tileStack.length > 0 ? 0 : -1;
 }
@@ -1001,11 +1296,11 @@ function makeTileEntry(tileDef, offset, meta) {
     base: meta?.baseOverride ? [...meta.baseOverride] : [...tileDef.base],
     accent: meta?.accentOverride ? [...meta.accentOverride] : [...tileDef.accent],
     border: meta?.borderOverride ? [...meta.borderOverride] : [...tileDef.border],
-    showBorder: false,
     // Entity-tile metadata
     forceDraw: meta?.forceDraw || false,
     autoTile: meta?.autoTile || false,
     borderType: meta?.borderType || null,
+    showBorder: !!(meta?.borderType),
     interpolateMovement: meta?.interpolateMovement ?? null,
   };
 }
@@ -1174,7 +1469,7 @@ function refreshTileStack() {
 
     const label = document.createElement('span');
     label.className = 'tile-label';
-    label.textContent = `${tile.name} (${tile.offset.toFixed(2)})`;
+    label.textContent = `${tile.name} (${tile.offset.toFixed(3)})`;
     item.appendChild(label);
 
     const removeBtn = document.createElement('button');
@@ -1230,7 +1525,8 @@ function refreshProps() {
   // Entity tile props
   $('#prop-offset').value = tile.offset;
   $('#prop-offset-num').value = tile.offset;
-  $('#prop-show-border').checked = tile.showBorder;
+  $('#prop-border-type').value = tile.borderType || '';
+  $('#prop-autotile').checked = tile.autoTile || false;
 
   // Tile definition props
   $('#prop-tiledef-name').value = tile.name;
@@ -1311,11 +1607,31 @@ function bindPropInputs() {
   $('#prop-offset-num').onfocus = () => pushUndo();
   $('#prop-offset-num').onchange = (e) => setOffset(e.target.value);
 
-  $('#prop-show-border').onchange = (e) => {
+  $('#prop-border-type').onchange = (e) => {
     pushUndo();
     const t = getTile(); if (!t) return;
-    t.showBorder = e.target.checked;
+    t.borderType = e.target.value || null;
+    t.showBorder = !!e.target.value;
     refreshTileStack();
+  };
+
+  $('#prop-autotile').onchange = (e) => {
+    pushUndo();
+    const t = getTile(); if (!t) return;
+    t.autoTile = e.target.checked;
+    refreshTileStack();
+  };
+
+  // Entity-level Position props
+  $('#prop-passable').onchange = (e) => {
+    pushUndo();
+    state.entityPassable = e.target.checked;
+    refreshXmlSidebar();
+  };
+  $('#prop-isblock').onchange = (e) => {
+    pushUndo();
+    state.entityIsBlock = e.target.checked;
+    refreshXmlSidebar();
   };
 
   for (const key of ['bg1', 'bg2', 'base', 'accent', 'border']) {
@@ -1348,10 +1664,132 @@ function bindPropInputs() {
   }
 }
 
+// ─── Color Palette ────────────────────────────────────────────────────
+const CATPPUCCIN_MOCHA = [
+  '#f5e0dc', '#f2cdcd', '#f5c2e7', '#cba6f7', '#f38ba8', '#eba0ac',
+  '#fab387', '#f9e2af', '#a6e3a1', '#94e2d5', '#89dcfe', '#74c7ec',
+  '#89b4fa', '#b4befe', '#cdd6f4', '#bac2de', '#a6adc8', '#9399b2',
+  '#7f849c', '#6c7086', '#585b70', '#45475a', '#313244', '#1e1e2e',
+  '#181825', '#11111b',
+];
+
+let activeColorKey = null; // which color channel the palette targets
+
+function getDefaultPalette() { return [...CATPPUCCIN_MOCHA]; }
+
+function loadPalette() {
+  try {
+    const saved = localStorage.getItem('epoch-tile-viewer-palette');
+    if (saved) return JSON.parse(saved);
+  } catch {}
+  return getDefaultPalette();
+}
+
+function savePalette() {
+  localStorage.setItem('epoch-tile-viewer-palette', JSON.stringify(state.palette));
+}
+
+function setActiveColorKey(key) {
+  activeColorKey = key;
+  $('#palette-target').textContent = key || 'none';
+  document.querySelectorAll('.color-label-selectable').forEach(l =>
+    l.classList.toggle('active', l.dataset.colorKey === key)
+  );
+}
+
+function refreshPalette() {
+  const grid = $('#palette-grid');
+  grid.innerHTML = '';
+  for (let i = 0; i < state.palette.length; i++) {
+    const hex = state.palette[i];
+    const swatch = document.createElement('div');
+    swatch.className = 'palette-swatch';
+    swatch.style.background = hex;
+    swatch.title = hex;
+
+    swatch.onclick = () => {
+      if (!activeColorKey) return;
+      const t = getTile(); if (!t) return;
+      pushUndo();
+      const rgb = hexToRgb(hex);
+      t[activeColorKey][0] = rgb[0];
+      t[activeColorKey][1] = rgb[1];
+      t[activeColorKey][2] = rgb[2];
+      refreshTileStack();
+      refreshProps();
+    };
+
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'swatch-remove';
+    removeBtn.textContent = '\u00d7';
+    removeBtn.onclick = (e) => {
+      e.stopPropagation();
+      state.palette.splice(i, 1);
+      savePalette();
+      refreshPalette();
+    };
+    swatch.appendChild(removeBtn);
+    grid.appendChild(swatch);
+  }
+
+  // Add button
+  const addBtn = document.createElement('button');
+  addBtn.className = 'palette-add';
+  addBtn.textContent = '+';
+  addBtn.title = 'Add color';
+  const hiddenInput = document.createElement('input');
+  hiddenInput.type = 'color';
+  hiddenInput.style.display = 'none';
+  addBtn.onclick = () => hiddenInput.click();
+  hiddenInput.onchange = (e) => {
+    state.palette.push(e.target.value);
+    savePalette();
+    refreshPalette();
+  };
+  addBtn.appendChild(hiddenInput);
+  grid.appendChild(addBtn);
+}
+
+function bindPalette() {
+  state.palette = loadPalette();
+
+  // Make the color labels clickable palette targets (avoids opening the native color picker)
+  for (const key of ['bg1', 'bg2', 'base', 'accent', 'border']) {
+    const colorInput = $(`#prop-${key}`);
+    // Find the label sibling right before the color input
+    const label = colorInput.previousElementSibling;
+    if (label && label.tagName === 'LABEL') {
+      label.classList.add('color-label-selectable');
+      label.dataset.colorKey = key;
+      label.addEventListener('click', (e) => {
+        e.preventDefault();
+        setActiveColorKey(key);
+      });
+    }
+  }
+
+  $('#palette-reset-btn').onclick = () => {
+    state.palette = getDefaultPalette();
+    savePalette();
+    refreshPalette();
+  };
+
+  refreshPalette();
+}
+
+// Show/hide palette with tiledef-props
+const _origRefreshProps = refreshProps;
+refreshProps = function() {
+  _origRefreshProps();
+  const tile = state.tileStack[state.selectedTileIdx];
+  $('#palette-section').style.display = tile ? '' : 'none';
+};
+
 // ─── UI: Tileset grid ────────────────────────────────────────────────
 function buildTilesetGrid() {
   const grid = $('#tileset-grid');
   grid.innerHTML = '';
+  grid.style.gridTemplateColumns = `repeat(${SHEET_COLS}, 32px)`;
   // Use first tile def's colors for preview, or sensible fallback
   const previewDef = state.tileDefs[0] || {
     bg1: [0,0,0,0], bg2: [30,32,48,255], base: [108,112,134,255], accent: [255,255,255,255]
@@ -1420,6 +1858,17 @@ function bindToolbar() {
     $('#depth-val').textContent = state.depthStrength.toFixed(3);
   };
 
+  // Toolbar new entity button
+  $('#toolbar-new-entity-btn').onclick = () => newEntity();
+
+  // Collapsible tileset grid
+  const tilesetHeader = $('#tileset-header');
+  const tilesetGrid = $('#tileset-grid');
+  tilesetHeader.onclick = () => {
+    tilesetHeader.classList.toggle('collapsed');
+    tilesetGrid.style.display = tilesetHeader.classList.contains('collapsed') ? 'none' : '';
+  };
+
   $('#add-tile-btn').onclick = () => {
     pushUndo();
     const defaultDef = state.tileDefs[0] || {
@@ -1476,6 +1925,7 @@ function bindMenus() {
   // File
   $('#menu-new-entity').onclick = () => { closeMenus(); newEntity(); };
   $('#menu-save-entity').onclick = () => { closeMenus(); saveEntity(); };
+  $('#menu-save-entity-new').onclick = () => { closeMenus(); saveEntityAsNew(); };
   $('#menu-save-tiledef').onclick = () => { closeMenus(); saveTileDef(false); };
   $('#menu-new-tiledef').onclick = () => { closeMenus(); saveTileDef(true); };
 
@@ -1499,7 +1949,11 @@ function newEntity() {
   pushUndo();
   state.currentEntityId = null;
   state.currentEntityName = 'new_entity';
+  state.entityPassable = false;
+  state.entityIsBlock = false;
   $('#entity-name').value = 'new_entity';
+  $('#prop-passable').checked = false;
+  $('#prop-isblock').checked = false;
   const defaultDef = state.tileDefs[0] || {
     id: 0, name: 'empty', index: 0,
     bg1: [0,0,0,0], bg2: [0,0,0,255], base: [255,255,255,255],
@@ -1532,6 +1986,7 @@ function isInputFocused() {
 
 document.addEventListener('keydown', (e) => {
   // Global shortcuts (work even with input focused)
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'S') { e.preventDefault(); saveEntityAsNew(); return; }
   if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveEntity(); return; }
   if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
   if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); redo(); return; }
@@ -1654,7 +2109,10 @@ function generateEntityXml() {
     xml += `    <tile ${attrs}/>\n`;
   }
   xml += `  </GraphicalTileList>\n`;
-  xml += `  <Position/>\n`;
+  let posAttrs = '';
+  if (state.entityPassable) posAttrs += ` Passable="true"`;
+  if (state.entityIsBlock) posAttrs += ` IsBlock="true"`;
+  xml += `  <Position${posAttrs}/>\n`;
   xml += `</entity>`;
   return xml;
 }
@@ -1693,10 +2151,6 @@ function refreshXmlSidebar() {
   const code = $('#xml-code');
   const xml = state.xmlActiveTab === 'entity' ? generateEntityXml() : generateTileDefXml();
   code.innerHTML = highlightXml(xml);
-
-  // Show correct action buttons
-  $('#xml-actions-entity').style.display = state.xmlActiveTab === 'entity' ? '' : 'none';
-  $('#xml-actions-tiledef').style.display = state.xmlActiveTab === 'tiledef' ? '' : 'none';
 }
 
 // ─── XML Sidebar Bindings ────────────────────────────────────────────
@@ -1721,10 +2175,19 @@ function bindXmlSidebar() {
 
 // ─── Save Functions ──────────────────────────────────────────────────
 function showFlash(msg, type) {
-  const el = $('#save-flash');
-  el.textContent = msg;
-  el.className = 'flash-msg ' + type;
-  setTimeout(() => { el.className = 'flash-msg'; }, 3000);
+  const container = $('#toast-container');
+  const toast = document.createElement('div');
+  toast.className = 'toast-msg ' + type;
+  toast.textContent = msg;
+  container.appendChild(toast);
+  // Trigger reflow then show
+  requestAnimationFrame(() => {
+    toast.classList.add('visible');
+    setTimeout(() => {
+      toast.classList.remove('visible');
+      setTimeout(() => toast.remove(), 200);
+    }, 3000);
+  });
 }
 
 async function saveEntity() {
@@ -1749,7 +2212,7 @@ async function saveEntity() {
     return entry;
   });
 
-  const body = { name, tiles };
+  const body = { name, tiles, passable: state.entityPassable, isBlock: state.entityIsBlock };
   if (state.currentEntityId != null) body.id = state.currentEntityId;
 
   try {
@@ -1772,6 +2235,11 @@ async function saveEntity() {
   } catch (e) {
     showFlash('Save failed: ' + e.message, 'error');
   }
+}
+
+async function saveEntityAsNew() {
+  state.currentEntityId = null;
+  await saveEntity();
 }
 
 async function saveTileDef(forceNewId) {
@@ -1811,7 +2279,10 @@ async function saveTileDef(forceNewId) {
 }
 
 function bindSaveButtons() {
+  // Entity save buttons (in left panel)
   $('#save-entity-btn').onclick = saveEntity;
+  $('#save-entity-new-btn').onclick = saveEntityAsNew;
+  // Tile def save buttons (in right panel)
   $('#save-tiledef-btn').onclick = () => saveTileDef(false);
   $('#new-tiledef-btn').onclick = () => saveTileDef(true);
 }
@@ -1860,6 +2331,7 @@ function bindResizeHandles() {
 // ─── Init ────────────────────────────────────────────────────────────
 async function init() {
   try {
+    await loadTilesheetList();
     await Promise.all([loadTileDefinitions(), loadEntityDefinitions(), loadTilesheet()]);
   } catch (e) {
     document.body.innerHTML = `<div style="padding:40px;color:#f38ba8;font-size:16px;">
@@ -1875,6 +2347,7 @@ async function init() {
   buildTilesetGrid();
   bindToolbar();
   bindPropInputs();
+  bindPalette();
   bindVpPad();
   bindXmlSidebar();
   bindSaveButtons();

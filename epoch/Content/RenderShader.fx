@@ -64,6 +64,7 @@ struct PixelInput
     float P_BorderMask : TEXCOORD1;
     float P_BorderWidth : TEXCOORD2;
     float P_LayerDifference: TEXCOORD3;
+    float P_Rotation : TEXCOORD9;
     float4 P_Background1Color : TEXCOORD4;
     float4 P_Background2Color : TEXCOORD5;
     float4 P_BaseColor : TEXCOORD6;
@@ -77,7 +78,7 @@ float2x2 getRotationMatrix(float theta)
 {    
     float s = sin(theta);
     float c = cos(theta);
-    return float2x2(c, -s, s, c);
+    return float2x2(c, s, -s, c);
     // Rotate a Vector
     //
     // [ a | b ]   [ e ]   [ ae + bf ]
@@ -94,7 +95,7 @@ PixelInput MainVS(VertexInput v, InstanceInput i)
     float I_Depth = i.I_TransformData.z;
     float I_Scale = i.I_TransformData.w;
 
-    float I_Rotation = i.I_PropData.x;
+    float I_Rotation = radians(i.I_PropData.x);
     float I_BorderMask = i.I_PropData.y;
     float I_BorderWidth = i.I_PropData.z;
     float I_LayerDifference = i.I_PropData.w;
@@ -150,6 +151,7 @@ PixelInput MainVS(VertexInput v, InstanceInput i)
     output.P_BorderMask = I_BorderMask;
     output.P_BorderWidth = I_BorderWidth;
     output.P_LayerDifference = I_LayerDifference;
+    output.P_Rotation = I_Rotation;
     output.P_Background1Color = i.I_Bg1Color;
     output.P_Background2Color = i.I_Bg2Color;
     output.P_BaseColor = i.I_BaseColor;
@@ -172,6 +174,13 @@ float4 MainPS(PixelInput input) : SV_TARGET
     float2 localCoord = frac(tilePos); // This gives us local percentage coordinates in the tile
 
     // --- 2. BORDER LOGIC ---
+    // The border mask is in world space (N/E/S/W), but localCoord is in texture space
+    // which rotates with the tile's autotile rotation. To make them match, we un-rotate
+    // localCoord back to world space so border edges line up with the correct screen sides.
+    float2 borderCoord = localCoord - 0.5; // shift to center for rotation
+    float2x2 invRotation = getRotationMatrix(input.P_Rotation); // undo the UV-to-screen mapping
+    borderCoord = mul(borderCoord, invRotation) + 0.5; // rotate and shift back
+
     // This converts the float BorderMask into an integer, effectively, by rounding it.
     float mask = floor(input.P_BorderMask + 0.5);
     
@@ -198,16 +207,16 @@ float4 MainPS(PixelInput input) : SV_TARGET
     // which make inTop 1.0 (fully visible).
     // if the distance is greater than endFade, it's 1.0, making inTop 0.0 (not visible).
     // if the distance is in between, it smoothly interpolates.
-    float distTop = localCoord.y;
+    float distTop = borderCoord.y;
     float inTop = 1.0 - smoothstep(startFade, endFade, distTop);
 
-    float distRight = 1.0 - localCoord.x;
+    float distRight = 1.0 - borderCoord.x;
     float inRight = 1.0 - smoothstep(startFade, endFade, distRight);
 
-    float distBottom = 1.0 - localCoord.y;
+    float distBottom = 1.0 - borderCoord.y;
     float inBottom = 1.0 - smoothstep(startFade, endFade, distBottom);
 
-    float distLeft = localCoord.x;
+    float distLeft = borderCoord.x;
     float inLeft = 1.0 - smoothstep(startFade, endFade, distLeft);
 
     // -- Step C: Combine --
@@ -235,9 +244,11 @@ float4 MainPS(PixelInput input) : SV_TARGET
     
     // 2. Prepare input colors
     float4 bg1Col = input.P_Background1Color / 255.0;
+    // bg1Col.a = 0.0; // DEBUG: transparent backgrounds. This also looks kinda rad.
     bg1Col.rgb *= bg1Col.a;
 
     float4 bg2Col = input.P_Background2Color / 255.0;
+    // bg2Col.a = 0.0; // DEBUG: transparent backgrounds
     bg2Col.rgb *= bg2Col.a;
 
     float4 baseCol = input.P_BaseColor / 255.0;

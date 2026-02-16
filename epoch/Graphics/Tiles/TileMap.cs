@@ -34,15 +34,14 @@ public static class TileMap
                 continue;
             }
 
+            string[] tokens = line.Split(' ', System.StringSplitOptions.RemoveEmptyEntries);
             int column = 0;
-            foreach (char character in line)
+            foreach (string token in tokens)
             {
-                // If the character is a period, skip it
-                // OR if character is new line
-                if (character != '.' && character != '\n' && character != '\r')
+                if (token != ".")
                 {
                     string coordinates = $"{column},{row},{z}";
-                    GenerateTileList(coordinates, character);
+                    GenerateTileList(coordinates, token);
                 }
                 column++;
             }
@@ -50,11 +49,11 @@ public static class TileMap
         }
     }
 
-    private static void GenerateTileList(string coordinates, char character)
+    private static void GenerateTileList(string coordinates, string token)
     {
-        if (character < '0' || character > '9')
+        if (!int.TryParse(token, out int tileId))
         {
-            Log.Warn("TileMap: skipping invalid character '{0}' at {1}", character, coordinates);
+            Log.Warn("TileMap: skipping invalid token '{0}' at {1}", token, coordinates);
             return;
         }
 
@@ -68,6 +67,6 @@ public static class TileMap
             graphicalTileList
         );
 
-        GlobalContext.EntityManager.Spawn(character - '0', spawnPosition);
+        GlobalContext.EntityManager.Spawn(tileId, spawnPosition);
     }
 }
