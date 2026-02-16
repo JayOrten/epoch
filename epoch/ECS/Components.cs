@@ -166,11 +166,11 @@ public struct Position
     public Vector3 Offset { get; set; }
 
     // Whether this entity is passable
-    public bool Passable { get; set; }
+    public bool Passable { get; set; } = false;
 
     // Whether this entity is a "block". Might change this concept in the future
     // Right now, just useful for autotiling, edge borders, etc.
-    public bool IsBlock { get; set; }
+    public bool IsBlock { get; set; } = false;
 
     // Bits in the mask that are 1 indicate air/passable in that direction
     // 26 directions for full 3D neighborhood (3x3x3 cube minus center)

@@ -158,7 +158,12 @@ public sealed class TileAdjacencySystem : SystemBase<GameTime>
                         }
 
                         if (tile.AutoTile)
-                            tile.AutoTileMask = middleMask;
+                        {
+                            if (middleMask == 0 && (position.SpaceMask & 0x3C0) != 0)
+                                tile.AutoTileMask = 15; // diagonal-only: treat as fully open
+                            else
+                                tile.AutoTileMask = middleMask;
+                        }
                     }
                 }
 
