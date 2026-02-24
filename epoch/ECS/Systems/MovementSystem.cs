@@ -1,7 +1,5 @@
 using System.Runtime.CompilerServices;
 using Arch.Core;
-using Arch.Core.Extensions;
-using epoch.Utilities;
 using Microsoft.Xna.Framework;
 using MonoGame.Extended;
 
@@ -47,13 +45,13 @@ public sealed class MovementSystem : SystemBase<GameTime>
             return (false, newCoordinate);
         }
 
-        if (registry.GetEntityAt(newCoordinate).Has<AirTag>())
+        if (registry.GetEntityAt(newCoordinate) == Entity.Null)
         {
-            // Target is air — check if ground exists below
+            // Target is empty (air) — check if ground exists below
             Vector3 coordinateBelow = newCoordinate;
             coordinateBelow.Z--;
 
-            if (registry.GetEntityAt(coordinateBelow).Has<AirTag>())
+            if (registry.GetEntityAt(coordinateBelow) == Entity.Null)
             {
                 // TODO: add proper falling. For now, just drop one level
                 newCoordinate.Z--;

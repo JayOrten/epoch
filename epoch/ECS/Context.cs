@@ -24,4 +24,7 @@ public static class GlobalContext
     public static MapRegistry MapRegistry { get; set; }
     public static TileManager TileManager { get; set; }
     public static EntityManager EntityManager { get; set; }
+
+    /// <summary>Maximum Z level the world can store [0, MaxZ).</summary>
+    public static int MaxZ { get; set; } = 128;
 }
