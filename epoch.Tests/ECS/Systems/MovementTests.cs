@@ -12,8 +12,7 @@ public class MovementTests
     public MovementTests()
     {
         _world = World.Create();
-        // 5x5x5 grid
-        _registry = new MapRegistry(_world, 5, 5, 5);
+        _registry = new MapRegistry(_world, 16, 32);
     }
 
     private void PlaceSolid(Vector3 coord)
@@ -82,8 +81,7 @@ public class MovementTests
     [Fact]
     public void ResolveMovement_AirAhead_GroundBelow()
     {
-        // Target is air (default), tile below target is solid ground → same Z
-        // Registry default is air, so (2,1,1) is already air
+        // Target is air (passable, missing), tile below target is solid ground → same Z
         PlaceSolid(new Vector3(2, 1, 0));
 
         var (canMove, newCoord) = MovementSystem.ResolveMovement(
@@ -101,7 +99,6 @@ public class MovementTests
     public void ResolveMovement_Fall()
     {
         // Target is air, tile below target is also air → drop Z by 1
-        // Both (2,1,1) and (2,1,0) are air (default)
 
         var (canMove, newCoord) = MovementSystem.ResolveMovement(
             new Vector3(1, 1, 1),
