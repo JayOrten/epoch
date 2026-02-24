@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <tileDefinitions>
-    <tile id="0" name="empty_1" index="0" bg1="0,0,0,0" bg2="30,32,48,255" base="88,91,112,255" accent="255,255,255,255" border="108,112,134,255" />
+    <tile id="0" name="empty_1" index="0" bg1="30,32,48,255" bg2="30,32,48,255" base="88,91,112,255" accent="255,255,255,255" border="108,112,134,255" />
     <tile id="1" name="empty_2" index="1" bg1="0,0,0,0" bg2="30,32,48,255" base="88,91,112,255" accent="255,255,255,255" border="108,112,134,255" />
     <tile id="2" name="checkboard_top" index="208" bg1="0,0,0,0" bg2="30,32,48,255" base="88,91,112,255" accent="255,255,255,255" border="108,112,134,255" />
     <tile id="3" name="grass_1_bottom" index="2" bg1="0,0,0,0" bg2="30,32,48,255" base="166,227,161,255" accent="255,255,255,255" border="108,112,134,255" />

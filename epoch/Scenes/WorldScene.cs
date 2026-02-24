@@ -35,6 +35,8 @@ public class WorldScene : Scene
 
     private CameraApplySystem _cameraApplySystem;
 
+    private ProceduralGenerationSystem _proceduralGenerationSystem;
+
     public override void Initialize()
     {
         base.Initialize();
@@ -66,7 +68,7 @@ public class WorldScene : Scene
         _world = World.Create();
 
         // Create empty map registry
-        GlobalContext.MapRegistry = new MapRegistry(_world, 80, 80, 9);
+        GlobalContext.MapRegistry = new MapRegistry(_world, 16, GlobalContext.MaxZ);
 
         // Create the entity manager, loading in entity definitions from file
         GlobalContext.EntityManager = new EntityManager(_world, entityDefinitionsPath);
@@ -122,17 +124,14 @@ public class WorldScene : Scene
 
         _cameraApplySystem = new CameraApplySystem(_world);
 
-        // Spawn entities
-        // Load tilemap
-        string tileMapPath = ContentPaths.Config("tilemap");
-        TileMap.LoadTileMap(tileMapPath, _world);
+        _proceduralGenerationSystem = new ProceduralGenerationSystem(_world, 16, 4);
 
         // Spawn Player
         // Create entity with desired position
         EntityDefinition spawnPosition = new EntityDefinition(
             new ComponentDefinition(
                 "Position",
-                new Dictionary<string, string> { { "WorldCoordinate", "1,1,1" }, { "Top", "0.9" } }
+                new Dictionary<string, string> { { "WorldCoordinate", "0,0,25" }, { "Top", "0.9" } }
             )
         );
 
@@ -163,10 +162,16 @@ public class WorldScene : Scene
                 GlobalContext.TileManager.Tileset.TileHeight * GlobalContext.GlobalScale
             )
         );
+
+        // string tileMapPath = ContentPaths.Config("tilemap");
+        // TileMap.LoadTileMap(tileMapPath, _world);
+        // _proceduralGenerationSystem.Update(new GameTime());
     }
 
     public override void Update(GameTime gameTime)
     {
+        _proceduralGenerationSystem.Update(gameTime);
+
         _inputSystem.Update(gameTime);
 
         _tileAdjacencySystem.Update(gameTime);

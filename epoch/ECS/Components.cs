@@ -115,14 +115,46 @@ public struct GraphicalTile
     // Offset from the entity position
     public float Offset { get; set; } = 0.0f;
 
-    // You can use these as an override for the color in the tile definition,
-    // either by putting the color in the entity definition, or within the code
-    // when you create the entity (merging)
-    public Color? Background1Color { get; set; }
-    public Color? Background2Color { get; set; }
-    public Color? BaseColor { get; set; }
-    public Color? AccentColor { get; set; }
-    public Color? BorderColor { get; set; }
+    // Color overrides for the tile definition defaults.
+    // Setting a color automatically sets the corresponding bit in ColorOverrideMask.
+    // Use Color.Transparent as the default (no override); the mask distinguishes
+    // "explicitly set" from "not set".
+    public int ColorOverrideMask;
+
+    private Color _background1Color;
+    public Color Background1Color
+    {
+        get => _background1Color;
+        set { _background1Color = value; ColorOverrideMask |= (1 << 0); }
+    }
+
+    private Color _background2Color;
+    public Color Background2Color
+    {
+        get => _background2Color;
+        set { _background2Color = value; ColorOverrideMask |= (1 << 1); }
+    }
+
+    private Color _baseColor;
+    public Color BaseColor
+    {
+        get => _baseColor;
+        set { _baseColor = value; ColorOverrideMask |= (1 << 2); }
+    }
+
+    private Color _accentColor;
+    public Color AccentColor
+    {
+        get => _accentColor;
+        set { _accentColor = value; ColorOverrideMask |= (1 << 3); }
+    }
+
+    private Color _borderColor;
+    public Color BorderColor
+    {
+        get => _borderColor;
+        set { _borderColor = value; ColorOverrideMask |= (1 << 4); }
+    }
 
     // Draw regardless of space nearby
     public bool ForceDraw { get; set; } = false;

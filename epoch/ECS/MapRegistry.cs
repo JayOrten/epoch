@@ -1,109 +1,164 @@
 using System;
+using System.Collections.Generic;
 using Arch.Core;
 using Microsoft.Xna.Framework;
 
 namespace epoch.ECS;
 
 /// <summary>
-/// 3D spatial hash for fast entity lookups by grid coordinate.
+/// 2D column-based spatial hash for fast entity lookups by grid coordinate.
+/// Each column covers all Z levels [0, maxZ) for a given (cx, cy).
 /// Backs collision checks, adjacency queries, and rendering culling.
-/// Flat array indexed as <c>x + z*xSize + y*xSize*zSize</c>.
+/// Empty slots are represented by <see cref="Entity.Null"/>.
 /// </summary>
-/// <remarks>
-/// TODO: chunk loading/unloading for larger maps.
-/// </remarks>
 public class MapRegistry
 {
     private World _world;
+    private int _chunkSize;
+    private int _maxZ;
+    private int _columnVolume;
 
-    private int _xSize;
-    private int _ySize;
-    private int _zSize;
+    private Dictionary<(int, int), Column> _columns = new();
 
-    private Entity[] _entityMap;
-    private byte[] _collisionMap; // 0 = passable, 1 = blocked
+    private class Column
+    {
+        public Entity[] Entities;
+        public byte[] Collision;
 
-    /// <summary>Returns true if the coordinate is within grid bounds.</summary>
-    public bool IsInBounds(Vector3 coord) =>
-        coord.X >= 0
-        && coord.Y >= 0
-        && coord.Z >= 0
-        && coord.X < _xSize
-        && coord.Y < _ySize
-        && coord.Z < _zSize;
-
-    private int GetIndex(int x, int y, int z) => x + (z * _xSize) + (y * _xSize * _zSize);
-
-    private int GetIndex(Vector3 coord) =>
-        (int)(coord.X + (coord.Z * _xSize) + (coord.Y * _xSize * _zSize));
+        public Column(int volume)
+        {
+            Entities = new Entity[volume];
+            Array.Fill(Entities, Entity.Null);
+            Collision = new byte[volume];
+        }
+    }
 
     /// <summary>
-    /// Creates a new registry pre-filled with air entities.
+    /// Creates a new registry.
     /// </summary>
-    /// <param name="world">The ECS world used to create placeholder air entities.</param>
-    /// <param name="xSize">Grid width.</param>
-    /// <param name="ySize">Grid depth (north/south).</param>
-    /// <param name="zSize">Number of vertical layers.</param>
-    public MapRegistry(World world, int xSize, int ySize, int zSize)
+    /// <param name="world">The ECS world used to query entity components.</param>
+    /// <param name="chunkSize">The side length of each column in X and Y (e.g. 16 for 16x16).</param>
+    /// <param name="maxZ">The maximum Z level [0, maxZ).</param>
+    public MapRegistry(World world, int chunkSize, int maxZ)
     {
         _world = world;
-        _xSize = xSize;
-        _ySize = ySize;
-        _zSize = zSize;
+        _chunkSize = chunkSize;
+        _maxZ = maxZ;
+        _columnVolume = chunkSize * chunkSize * maxZ;
+    }
 
-        int size = xSize * ySize * zSize;
+    private (int, int) ColumnKey(int x, int y) =>
+        (
+            (int)MathF.Floor((float)x / _chunkSize),
+            (int)MathF.Floor((float)y / _chunkSize)
+        );
 
-        _entityMap = new Entity[size];
-        // Create an entity with a AirTag component to represent empty space.
-        Entity airEntity = world.Create(new AirTag());
-        // Fill the entity map with this entity initially.
-        Array.Fill(_entityMap, airEntity);
-
-        _collisionMap = new byte[size];
+    private int LocalIndex(int x, int y, int z)
+    {
+        int lx = ((x % _chunkSize) + _chunkSize) % _chunkSize;
+        int ly = ((y % _chunkSize) + _chunkSize) % _chunkSize;
+        int clampedZ = Math.Clamp(z, 0, _maxZ - 1);
+        return lx + ly * _chunkSize + clampedZ * _chunkSize * _chunkSize;
     }
 
     /// <summary>
     /// Places an entity at the given grid coordinate, updating both the entity map
     /// and the collision map (derived from the entity's <see cref="Position.Passable"/> flag).
+    /// Auto-creates the column if it doesn't exist yet.
     /// </summary>
     public void Register(Vector3 coord, Entity entity)
     {
-        if (!IsInBounds(coord))
-            return;
+        int x = (int)coord.X, y = (int)coord.Y, z = (int)coord.Z;
+        var key = ColumnKey(x, y);
 
-        int idx = GetIndex(coord);
-        _entityMap[idx] = entity;
+        if (!_columns.TryGetValue(key, out var column))
+        {
+            column = new Column(_columnVolume);
+            _columns[key] = column;
+        }
 
-        // Get passability from entity's Position component
+        int idx = LocalIndex(x, y, z);
+        column.Entities[idx] = entity;
+
         ref var position = ref _world.Get<Position>(entity);
-        _collisionMap[idx] = (byte)(position.Passable ? 0 : 1);
+        column.Collision[idx] = (byte)(position.Passable ? 0 : 1);
     }
 
     /// <summary>
-    /// Returns the entity at <paramref name="coord"/>, or <see cref="Entity.Null"/> if out of bounds.
+    /// Removes the entity mapping at <paramref name="coord"/>. Does not destroy the entity.
+    /// </summary>
+    public void Unregister(Vector3 coord)
+    {
+        int x = (int)coord.X, y = (int)coord.Y, z = (int)coord.Z;
+        var key = ColumnKey(x, y);
+
+        if (_columns.TryGetValue(key, out var column))
+        {
+            int idx = LocalIndex(x, y, z);
+            column.Entities[idx] = Entity.Null;
+            column.Collision[idx] = 0;
+        }
+    }
+
+    /// <summary>
+    /// Returns the entity at <paramref name="coord"/>, or <see cref="Entity.Null"/> if absent.
     /// </summary>
     public Entity GetEntityAt(Vector3 coord)
     {
-        if (!IsInBounds(coord))
-            return Entity.Null;
+        int x = (int)coord.X, y = (int)coord.Y, z = (int)coord.Z;
+        var key = ColumnKey(x, y);
 
-        return _entityMap[GetIndex(coord)];
+        if (_columns.TryGetValue(key, out var column))
+            return column.Entities[LocalIndex(x, y, z)];
+
+        return Entity.Null;
     }
 
     /// <summary>
-    /// Returns <c>true</c> if the tile at <paramref name="coord"/> is passable (or out of bounds → false).
+    /// Returns <c>true</c> if the tile at <paramref name="coord"/> is passable.
+    /// If the column doesn't exist or Z is out of range, returns <c>true</c> —
+    /// empty/unloaded space is passable.
     /// </summary>
     public bool IsPassableAt(Vector3 coord)
     {
-        if (!IsInBounds(coord))
-            return false;
+        int x = (int)coord.X, y = (int)coord.Y, z = (int)coord.Z;
 
-        return _collisionMap[GetIndex(coord)] == 0;
+        if (z < 0 || z >= _maxZ)
+            return true;
+
+        var key = ColumnKey(x, y);
+
+        if (_columns.TryGetValue(key, out var column))
+            return column.Collision[LocalIndex(x, y, z)] == 0;
+
+        return true;
     }
 
-    /// <summary>Returns the total number of vertical layers in the grid.</summary>
-    public int GetNumZLevels()
+    /// <summary>
+    /// Ensures a column exists for the given column coordinates, even if empty.
+    /// </summary>
+    public void EnsureColumn(int cx, int cy)
     {
-        return _zSize;
+        var key = (cx, cy);
+        if (!_columns.ContainsKey(key))
+            _columns[key] = new Column(_columnVolume);
+    }
+
+    /// <summary>
+    /// Removes an entire column and destroys all entities in it.
+    /// </summary>
+    public void RemoveColumn(int cx, int cy)
+    {
+        var key = (cx, cy);
+
+        if (_columns.TryGetValue(key, out var column))
+        {
+            for (int i = 0; i < _columnVolume; i++)
+            {
+                if (column.Entities[i] != Entity.Null)
+                    _world.Destroy(column.Entities[i]);
+            }
+            _columns.Remove(key);
+        }
     }
 }

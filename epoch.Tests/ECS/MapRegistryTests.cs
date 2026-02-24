@@ -13,7 +13,7 @@ public class MapRegistryTests
     public MapRegistryTests()
     {
         _world = World.Create();
-        _registry = new MapRegistry(_world, 10, 10, 5);
+        _registry = new MapRegistry(_world, 4, 16);
     }
 
     [Fact]
@@ -28,9 +28,9 @@ public class MapRegistryTests
     }
 
     [Fact]
-    public void GetEntityAt_OutOfBounds_ReturnsNull()
+    public void GetEntityAt_Empty_ReturnsNull()
     {
-        var result = _registry.GetEntityAt(new Vector3(-1, 0, 0));
+        var result = _registry.GetEntityAt(new Vector3(5, 5, 5));
         Assert.Equal(Entity.Null, result);
     }
 
@@ -55,54 +55,104 @@ public class MapRegistryTests
     }
 
     [Fact]
-    public void Register_OutOfBounds_Silent()
+    public void IsPassableAt_MissingColumn_ReturnsTrue()
     {
-        var coord = new Vector3(-1, -1, -1);
+        // No column loaded → passable (empty space)
+        Assert.True(_registry.IsPassableAt(new Vector3(99, 99, 5)));
+    }
+
+    [Fact]
+    public void IsPassableAt_EmptyColumn_ReturnsTrue()
+    {
+        // Column exists but no entity → passable (open sky)
+        _registry.EnsureColumn(0, 0);
+        Assert.True(_registry.IsPassableAt(new Vector3(0, 0, 0)));
+    }
+
+    [Fact]
+    public void Unregister_RemovesEntity()
+    {
+        var coord = new Vector3(1, 2, 3);
         var entity = _world.Create(new Position { WorldCoordinate = coord, Passable = true });
-
-        // Should not throw
         _registry.Register(coord, entity);
+        _registry.Unregister(coord);
+
+        Assert.Equal(Entity.Null, _registry.GetEntityAt(coord));
     }
 
     [Fact]
-    public void IsInBounds_Origin()
+    public void NegativeXY_Coordinates_Work()
     {
-        Assert.True(_registry.IsInBounds(new Vector3(0, 0, 0)));
+        var coord = new Vector3(-3, -5, 1);
+        var entity = _world.Create(new Position { WorldCoordinate = coord, Passable = true });
+        _registry.Register(coord, entity);
+
+        Assert.Equal(entity, _registry.GetEntityAt(coord));
+        Assert.True(_registry.IsPassableAt(coord));
     }
 
     [Fact]
-    public void IsInBounds_MaxEdge()
+    public void CrossColumn_Lookup()
     {
-        // 10x10x5 → valid range is 0..9, 0..9, 0..4
-        Assert.True(_registry.IsInBounds(new Vector3(9, 9, 4)));
+        // chunkSize=4, so (3,0,0) and (4,0,0) are in different columns
+        var coordA = new Vector3(3, 0, 0);
+        var coordB = new Vector3(4, 0, 0);
+
+        var entityA = _world.Create(new Position { WorldCoordinate = coordA, Passable = true });
+        var entityB = _world.Create(new Position { WorldCoordinate = coordB, Passable = false });
+
+        _registry.Register(coordA, entityA);
+        _registry.Register(coordB, entityB);
+
+        Assert.Equal(entityA, _registry.GetEntityAt(coordA));
+        Assert.Equal(entityB, _registry.GetEntityAt(coordB));
+        Assert.True(_registry.IsPassableAt(coordA));
+        Assert.False(_registry.IsPassableAt(coordB));
     }
 
     [Fact]
-    public void IsInBounds_JustOutside()
+    public void RemoveColumn_ClearsAndDestroysEntities()
     {
-        Assert.False(_registry.IsInBounds(new Vector3(10, 0, 0)));
-        Assert.False(_registry.IsInBounds(new Vector3(0, 10, 0)));
-        Assert.False(_registry.IsInBounds(new Vector3(0, 0, 5)));
+        var entities = new List<Entity>();
+        for (int x = 0; x < 4; x++)
+        {
+            var coord = new Vector3(x, 0, 0);
+            var entity = _world.Create(new Position { WorldCoordinate = coord, Passable = true });
+            _registry.Register(coord, entity);
+            entities.Add(entity);
+        }
+
+        _registry.RemoveColumn(0, 0);
+
+        // All slots should be empty
+        for (int x = 0; x < 4; x++)
+            Assert.Equal(Entity.Null, _registry.GetEntityAt(new Vector3(x, 0, 0)));
+
+        // All entities should be destroyed
+        foreach (var e in entities)
+            Assert.False(_world.IsAlive(e));
     }
 
     [Fact]
-    public void IsPassableAt_OutOfBounds_ReturnsFalse()
+    public void RemoveColumn_NonexistentColumn_DoesNotThrow()
     {
-        Assert.False(_registry.IsPassableAt(new Vector3(-1, 0, 0)));
+        _registry.RemoveColumn(99, 99);
     }
 
     [Fact]
-    public void GetNumZLevels_ReturnsCorrectValue()
+    public void RemoveColumn_DestroysAcrossZLevels()
     {
-        Assert.Equal(5, _registry.GetNumZLevels());
-    }
+        var entityA = _world.Create(new Position { WorldCoordinate = new Vector3(0, 0, 0), Passable = true });
+        _registry.Register(new Vector3(0, 0, 0), entityA);
 
-    [Fact]
-    public void DefaultFill_IsAir()
-    {
-        // Registry pre-fills with air entities — air entities should have AirTag
-        var entity = _registry.GetEntityAt(new Vector3(0, 0, 0));
-        Assert.NotEqual(Entity.Null, entity);
-        Assert.True(entity.Has<AirTag>());
+        var entityB = _world.Create(new Position { WorldCoordinate = new Vector3(0, 0, 4), Passable = true });
+        _registry.Register(new Vector3(0, 0, 4), entityB);
+
+        _registry.RemoveColumn(0, 0);
+
+        Assert.Equal(Entity.Null, _registry.GetEntityAt(new Vector3(0, 0, 0)));
+        Assert.Equal(Entity.Null, _registry.GetEntityAt(new Vector3(0, 0, 4)));
+        Assert.False(_world.IsAlive(entityA));
+        Assert.False(_world.IsAlive(entityB));
     }
 }

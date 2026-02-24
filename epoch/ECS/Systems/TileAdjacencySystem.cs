@@ -77,11 +77,8 @@ public sealed class TileAdjacencySystem : SystemBase<GameTime>
             Vector3 adjacentCoord = worldCoordinate + _directions[i];
             var entityAtAdjacent = registry.GetEntityAt(adjacentCoord);
             if (
-                entityAtAdjacent != Entity.Null
-                && (
-                    entityAtAdjacent.Has<AirTag>()
-                    || entityAtAdjacent.Get<Position>().Passable
-                )
+                entityAtAdjacent == Entity.Null
+                || entityAtAdjacent.Get<Position>().Passable
             )
             {
                 mask |= (1 << i);

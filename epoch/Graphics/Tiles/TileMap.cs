@@ -57,14 +57,14 @@ public static class TileMap
             return;
         }
 
-        ComponentDefinition graphicalTileList = new ComponentDefinition("GraphicalTileList");
+        // ComponentDefinition graphicalTileList = new ComponentDefinition("GraphicalTileList");
 
         EntityDefinition spawnPosition = new EntityDefinition(
             new ComponentDefinition(
                 "Position",
                 new Dictionary<string, string> { { "WorldCoordinate", coordinates } }
-            ),
-            graphicalTileList
+            )
+        // graphicalTileList
         );
 
         GlobalContext.EntityManager.Spawn(tileId, spawnPosition);

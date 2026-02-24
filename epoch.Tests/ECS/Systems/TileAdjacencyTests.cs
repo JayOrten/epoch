@@ -97,20 +97,20 @@ public class TileAdjacencyTests
     // ── CalculateSpaceMask (Tier 2 — needs Arch World + MapRegistry) ─
 
     [Fact]
-    public void CalculateSpaceMask_SingleAirNeighbor()
+    public void CalculateSpaceMask_EmptySlot_IsOpen()
     {
-        // Create a small world with one air tile north of center
+        // Empty slot (Entity.Null) in a loaded chunk should be treated as open space
         using var world = World.Create();
-        var registry = new MapRegistry(world, 3, 3, 3);
+        var registry = new MapRegistry(world, 16, 32);
 
-        // Center entity at (1,1,1) — registry pre-fills with air, so we need
-        // to register a solid block at center
+        // Center entity at (1,1,1) — solid block
         var blockEntity = world.Create(new Position { WorldCoordinate = new Vector3(1, 1, 1), Passable = false });
         registry.Register(new Vector3(1, 1, 1), blockEntity);
 
-        // North of center is (1, 0, 1) — leave as air (default)
+        // North of center (1, 0, 1) — no entity registered, but chunk exists from center entity
+        // This empty slot should count as open space
 
-        // Place solid blocks at all other neighbors to isolate the north check
+        // Place solid blocks at all other cardinal neighbors to isolate the north check
         Vector3[] neighbors = [
             new(2, 1, 1), // East
             new(1, 2, 1), // South
@@ -126,8 +126,8 @@ public class TileAdjacencyTests
 
         int mask = TileAdjacencySystem.CalculateSpaceMask(new Vector3(1, 1, 1), registry);
 
-        // North (bit 0) should be set — air at (1, 0, 1)
-        Assert.True((mask & (1 << 0)) != 0, "North bit should be set");
+        // North (bit 0) should be set — empty slot = open space
+        Assert.True((mask & (1 << 0)) != 0, "North bit should be set (empty = open)");
         // East (bit 1) should NOT be set — solid block
         Assert.True((mask & (1 << 1)) == 0, "East bit should not be set");
     }
