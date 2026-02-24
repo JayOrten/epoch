@@ -14,7 +14,7 @@
 // copies or substantial portions of the Software.
 /// </summary>
 using System;
-using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -37,7 +37,14 @@ public class TileInstancing
     private readonly VertexBufferBinding[] vertexBufferBindings;
 
     private TileVertex[] instanceDataArray;
+    private TileVertex[] sortedDataArray;
+    private int[] sortIndices;
     private int instanceNumber;
+
+    // Radix sort buffers
+    private uint[] radixKeys;
+    private int[] radixScratchIndices;
+    private int[] histogramBuffer;
 
     private readonly Matrix identityMatrix = Matrix.Identity; // Used if there's no transform provided.
 
@@ -45,8 +52,6 @@ public class TileInstancing
     bool beginCalled;
 
     private const int InitialCapacity = 1024;
-
-    private static readonly DepthComparer depthComparer = new DepthComparer();
 
     public TileInstancing(GraphicsDevice graphicsDevice)
     {
@@ -65,8 +70,12 @@ public class TileInstancing
 
         CreateBaseVertexAndIndexBuffer();
 
-        // Create array with space for 1 element
         instanceDataArray = new TileVertex[InitialCapacity];
+        sortedDataArray = new TileVertex[InitialCapacity];
+        sortIndices = new int[InitialCapacity];
+        radixKeys = new uint[InitialCapacity];
+        radixScratchIndices = new int[InitialCapacity];
+        histogramBuffer = new int[256 * 4];
     }
 
     /// <summary>
@@ -237,7 +246,12 @@ public class TileInstancing
     /// </summary>
     private void ResizeTheInstancesArray()
     {
-        Array.Resize(ref instanceDataArray, instanceDataArray.Length * 2);
+        int newLength = instanceDataArray.Length * 2;
+        Array.Resize(ref instanceDataArray, newLength);
+        Array.Resize(ref sortedDataArray, newLength);
+        Array.Resize(ref sortIndices, newLength);
+        Array.Resize(ref radixKeys, newLength);
+        Array.Resize(ref radixScratchIndices, newLength);
     }
 
     /// <summary>
@@ -250,6 +264,7 @@ public class TileInstancing
     /// <param name="rectangle">The source rectangle from the spritesheet.</param>
     /// <param name="scale">The scale of the sprite. (x, y)</param>
     /// <param name="color">The color tint applied to the sprite.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Draw(
         Vector2 position,
         float depth,
@@ -291,17 +306,78 @@ public class TileInstancing
         instanceNumber++;
     }
 
-    private static readonly Comparison<TileVertex> BackToFrontComparer = (a, b) =>
-        b.Depth.CompareTo(a.Depth);
-
-    private struct DepthComparer : IComparer<TileVertex>
+    /// <summary>
+    /// 4-pass 8-bit radix sort on depth. Sorts indices into sortedDataArray back-to-front.
+    /// Non-negative floats have uint bit patterns that sort naturally; we bitwise-NOT
+    /// them so that higher depth (further back) sorts first (descending order).
+    /// Skips passes where all elements land in a single bucket.
+    /// </summary>
+    private void RadixSortByDepth(int count)
     {
-        public int Compare(TileVertex x, TileVertex y)
+        // 1. Clear histogram (256 buckets x 4 passes)
+        Array.Clear(histogramBuffer, 0, 256 * 4);
+
+        // 2. Build keys, init indices, build all 4 histograms in one pass
+        for (int i = 0; i < count; i++)
         {
-            // Sort Back-to-Front (Higher depth draws first)
-            // If you want Front-to-Back, swap to x.Depth.CompareTo(y.Depth)
-            return y.Depth.CompareTo(x.Depth);
+            uint key = BitConverter.SingleToUInt32Bits(instanceDataArray[i].Depth);
+            radixKeys[i] = key;
+            sortIndices[i] = i;
+
+            histogramBuffer[(key & 0xFF)]++;
+            histogramBuffer[256 + ((key >> 8) & 0xFF)]++;
+            histogramBuffer[512 + ((key >> 16) & 0xFF)]++;
+            histogramBuffer[768 + ((key >> 24) & 0xFF)]++;
         }
+
+        // We ping-pong between sortIndices and radixScratchIndices
+        int[] src = sortIndices;
+        int[] dst = radixScratchIndices;
+
+        // 3-4. Prefix sum + scatter for each of 4 bytes
+        for (int pass = 0; pass < 4; pass++)
+        {
+            int histOffset = pass * 256;
+            int shift = pass * 8;
+
+            // Check if this pass can be skipped (all in one bucket)
+            bool skip = false;
+            for (int b = 0; b < 256; b++)
+            {
+                if (histogramBuffer[histOffset + b] == count)
+                {
+                    skip = true;
+                    break;
+                }
+            }
+
+            if (skip)
+                continue;
+
+            // Exclusive prefix sum
+            int sum = 0;
+            for (int b = 0; b < 256; b++)
+            {
+                int val = histogramBuffer[histOffset + b];
+                histogramBuffer[histOffset + b] = sum;
+                sum += val;
+            }
+
+            // Scatter
+            for (int i = 0; i < count; i++)
+            {
+                int idx = src[i];
+                int bucket = (int)((radixKeys[idx] >> shift) & 0xFF);
+                dst[histogramBuffer[histOffset + bucket]++] = idx;
+            }
+
+            // Swap src and dst
+            (src, dst) = (dst, src);
+        }
+
+        // 5. Final scatter into sortedDataArray
+        for (int i = 0; i < count; i++)
+            sortedDataArray[i] = instanceDataArray[src[i]];
     }
 
     /// <summary>
@@ -333,7 +409,11 @@ public class TileInstancing
 
         if (instanceNumber > 1)
         {
-            Array.Sort(instanceDataArray, 0, instanceNumber, depthComparer);
+            RadixSortByDepth(instanceNumber);
+        }
+        else if (instanceNumber == 1)
+        {
+            sortedDataArray[0] = instanceDataArray[0];
         }
 
         // Sets the Instancingbuffer
@@ -357,7 +437,7 @@ public class TileInstancing
 
         // Fills the (vertex)instancingbuffer
         dynamicInstancingBuffer.SetData(
-            instanceDataArray,
+            sortedDataArray,
             0,
             instanceNumber,
             SetDataOptions.Discard
