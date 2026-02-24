@@ -36,10 +36,10 @@ struct VertexInput
 struct InstanceInput
 {
     // UsageIndex 1: Vector4 (Position.x, Position.y, Depth, Scale)
-    float4 I_TransformData : TEXCOORD1; 
+    float4 I_TransformData : TEXCOORD1;
 
     // UsageIndex 2: Vector4 (Rotation, BorderMask, BorderWidth, LayerDiff)
-    float4 I_PropData      : TEXCOORD2; 
+    float4 I_PropData      : TEXCOORD2;
 
     // UsageIndex 3: Vector2 (RectangleXY)
     float2 I_RectXY        : TEXCOORD3;
@@ -72,10 +72,81 @@ struct PixelInput
     float4 P_BorderColor : TEXCOORD8;
 };
 
+// --- HSL UTILITIES ---
+
+float3 rgb2hsl(float3 c)
+{
+    float maxC = max(c.r, max(c.g, c.b));
+    float minC = min(c.r, min(c.g, c.b));
+    float l = (maxC + minC) * 0.5;
+    float d = maxC - minC;
+
+    // If max == min, achromatic (h = 0, s = 0)
+    float s = 0.0;
+    float h = 0.0;
+
+    if (d > 0.0001)
+    {
+        s = (l > 0.5) ? d / (2.0 - maxC - minC) : d / (maxC + minC);
+
+        if (maxC == c.r)
+            h = (c.g - c.b) / d + (c.g < c.b ? 6.0 : 0.0);
+        else if (maxC == c.g)
+            h = (c.b - c.r) / d + 2.0;
+        else
+            h = (c.r - c.g) / d + 4.0;
+
+        h /= 6.0;
+    }
+
+    return float3(h, s, l);
+}
+
+float hue2rgb(float p, float q, float t)
+{
+    if (t < 0.0) t += 1.0;
+    if (t > 1.0) t -= 1.0;
+    if (t < 1.0 / 6.0) return p + (q - p) * 6.0 * t;
+    if (t < 1.0 / 2.0) return q;
+    if (t < 2.0 / 3.0) return p + (q - p) * (2.0 / 3.0 - t) * 6.0;
+    return p;
+}
+
+float3 hsl2rgb(float3 hsl)
+{
+    float h = hsl.x;
+    float s = hsl.y;
+    float l = hsl.z;
+
+    if (s < 0.0001)
+        return float3(l, l, l);
+
+    float q = (l < 0.5) ? l * (1.0 + s) : l + s - l * s;
+    float p = 2.0 * l - q;
+
+    float r = hue2rgb(p, q, h + 1.0 / 3.0);
+    float g = hue2rgb(p, q, h);
+    float b = hue2rgb(p, q, h - 1.0 / 3.0);
+
+    return float3(r, g, b);
+}
+
+// Adjust lightness of an RGB color by shifting its HSL lightness.
+// factor: 0.0 = no change, 1.0 = full effect
+// brighten: 1.0 = push lightness toward 1.0, 0.0 = push lightness toward minL
+float3 adjustLightness(float3 rgb, float factor, float brighten)
+{
+    float minL = 0.2; // Floor for darkening — never fully black
+    float3 hsl = rgb2hsl(rgb);
+    float targetL = lerp(minL, 1.0, brighten);
+    hsl.z = lerp(hsl.z, targetL, factor);
+    return hsl2rgb(hsl);
+}
+
 // Rotation around the origin
 // theta = Roatation in radians 2Pi (Pi = half rotation, 2Pi = full rotation)
 float2x2 getRotationMatrix(float theta)
-{    
+{
     float s = sin(theta);
     float c = cos(theta);
     return float2x2(c, s, -s, c);
@@ -183,7 +254,7 @@ float4 MainPS(PixelInput input) : SV_TARGET
 
     // This converts the float BorderMask into an integer, effectively, by rounding it.
     float mask = floor(input.P_BorderMask + 0.5);
-    
+
     // -- Step A: Extract Bits --
     // fmod : floating point modulus (remainder after division)
     // step(a, b) : returns 0.0 if b < a, else 1.0
@@ -223,7 +294,7 @@ float4 MainPS(PixelInput input) : SV_TARGET
     // Calculate the strength of each side individually.
     // bitTop is 0.0 or 1.0 (Is the border turned on?)
     // inTop is 0.0 to 1.0 (How visible is the border here?)
-    float topStrength    = bitTop * inTop;       
+    float topStrength    = bitTop * inTop;
     float rightStrength  = bitRight * inRight;
     float bottomStrength = bitBottom * inBottom;
     float leftStrength   = bitLeft * inLeft;
@@ -233,15 +304,13 @@ float4 MainPS(PixelInput input) : SV_TARGET
     float borderStrength = max(topStrength, max(rightStrength, max(bottomStrength, leftStrength)));
 
     // -- Step D: Apply Colors --
-    // 1. Determine layer brightness for only sprite and border colors
-    // Interpolate based on difference between player layer and sprite layer
-    // If layerDifference is positive, interpolate to white, otherwise to black
-    // If layerDifference > 0, targetColor = (1, 1, 1)
-    // If layerDifference < 0, targetColor = (0, 0, 0)
-    // We clamp so it doesn't become fully black
-    float layerFactor = saturate(abs(input.P_LayerDifference) / 5.0);
+    // 1. Determine layer lightness adjustment
+    // Interpolate HSL lightness based on difference between player layer and sprite layer
+    // If layerDifference > 0 (near/above), push lightness toward 1.0
+    // If layerDifference < 0 (far/below), push lightness toward 0.0
+    float layerFactor = saturate(abs(input.P_LayerDifference) / 10.0);
     float isBrightening = step(0.0, input.P_LayerDifference); // 1.0 if Near, 0.0 if Far
-    
+
     // 2. Prepare input colors
     float4 bg1Col = input.P_Background1Color / 255.0;
     // bg1Col.a = 0.0; // DEBUG: transparent backgrounds. This also looks kinda rad.
@@ -260,24 +329,10 @@ float4 MainPS(PixelInput input) : SV_TARGET
     float4 borderCol = input.P_BorderColor / 255.0;
     float appliedAlpha = borderStrength * saturate(borderCol.a);
 
-    // 3. Prepare Brightness Versions (Hue-Preserving)
-    // Darken: multiply to reduce brightness while keeping hue
-    // Brighten: screen blend to lift brightness without clipping to white
-
-    // -- Base Color --
-    float3 baseFar  = baseCol.rgb * (1.0 - layerFactor);
-    float3 baseNear = 1.0 - (1.0 - baseCol.rgb) * (1.0 - layerFactor);
-    float3 baseResult = lerp(baseFar, baseNear, isBrightening);
-
-    // -- Accent Color --
-    float3 accentFar  = accentCol.rgb * (1.0 - layerFactor);
-    float3 accentNear = 1.0 - (1.0 - accentCol.rgb) * (1.0 - layerFactor);
-    float3 accentResult = lerp(accentFar, accentNear, isBrightening);
-
-    // -- Border Color --
-    float3 borderFar  = borderCol.rgb * (1.0 - layerFactor);
-    float3 borderNear = 1.0 - (1.0 - borderCol.rgb) * (1.0 - layerFactor);
-    float3 borderResult = lerp(borderFar, borderNear, isBrightening);
+    // 3. Adjust lightness via HSL (preserves hue and saturation)
+    float3 baseResult   = adjustLightness(baseCol.rgb,   layerFactor, isBrightening);
+    float3 accentResult = adjustLightness(accentCol.rgb, layerFactor, isBrightening);
+    float3 borderResult = adjustLightness(borderCol.rgb, layerFactor, isBrightening);
 
     // Apply alpha to border result
     borderResult *= appliedAlpha;
@@ -312,10 +367,10 @@ float4 MainPS(PixelInput input) : SV_TARGET
     // D. Blend Border Over Sprite (Standard Premultiplied Blend)
     // Formula: Result = Source + Dest * (1 - SourceAlpha)
     float4 finalColor;
-    
+
     // RGB Blend
     finalColor.rgb = borderResult + spriteLayer.rgb * (1.0 - appliedAlpha);
-    
+
     // Alpha Blend
     // This effectively replaces your old 'max' logic with mathematically correct blending
     finalColor.a = appliedAlpha + spriteLayer.a * (1.0 - appliedAlpha);
