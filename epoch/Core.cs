@@ -3,6 +3,7 @@ using epoch.Audio;
 using epoch.Graphics.Tiles.TileInstancing;
 using epoch.Input;
 using epoch.Scenes;
+using epoch.Utilities;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
@@ -67,6 +68,8 @@ public class Core : Game
     /// Gets a reference to the audio control system.
     /// </summary>
     public static AudioController Audio { get; private set; }
+
+    private static DebugOverlay s_debugOverlay;
 
     /// <summary>
     /// Creates a new Core instance.
@@ -134,6 +137,10 @@ public class Core : Game
 
         // Create a new audio controller.
         Audio = new AudioController();
+
+        // Create the debug overlay.
+        var debugFont = Content.Load<SpriteFont>("fonts/debug");
+        s_debugOverlay = new DebugOverlay(debugFont);
     }
 
     protected override void UnloadContent()
@@ -170,6 +177,8 @@ public class Core : Game
             s_activeScene.Update(gameTime);
         }
 
+        s_debugOverlay.Update(gameTime);
+
         base.Update(gameTime);
     }
 
@@ -180,6 +189,8 @@ public class Core : Game
         {
             s_activeScene.Draw(gameTime);
         }
+
+        s_debugOverlay.Draw();
 
         base.Draw(gameTime);
     }
