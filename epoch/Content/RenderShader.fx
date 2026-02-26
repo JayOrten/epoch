@@ -13,6 +13,8 @@ float4x4 WorldViewProjection;
 float2 TextureSize;   // Total size of your spritesheet (e.g. 512, 512)
 float2 TileSize;      // Size of one tile (e.g. 32, 32)
 float2 ViewportSize;  // Size of the viewport in pixels
+float2 VanishingPoint; // World-pixel coords of vanishing point, set per-frame
+float DepthStrength;   // Perspective warp strength (e.g. 0.06), set per-frame
 // float CameraZoom;
 // float GameTime;
 
@@ -191,6 +193,15 @@ PixelInput MainVS(VertexInput v, InstanceInput i)
 
     // C. Translation to world position
     v.V_Position.xy += I_Position;
+
+    // C2. Perspective warp: scale position relative to vanishing point.
+    // Uses tanh (via exp) to bound extreme depths — behaves like the linear model
+    // near depth=0 but saturates rather than exploding or collapsing.
+    // tanh(x) = (e^2x - 1) / (e^2x + 1), approximates x for small x.
+    float depthInput = I_Depth * DepthStrength;
+    float e2x = exp(2.0 * depthInput);
+    float perspectiveScale = 1.0 + (e2x - 1.0) / (e2x + 1.0);
+    v.V_Position.xy = VanishingPoint + (v.V_Position.xy - VanishingPoint) * perspectiveScale;
 
     // E. Depth Adjustment
     // v.V_Position.z = 0.0;

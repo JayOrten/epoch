@@ -33,8 +33,12 @@ public sealed class DrawSystem : SystemBase<GameTime>
     // Controls vanishing point time smoothing
     private float _depthStrength = 0.06f;
 
-    // Controls draw position and scale smoothing
-    private float _drawTime = 0.0001f;
+    // Smoothed player Z for z-level transition animation
+    private float _displayPlayerZ;
+    private bool _playerZInitialized;
+
+    // Controls z-transition smoothing rate (same rate as old per-tile interpolation)
+    private float _zLerpRate = 0.0001f;
 
     // Lightweight profiling: accumulate over N frames, log the average
     private const int ProfileInterval = 60;
@@ -105,16 +109,28 @@ public sealed class DrawSystem : SystemBase<GameTime>
         // TODO: just house this stuff inside the instancing?
 
         // -- DRAW TILES --
-        // Get player z position
+        // Get player z position and smooth z-level transitions
         ref var pos = ref GlobalContext.PlayerEntity.Get<Position>();
         float playerZLevel = pos.WorldCoordinate.Z;
+
+        if (!_playerZInitialized)
+        {
+            _displayPlayerZ = playerZLevel;
+            _playerZInitialized = true;
+        }
+        else
+        {
+            float lerpFactor = 1 - (float)Math.Pow(_zLerpRate, gameTime.GetElapsedSeconds());
+            _displayPlayerZ = MathHelper.Lerp(_displayPlayerZ, playerZLevel, lerpFactor);
+        }
 
         Vector2 vanishingPoint =
             GlobalContext.Camera.Center
             + (GlobalContext.CameraEntity.Get<CameraState>().LookDirection);
 
-        // Precompute per-frame values used by every tile
-        float lerpFactor = 1 - (float)Math.Pow(_drawTime, gameTime.GetElapsedSeconds());
+        // Set perspective uniforms on the shader
+        _renderShader.Parameters["VanishingPoint"]?.SetValue(vanishingPoint);
+        _renderShader.Parameters["DepthStrength"]?.SetValue(_depthStrength);
 
         // Hoist per-frame constants out of the hot loop
         var tileManager = GlobalContext.TileManager;
@@ -122,7 +138,6 @@ public sealed class DrawSystem : SystemBase<GameTime>
         float globalScale = GlobalContext.GlobalScale;
         float tileWidth = tileset.TileWidth;
         float tileHeight = tileset.TileHeight;
-        float depthStrength = _depthStrength;
         var tileInstancing = Core.TileInstancing;
 
         // Viewport culling: compute visible bounds in grid space with margin
@@ -206,7 +221,7 @@ public sealed class DrawSystem : SystemBase<GameTime>
                         graphicalTile.AutoTileMask
                     );
 
-                    // Inline perspective transform (avoids 9-param call overhead per tile)
+                    // Base position (no perspective — GPU handles the warp)
                     Vector2 basePosition =
                         new Vector2(
                             position.WorldCoordinate.X * tileWidth,
@@ -215,41 +230,11 @@ public sealed class DrawSystem : SystemBase<GameTime>
                         * graphicalTile.Scale
                         * globalScale;
 
-                    float depth =
-                        (position.WorldCoordinate.Z - playerZLevel) + graphicalTile.Offset;
-                    float perspectiveScale = 1.0f + (depth * depthStrength);
+                    float baseScale = graphicalTile.Scale * globalScale;
 
-                    Vector2 vpOffset = vanishingPoint * (1.0f - perspectiveScale);
-                    Vector2 finalPosition = vpOffset + (basePosition * perspectiveScale);
-                    float finalScale = graphicalTile.Scale * globalScale * perspectiveScale;
-
-                    // Initialize interpolation values on first draw
-                    if (!graphicalTile.DrawInitialized)
-                    {
-                        graphicalTile.CurrentDrawPosition = finalPosition;
-                        graphicalTile.CurrentDrawScale = finalScale;
-                        graphicalTile.DrawInitialized = true;
-                    }
-
-                    // Smoothly interpolate position to prevent popping on z-level transitions
-                    if (graphicalTile.InterpolateMovement)
-                    {
-                        graphicalTile.CurrentDrawPosition = Vector2.Lerp(
-                            graphicalTile.CurrentDrawPosition,
-                            finalPosition,
-                            lerpFactor
-                        );
-                        graphicalTile.CurrentDrawScale = MathHelper.Lerp(
-                            graphicalTile.CurrentDrawScale,
-                            finalScale,
-                            lerpFactor
-                        );
-                    }
-                    else
-                    {
-                        graphicalTile.CurrentDrawPosition = finalPosition;
-                        graphicalTile.CurrentDrawScale = finalScale;
-                    }
+                    // Perspective depth for GPU (uses smoothed _displayPlayerZ)
+                    float perspectiveDepth =
+                        (position.WorldCoordinate.Z - _displayPlayerZ) + graphicalTile.Offset;
 
                     // Color: use override if set, otherwise fall back to tile definition
                     Color background1Color,
@@ -290,15 +275,17 @@ public sealed class DrawSystem : SystemBase<GameTime>
                                 : tileInfo.BorderColor;
                     }
 
-                    float sortingLevel =
+                    // Sort depth (unchanged formula — used for radix sort only)
+                    float sortDepth =
                         position.WorldCoordinate.Z + graphicalTile.Offset + position.Top;
 
                     float layerDifference = position.WorldCoordinate.Z - playerZLevel;
 
                     tileInstancing.Draw(
-                        graphicalTile.CurrentDrawPosition,
-                        sortingLevel,
-                        graphicalTile.CurrentDrawScale,
+                        basePosition,
+                        perspectiveDepth,
+                        sortDepth,
+                        baseScale,
                         rotation,
                         graphicalTile.BorderMask,
                         graphicalTile.BorderWidth,

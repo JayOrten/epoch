@@ -190,13 +190,6 @@ public struct GraphicalTile
     public bool AutoTile { get; set; } = false;
     public int AutoTileMask { get; set; } = 0;
 
-    // For interpolating between positions
-    public bool InterpolateMovement { get; set; } = true;
-    public bool DrawInitialized { get; set; } = false;
-    public Vector2 CurrentDrawPosition { get; set; }
-
-    public float CurrentDrawScale { get; set; }
-
     public GraphicalTile() { }
 }
 
