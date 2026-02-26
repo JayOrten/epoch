@@ -31,11 +31,7 @@ public sealed class DrawSystem : SystemBase<GameTime>
     private readonly RenderTarget2D _renderTarget2D;
 
     // Controls vanishing point time smoothing
-    private float _smoothTime = 0.1f;
     private float _depthStrength = 0.06f;
-
-    private Vector2 _currentVanishingPoint;
-    private Vector2 _vanishingPointVelocity;
 
     // Controls draw position and scale smoothing
     private float _drawTime = 0.0001f;
@@ -70,16 +66,6 @@ public sealed class DrawSystem : SystemBase<GameTime>
     /// </summary>
     public override void Update(in GameTime gameTime)
     {
-        // -- SETUP --
-        // If the current vanishing point is zero, set it to the center of the screen
-        if (_currentVanishingPoint == Vector2.Zero)
-        {
-            _currentVanishingPoint = new Vector2(
-                Core.GraphicsDevice.Viewport.Width / 2,
-                Core.GraphicsDevice.Viewport.Height / 2
-            );
-        }
-
         // -- Pass 1: render tiles to render target --
         Core.GraphicsDevice.SetRenderTarget(_renderTarget2D);
 
@@ -123,19 +109,9 @@ public sealed class DrawSystem : SystemBase<GameTime>
         ref var pos = ref GlobalContext.PlayerEntity.Get<Position>();
         float playerZLevel = pos.WorldCoordinate.Z;
 
-        // Compute vanishing point ONCE per frame (not per tile)
-        Vector2 finalVanishingPoint =
+        Vector2 vanishingPoint =
             GlobalContext.Camera.Center
             + (GlobalContext.CameraEntity.Get<CameraState>().LookDirection);
-
-        _currentVanishingPoint = CameraUtils.SmoothDamp(
-            _currentVanishingPoint,
-            finalVanishingPoint,
-            ref _vanishingPointVelocity,
-            _smoothTime,
-            float.MaxValue,
-            gameTime.GetElapsedSeconds()
-        );
 
         // Precompute per-frame values used by every tile
         float lerpFactor = 1 - (float)Math.Pow(_drawTime, gameTime.GetElapsedSeconds());
@@ -147,7 +123,6 @@ public sealed class DrawSystem : SystemBase<GameTime>
         float tileWidth = tileset.TileWidth;
         float tileHeight = tileset.TileHeight;
         float depthStrength = _depthStrength;
-        Vector2 vanishingPoint = _currentVanishingPoint;
         var tileInstancing = Core.TileInstancing;
 
         // Viewport culling: compute visible bounds in grid space with margin
@@ -257,16 +232,24 @@ public sealed class DrawSystem : SystemBase<GameTime>
                     }
 
                     // Smoothly interpolate position to prevent popping on z-level transitions
-                    var targetPosition = graphicalTile.InterpolateMovement
-                        ? Vector2.Lerp(graphicalTile.CurrentDrawPosition, finalPosition, lerpFactor)
-                        : finalPosition;
-
-                    graphicalTile.CurrentDrawPosition = targetPosition;
-                    graphicalTile.CurrentDrawScale = MathHelper.Lerp(
-                        graphicalTile.CurrentDrawScale,
-                        finalScale,
-                        lerpFactor
-                    );
+                    if (graphicalTile.InterpolateMovement)
+                    {
+                        graphicalTile.CurrentDrawPosition = Vector2.Lerp(
+                            graphicalTile.CurrentDrawPosition,
+                            finalPosition,
+                            lerpFactor
+                        );
+                        graphicalTile.CurrentDrawScale = MathHelper.Lerp(
+                            graphicalTile.CurrentDrawScale,
+                            finalScale,
+                            lerpFactor
+                        );
+                    }
+                    else
+                    {
+                        graphicalTile.CurrentDrawPosition = finalPosition;
+                        graphicalTile.CurrentDrawScale = finalScale;
+                    }
 
                     // Color: use override if set, otherwise fall back to tile definition
                     Color background1Color,
@@ -382,39 +365,5 @@ public sealed class DrawSystem : SystemBase<GameTime>
             _accumInstEndTicks = 0;
             _accumTiles = 0;
         }
-    }
-
-    /// <summary>
-    /// Pure perspective math: converts a tile's grid position into screen position and scale,
-    /// applying depth-based scaling toward the vanishing point.
-    /// </summary>
-    public static (Vector2 position, float scale) ComputeTileTransform(
-        Vector3 worldCoordinate,
-        float tileScale,
-        float depthOffset,
-        float playerZLevel,
-        float tileWidth,
-        float tileHeight,
-        float globalScale,
-        float depthStrength,
-        Vector2 vanishingPoint
-    )
-    {
-        Vector2 basePosition =
-            new Vector2(worldCoordinate.X * tileWidth, worldCoordinate.Y * tileHeight)
-            * tileScale
-            * globalScale;
-
-        float depth = (worldCoordinate.Z - playerZLevel) + depthOffset;
-        float perspectiveScale = 1.0f + (depth * depthStrength);
-
-        // Factored form of: VP + (basePos - VP) * pScale
-        // Avoids catastrophic cancellation from (largePos - VP) subtraction
-        Vector2 vpOffset = vanishingPoint * (1.0f - perspectiveScale);
-        Vector2 finalPosition = vpOffset + (basePosition * perspectiveScale);
-
-        float finalScale = tileScale * globalScale * perspectiveScale;
-
-        return (finalPosition, finalScale);
     }
 }

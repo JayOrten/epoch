@@ -125,35 +125,55 @@ public struct GraphicalTile
     public Color Background1Color
     {
         get => _background1Color;
-        set { _background1Color = value; ColorOverrideMask |= (1 << 0); }
+        set
+        {
+            _background1Color = value;
+            ColorOverrideMask |= (1 << 0);
+        }
     }
 
     private Color _background2Color;
     public Color Background2Color
     {
         get => _background2Color;
-        set { _background2Color = value; ColorOverrideMask |= (1 << 1); }
+        set
+        {
+            _background2Color = value;
+            ColorOverrideMask |= (1 << 1);
+        }
     }
 
     private Color _baseColor;
     public Color BaseColor
     {
         get => _baseColor;
-        set { _baseColor = value; ColorOverrideMask |= (1 << 2); }
+        set
+        {
+            _baseColor = value;
+            ColorOverrideMask |= (1 << 2);
+        }
     }
 
     private Color _accentColor;
     public Color AccentColor
     {
         get => _accentColor;
-        set { _accentColor = value; ColorOverrideMask |= (1 << 3); }
+        set
+        {
+            _accentColor = value;
+            ColorOverrideMask |= (1 << 3);
+        }
     }
 
     private Color _borderColor;
     public Color BorderColor
     {
         get => _borderColor;
-        set { _borderColor = value; ColorOverrideMask |= (1 << 4); }
+        set
+        {
+            _borderColor = value;
+            ColorOverrideMask |= (1 << 4);
+        }
     }
 
     // Draw regardless of space nearby
@@ -174,7 +194,6 @@ public struct GraphicalTile
     public bool InterpolateMovement { get; set; } = true;
     public bool DrawInitialized { get; set; } = false;
     public Vector2 CurrentDrawPosition { get; set; }
-    public Vector2 DrawPositionVelocity;
 
     public float CurrentDrawScale { get; set; }
 
