@@ -95,7 +95,7 @@ public sealed class DrawSystem : SystemBase<GameTime>
         Core.TileInstancing.Begin(
             // sortMode: SpriteSortMode.BackToFront,
             effect: _renderShader,
-            samplerState: SamplerState.PointClamp
+            samplerState: SamplerState.LinearClamp
         );
 
         var transformParam = _renderShader.Parameters["WorldViewProjection"];
@@ -105,6 +105,11 @@ public sealed class DrawSystem : SystemBase<GameTime>
             transformParam.SetValue(finalTransform);
         if (cameraZoomParam != null)
             cameraZoomParam.SetValue(GlobalContext.Camera.Zoom);
+
+        var debugBordersParam = _renderShader.Parameters["DebugBordersOff"];
+        if (debugBordersParam != null)
+            debugBordersParam.SetValue((Core.DebugOverlay?.BordersOff ?? false) ? 1.0f : 0.0f);
+
 
         // TODO: just house this stuff inside the instancing?
 
@@ -340,12 +345,7 @@ public sealed class DrawSystem : SystemBase<GameTime>
                 _accumInstEndTicks * 1000.0 / Stopwatch.Frequency / ProfileInterval;
             int avgTiles = _accumTiles / ProfileInterval;
             Log.Warn(
-                "Draw (avg {0}f): query={1:F3}ms ({2} tiles, {3:F1}ns/tile)  instEnd={4:F3}ms",
-                ProfileInterval,
-                avgQueryMs,
-                avgTiles,
-                avgTiles > 0 ? (avgQueryMs * 1_000_000.0 / avgTiles) : 0,
-                avgInstEndMs
+                $"Draw (avg {ProfileInterval}f): query={avgQueryMs:F3}ms ({avgTiles} tiles, {(avgTiles > 0 ? avgQueryMs * 1_000_000.0 / avgTiles : 0):F1}ns/tile)  instEnd={avgInstEndMs:F3}ms"
             );
             _profileFrame = 0;
             _accumQueryTicks = 0;

@@ -13,15 +13,15 @@ namespace epoch.ECS;
 /// </summary>
 public sealed class CameraLogicSystem : SystemBase<GameTime>
 {
-    private float smoothTime = 0.45f; // Time to move camera to target (player)
+    private float smoothTime = 0.40f; // Time to move camera to target (player)
     private float zoomSpeed = 0.01f; // Speed of zooming
     private float lookSpeed = 15.0f; // Speed of looking around
     private float clampLength = 500.0f; // Max length of look direction
 
     private Vector2 _camVelocity;
     private Vector2 _leadOffset;
-    private float _leadRampUp = 2.0f; // How fast the lead engages
-    private float _leadRampDown = 1.0f; // How fast the lead disengages (slower = gentler snap-back)
+    private float _leadRampUp = 1.0f; // How fast the lead engages
+    private float _leadRampDown = 2.0f; // How fast the lead disengages (slower = gentler snap-back)
 
     public CameraLogicSystem(World world)
         : base(world) { }
@@ -57,6 +57,8 @@ public sealed class CameraLogicSystem : SystemBase<GameTime>
 
         float rampSpeed = (targetLead != Vector2.Zero) ? _leadRampUp : _leadRampDown;
         _leadOffset = Vector2.Lerp(_leadOffset, targetLead, rampSpeed * delta);
+        if (Vector2.DistanceSquared(_leadOffset, targetLead) < 0.01f)
+            _leadOffset = targetLead;
 
         Vector2 playerPosition =
             (playerGridPos + _leadOffset)
@@ -70,14 +72,24 @@ public sealed class CameraLogicSystem : SystemBase<GameTime>
                 Core.Graphics.PreferredBackBufferHeight / 2
             );
 
-        GlobalContext.CameraEntity.Get<CameraState>().Position = CameraUtils.SmoothDamp(
-            GlobalContext.CameraEntity.Get<CameraState>().Position,
-            targetPosition,
-            ref _camVelocity,
-            smoothTime,
-            float.MaxValue,
-            gameTime.GetElapsedSeconds()
-        );
+        ref var cameraState = ref GlobalContext.CameraEntity.Get<CameraState>();
+        float distSq = Vector2.DistanceSquared(cameraState.Position, targetPosition);
+        if (distSq > 0.25f)
+        {
+            cameraState.Position = CameraUtils.SmoothDamp(
+                cameraState.Position,
+                targetPosition,
+                ref _camVelocity,
+                smoothTime,
+                float.MaxValue,
+                delta
+            );
+        }
+        else
+        {
+            cameraState.Position = targetPosition;
+            _camVelocity = Vector2.Zero;
+        }
 
         // Apply zoom
         float zoomChange = GlobalContext.CameraEntity.Get<CameraInput>().ZoomChange;

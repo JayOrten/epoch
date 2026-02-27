@@ -71,6 +71,8 @@ public class Core : Game
 
     private static DebugOverlay s_debugOverlay;
 
+    internal static DebugOverlay DebugOverlay => s_debugOverlay;
+
     /// <summary>
     /// Creates a new Core instance.
     /// </summary>

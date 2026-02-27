@@ -14,6 +14,10 @@ public sealed class ProceduralGenerationSystem : SystemBase<GameTime>
 
     private HashSet<(int, int)> _loadedChunks = new();
 
+    // Reusable scratch sets — avoids per-frame heap allocations
+    private readonly HashSet<(int, int)> _chunksToLoad = new();
+    private readonly HashSet<(int, int)> _chunksToUnload = new();
+
     private FastNoiseLite _noise = new FastNoiseLite();
 
     public ProceduralGenerationSystem(World world, int chunkSize, int chunkDistance)
@@ -41,25 +45,27 @@ public sealed class ProceduralGenerationSystem : SystemBase<GameTime>
         int chunkX = (int)MathF.Floor(pos.WorldCoordinate.X / _chunkSize);
         int chunkY = (int)MathF.Floor(pos.WorldCoordinate.Y / _chunkSize);
 
-        HashSet<(int, int)> chunksToLoad = new();
+        _chunksToLoad.Clear();
         for (int x = chunkX - _chunkDistance; x <= chunkX + _chunkDistance; x++)
         {
             for (int y = chunkY - _chunkDistance; y <= chunkY + _chunkDistance; y++)
             {
-                chunksToLoad.Add((x, y));
+                _chunksToLoad.Add((x, y));
             }
         }
 
-        HashSet<(int, int)> chunksToUnload = new(_loadedChunks);
-        chunksToUnload.ExceptWith(chunksToLoad);
-        chunksToLoad.ExceptWith(_loadedChunks);
+        _chunksToUnload.Clear();
+        foreach (var chunk in _loadedChunks)
+            _chunksToUnload.Add(chunk);
+        _chunksToUnload.ExceptWith(_chunksToLoad);
+        _chunksToLoad.ExceptWith(_loadedChunks);
 
-        foreach (var chunk in chunksToUnload)
+        foreach (var chunk in _chunksToUnload)
         {
             UnloadChunk(chunk);
         }
 
-        foreach (var chunk in chunksToLoad)
+        foreach (var chunk in _chunksToLoad)
         {
             LoadChunk(chunk);
         }

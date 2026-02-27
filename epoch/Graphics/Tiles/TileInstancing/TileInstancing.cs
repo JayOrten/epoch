@@ -54,6 +54,12 @@ public class TileInstancing
 
     private const int InitialCapacity = 1024;
 
+    /// <summary>Number of tile instances submitted this frame.</summary>
+    internal int InstanceCount => instanceNumber;
+
+    /// <summary>Current CPU-side buffer capacity (doubles on resize).</summary>
+    internal int BufferCapacity => instanceDataArray.Length;
+
     public TileInstancing(GraphicsDevice graphicsDevice)
     {
         // Like Spritebatch
