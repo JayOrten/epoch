@@ -35,7 +35,7 @@ public class WorldScene : Scene
 
     private CameraApplySystem _cameraApplySystem;
 
-    private ProceduralGenerationSystem _proceduralGenerationSystem;
+    private GenerationSystem _generationSystem;
 
     public override void Initialize()
     {
@@ -67,8 +67,9 @@ public class WorldScene : Scene
         // Create the world
         _world = World.Create();
 
-        // Create empty map registry
-        GlobalContext.MapRegistry = new MapRegistry(_world, 16, GlobalContext.MaxZ);
+        // Create terrain generator and chunk registry
+        var terrainGenerator = new TerrainGenerator(16);
+        GlobalContext.ChunkRegistry = new ChunkRegistry(_world, 16, GlobalContext.MaxZ, 4, terrainGenerator);
 
         // Create the entity manager, loading in entity definitions from file
         GlobalContext.EntityManager = new EntityManager(_world, entityDefinitionsPath);
@@ -124,7 +125,7 @@ public class WorldScene : Scene
 
         _cameraApplySystem = new CameraApplySystem(_world);
 
-        _proceduralGenerationSystem = new ProceduralGenerationSystem(_world, 16, 4);
+        _generationSystem = new GenerationSystem(_world);
 
         // Spawn Player
         // Create entity with desired position
@@ -170,7 +171,7 @@ public class WorldScene : Scene
 
     public override void Update(GameTime gameTime)
     {
-        _proceduralGenerationSystem.Update(gameTime);
+        _generationSystem.Update(gameTime);
 
         _inputSystem.Update(gameTime);
 

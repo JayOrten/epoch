@@ -38,6 +38,7 @@ public class TileInstancing
 
     private TileVertex[] instanceDataArray;
     private TileVertex[] sortedDataArray;
+    private float[] sortDepths;
     private int[] sortIndices;
     private int instanceNumber;
 
@@ -52,6 +53,12 @@ public class TileInstancing
     bool beginCalled;
 
     private const int InitialCapacity = 1024;
+
+    /// <summary>Number of tile instances submitted this frame.</summary>
+    internal int InstanceCount => instanceNumber;
+
+    /// <summary>Current CPU-side buffer capacity (doubles on resize).</summary>
+    internal int BufferCapacity => instanceDataArray.Length;
 
     public TileInstancing(GraphicsDevice graphicsDevice)
     {
@@ -72,6 +79,7 @@ public class TileInstancing
 
         instanceDataArray = new TileVertex[InitialCapacity];
         sortedDataArray = new TileVertex[InitialCapacity];
+        sortDepths = new float[InitialCapacity];
         sortIndices = new int[InitialCapacity];
         radixKeys = new uint[InitialCapacity];
         radixScratchIndices = new int[InitialCapacity];
@@ -249,6 +257,7 @@ public class TileInstancing
         int newLength = instanceDataArray.Length * 2;
         Array.Resize(ref instanceDataArray, newLength);
         Array.Resize(ref sortedDataArray, newLength);
+        Array.Resize(ref sortDepths, newLength);
         Array.Resize(ref sortIndices, newLength);
         Array.Resize(ref radixKeys, newLength);
         Array.Resize(ref radixScratchIndices, newLength);
@@ -268,6 +277,7 @@ public class TileInstancing
     public void Draw(
         Vector2 position,
         float depth,
+        float sortDepth,
         float scale,
         float rotation,
         float borderMask,
@@ -287,6 +297,7 @@ public class TileInstancing
         }
 
         ref TileVertex instance = ref instanceDataArray[instanceNumber];
+        sortDepths[instanceNumber] = sortDepth;
 
         instance.Position = position;
         instance.Depth = depth;
@@ -320,7 +331,7 @@ public class TileInstancing
         // 2. Build keys, init indices, build all 4 histograms in one pass
         for (int i = 0; i < count; i++)
         {
-            uint key = BitConverter.SingleToUInt32Bits(instanceDataArray[i].Depth);
+            uint key = BitConverter.SingleToUInt32Bits(sortDepths[i]);
             radixKeys[i] = key;
             sortIndices[i] = i;
 

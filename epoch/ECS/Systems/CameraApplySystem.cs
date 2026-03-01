@@ -1,4 +1,3 @@
-using System;
 using Arch.Core;
 using Arch.Core.Extensions;
 using Microsoft.Xna.Framework;
@@ -6,8 +5,9 @@ using Microsoft.Xna.Framework;
 namespace epoch.ECS;
 
 /// <summary>
-/// Final camera pipeline stage: snaps <see cref="CameraState.Position"/> to pixel boundaries
-/// (preventing sub-pixel tile seams) and applies zoom to the <see cref="OrthographicCamera"/>.
+/// Final camera pipeline stage: applies <see cref="CameraState.Position"/> and zoom
+/// to the <see cref="OrthographicCamera"/>. Pixel alignment is delegated to the
+/// vertex shader's clip-space snap.
 /// </summary>
 public sealed class CameraApplySystem : SystemBase<GameTime>
 {
@@ -19,13 +19,11 @@ public sealed class CameraApplySystem : SystemBase<GameTime>
         // Apply camera state to actual camera
         ref var cameraState = ref GlobalContext.CameraEntity.Get<CameraState>();
 
-        // Snap camera position to pixel boundaries to prevent tile seams/flickering
-        float pixelSize = GlobalContext.TileManager.Tileset.TileWidth * GlobalContext.GlobalScale;
-        Vector2 snappedPosition = new Vector2(
-            MathF.Round(cameraState.Position.X * pixelSize) / pixelSize,
-            MathF.Round(cameraState.Position.Y * pixelSize) / pixelSize
-        );
-        GlobalContext.Camera.Position = snappedPosition;
+        // Camera position is applied directly — pixel alignment is handled by the
+        // vertex shader's clip-space snap (round to screen pixel), which is the
+        // definitive authority. A CPU-side snap here was redundant (and was only
+        // snapping to 1/32 pixel anyway, i.e. sub-pixel resolution).
+        GlobalContext.Camera.Position = cameraState.Position;
 
         if (cameraState.ZoomAmount > 0)
         {

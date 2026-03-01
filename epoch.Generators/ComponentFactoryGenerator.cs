@@ -182,6 +182,74 @@ public class ComponentFactoryGenerator : IIncrementalGenerator
         sb.AppendLine("            }");
         sb.AppendLine("        }");
 
+        sb.AppendLine("");
+
+        // --- METHOD 5: SetFromValue (boxed component → typed Set<T>) ---
+        sb.AppendLine(
+            "        public static void SetFromValue(Entity entity, World world, object component)"
+        );
+        sb.AppendLine("        {");
+        sb.AppendLine("            switch (component)");
+        sb.AppendLine("            {");
+        foreach (var comp in uniqueComponents)
+        {
+            sb.AppendLine(
+                $"                case {comp.ToDisplayString()} val:"
+            );
+            sb.AppendLine(
+                $"                    world.Set<{comp.ToDisplayString()}>(entity, val);"
+            );
+            sb.AppendLine("                    break;");
+        }
+        sb.AppendLine(
+            "                default: throw new ArgumentException($\"Unknown component type: {component.GetType().Name}\");"
+        );
+        sb.AppendLine("            }");
+        sb.AppendLine("        }");
+        sb.AppendLine("");
+
+        // --- METHOD 6: CloneComponent (returns a copy of a boxed component) ---
+        sb.AppendLine("        public static object CloneComponent(object component)");
+        sb.AppendLine("        {");
+        sb.AppendLine("            switch (component)");
+        sb.AppendLine("            {");
+        foreach (var comp in uniqueComponents)
+        {
+            if (ShouldUseCustomFactory(comp))
+            {
+                // GraphicalTileList needs array cloning; Composite types are uncacheable
+                if (comp.Name == "GraphicalTileList")
+                {
+                    sb.AppendLine($"                case {comp.ToDisplayString()} val:");
+                    sb.AppendLine("                {");
+                    sb.AppendLine($"                    var clone = val;");
+                    sb.AppendLine(
+                        "                    if (val.Tiles != null) clone.Tiles = (epoch.ECS.GraphicalTile[])val.Tiles.Clone();"
+                    );
+                    sb.AppendLine("                    return clone;");
+                    sb.AppendLine("                }");
+                }
+                else
+                {
+                    // CompositeControllerComponent, CompositePartComponent — uncacheable
+                    sb.AppendLine($"                case {comp.ToDisplayString()}:");
+                    sb.AppendLine("                    return null;");
+                }
+            }
+            else
+            {
+                // Value types: boxing already copied the struct, just re-box
+                sb.AppendLine(
+                    $"                case {comp.ToDisplayString()} val: return val;"
+                );
+            }
+        }
+        sb.AppendLine(
+            "                default: throw new ArgumentException($\"Unknown component type: {component.GetType().Name}\");"
+        );
+        sb.AppendLine("            }");
+        sb.AppendLine("        }");
+
         sb.AppendLine("    }");
         sb.AppendLine("}");
 

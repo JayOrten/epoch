@@ -150,6 +150,14 @@ public static class GameController
         return s_keyboard.WasKeyJustPressed(Keys.R);
     }
 
+    // -- DEBUG --
+
+    public static bool ToggleDebugOverlay()
+    {
+        return s_keyboard.WasKeyJustPressed(Keys.F3)
+            || s_gamePad.WasButtonJustPressed(Buttons.Back);
+    }
+
     /// <summary>
     /// Returns true if the player has triggered the "pause" action.
     /// </summary>

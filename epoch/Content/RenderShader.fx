@@ -13,15 +13,17 @@ float4x4 WorldViewProjection;
 float2 TextureSize;   // Total size of your spritesheet (e.g. 512, 512)
 float2 TileSize;      // Size of one tile (e.g. 32, 32)
 float2 ViewportSize;  // Size of the viewport in pixels
-// float CameraZoom;
+float2 VanishingPoint; // World-pixel coords of vanishing point, set per-frame
+float DepthStrength;   // Perspective warp strength (e.g. 0.06), set per-frame
+float CameraZoom;
 // float GameTime;
 
 Texture2D SpriteTexture;
 sampler TextureSampler : register(s0)
 {
     Texture = <SpriteTexture>;
-    MinFilter = Point;
-    MagFilter = Point;
+    MinFilter = Linear;
+    MagFilter = Linear;
     MipFilter = None;
     AddressU = Clamp;
     AddressV = Clamp;
@@ -157,6 +159,21 @@ float2x2 getRotationMatrix(float theta)
     //
 }
 
+float4 classifyTexel(float2 uv, float4 bg1, float4 bg2, float4 baseC, float4 accentC)
+{
+    float4 s = tex2Dlod(TextureSampler, float4(uv, 0, 0));
+    float r = step(0.5, s.r);
+    float g = step(0.5, s.g);
+    float b = step(0.5, s.b);
+
+    float4 result = 0;
+    result += r * (1.0 - g) * b * bg1;           // Magenta (1,0,1)
+    result += (1.0 - r) * g * b * bg2;           // Cyan (0,1,1)
+    result += r * g * b * baseC;                  // White (1,1,1)
+    result += r * g * (1.0 - b) * accentC;       // Yellow (1,1,0)
+    return result;
+}
+
 PixelInput MainVS(VertexInput v, InstanceInput i)
 {
     PixelInput output;
@@ -192,6 +209,15 @@ PixelInput MainVS(VertexInput v, InstanceInput i)
     // C. Translation to world position
     v.V_Position.xy += I_Position;
 
+    // C2. Perspective warp: scale position relative to vanishing point.
+    // Uses tanh (via exp) to bound extreme depths — behaves like the linear model
+    // near depth=0 but saturates rather than exploding or collapsing.
+    // tanh(x) = (e^2x - 1) / (e^2x + 1), approximates x for small x.
+    float depthInput = I_Depth * DepthStrength;
+    float e2x = exp(2.0 * depthInput);
+    float perspectiveScale = 1.0 + (e2x - 1.0) / (e2x + 1.0);
+    v.V_Position.xy = VanishingPoint + (v.V_Position.xy - VanishingPoint) * perspectiveScale;
+
     // E. Depth Adjustment
     // v.V_Position.z = 0.0;
     // v.V_Position.z = I_Depth * 0.0001; // Scale down depth to avoid z-fighting
@@ -213,9 +239,13 @@ PixelInput MainVS(VertexInput v, InstanceInput i)
     pixelUV /= TextureSize; // Normalize back to 0..1
 
     // Snap vertex positions to pixel grid to eliminate tile seam shimmering.
-    // Convert clip space (-1 to 1) to pixels, round, convert back.
+    // Adaptive resolution: as zoom decreases, snap to finer sub-pixel grids
+    // so rounding error stays ~2% of tile size (prevents diamonds at low zoom).
+    // At zoom 1.0: snap to whole pixels. At 0.5: half-pixels. At 0.25: quarter-pixels.
     float2 pixelScale = ViewportSize / 2.0;
-    v.V_Position.xy = round(v.V_Position.xy * pixelScale) / pixelScale;
+    float snapMul = clamp(1.0 / CameraZoom, 1.0, 4.0);
+    float2 snapScale = pixelScale * snapMul;
+    v.V_Position.xy = round(v.V_Position.xy * snapScale) / snapScale;
 
     output.P_Position = v.V_Position;
     output.P_uv = pixelUV;
@@ -235,89 +265,64 @@ PixelInput MainVS(VertexInput v, InstanceInput i)
 float4 MainPS(PixelInput input) : SV_TARGET
 {
     // --- 1. CALCULATE LOCAL COORDINATES (0.0 to 1.0) ---
-    // Convert UVs to pixel coordinates, then find where we are inside a single tile.
-    // P_uv go from 0.0 to 1.0 across the entire texture
-    float2 pixelPos = input.P_uv * TextureSize;
+    // Convert UVs to texel coordinates, then find where we are inside a single tile.
+    float2 texelPos = input.P_uv * TextureSize;
 
-    float2 tilePos = pixelPos / TileSize;
+    float2 tilePos = texelPos / TileSize;
+
+    // Compute pixel footprint unconditionally — derivative instructions inside
+    // branches can cause GPU drivers to flatten the branch (executing both paths).
+    float2 pixelFootprint = fwidth(texelPos);
 
     // 'frac' returns just the decimal part (e.g., 5.05 becomes 0.05).
     float2 localCoord = frac(tilePos); // This gives us local percentage coordinates in the tile
 
     // --- 2. BORDER LOGIC ---
+    float borderStrength = 0;
+    float3 borderResult = 0;
+    float appliedAlpha = 0;
+
     // The border mask is in world space (N/E/S/W), but localCoord is in texture space
     // which rotates with the tile's autotile rotation. To make them match, we un-rotate
     // localCoord back to world space so border edges line up with the correct screen sides.
-    float2 borderCoord = localCoord - 0.5; // shift to center for rotation
-    float2x2 invRotation = getRotationMatrix(input.P_Rotation); // undo the UV-to-screen mapping
-    borderCoord = mul(borderCoord, invRotation) + 0.5; // rotate and shift back
+    float2 borderCoord = localCoord - 0.5;
+    float2x2 invRotation = getRotationMatrix(input.P_Rotation);
+    borderCoord = mul(borderCoord, invRotation) + 0.5;
 
-    // This converts the float BorderMask into an integer, effectively, by rounding it.
     float mask = floor(input.P_BorderMask + 0.5);
 
-    // -- Step A: Extract Bits --
-    // fmod : floating point modulus (remainder after division)
-    // step(a, b) : returns 0.0 if b < a, else 1.0
-    // We extract each bit from the mask (top, right, bottom, left)
+    // Extract bits (top, right, bottom, left)
     float bitTop    = step(1.0, fmod(mask, 2.0)); mask = floor(mask / 2.0);
     float bitRight  = step(1.0, fmod(mask, 2.0)); mask = floor(mask / 2.0);
     float bitBottom = step(1.0, fmod(mask, 2.0)); mask = floor(mask / 2.0);
     float bitLeft   = step(1.0, fmod(mask, 2.0));
 
-    // -- Step B: Check Position --
-    // Determine thickness based on camera zoom, to eliminate flickering
-    // This way, if you zoom out farther than the BorderWidth, it will start scaling up
-    float uvPerPixel = fwidth(tilePos.x); // Approximate size of one texture pixel in UV space
+    // Determine thickness — minimum 1.5 screen pixels for stability
+    // uvPerPixel derived from pixelFootprint (computed outside all branches)
+    float uvPerPixel = pixelFootprint.x / TileSize.x;
+    float targetWidth = max(input.P_BorderWidth, uvPerPixel * 1.5);
 
-    float targetWidth = max(input.P_BorderWidth, uvPerPixel); // Ensure that border is at least 1 screen pixel thick
+    // Analytical box filter for stable border coverage
+    float inTop    = saturate((targetWidth - borderCoord.y)         / uvPerPixel + 0.5);
+    float inRight  = saturate((targetWidth - (1.0 - borderCoord.x)) / uvPerPixel + 0.5);
+    float inBottom = saturate((targetWidth - (1.0 - borderCoord.y)) / uvPerPixel + 0.5);
+    float inLeft   = saturate((targetWidth - borderCoord.x)         / uvPerPixel + 0.5);
 
-    float startFade = max(0.0, targetWidth - uvPerPixel * 3.0);
-    float endFade = targetWidth;
+    borderStrength = max(bitTop * inTop, max(bitRight * inRight, max(bitBottom * inBottom, bitLeft * inLeft)));
 
-    // Smooth step: if the distance from the border is less than startfade, it's 0.0,
-    // which make inTop 1.0 (fully visible).
-    // if the distance is greater than endFade, it's 1.0, making inTop 0.0 (not visible).
-    // if the distance is in between, it smoothly interpolates.
-    float distTop = borderCoord.y;
-    float inTop = 1.0 - smoothstep(startFade, endFade, distTop);
+    float4 borderCol = input.P_BorderColor / 255.0;
+    appliedAlpha = borderStrength * saturate(borderCol.a);
 
-    float distRight = 1.0 - borderCoord.x;
-    float inRight = 1.0 - smoothstep(startFade, endFade, distRight);
-
-    float distBottom = 1.0 - borderCoord.y;
-    float inBottom = 1.0 - smoothstep(startFade, endFade, distBottom);
-
-    float distLeft = borderCoord.x;
-    float inLeft = 1.0 - smoothstep(startFade, endFade, distLeft);
-
-    // -- Step C: Combine --
-    // Calculate the strength of each side individually.
-    // bitTop is 0.0 or 1.0 (Is the border turned on?)
-    // inTop is 0.0 to 1.0 (How visible is the border here?)
-    float topStrength    = bitTop * inTop;
-    float rightStrength  = bitRight * inRight;
-    float bottomStrength = bitBottom * inBottom;
-    float leftStrength   = bitLeft * inLeft;
-
-    // Find the maximum strength at this pixel.
-    // If we are in a corner where Top=0.8 and Left=0.8, max keeps it at 0.8 (it doesn't add up to 1.6).
-    float borderStrength = max(topStrength, max(rightStrength, max(bottomStrength, leftStrength)));
-
-    // -- Step D: Apply Colors --
-    // 1. Determine layer lightness adjustment
-    // Interpolate HSL lightness based on difference between player layer and sprite layer
-    // If layerDifference > 0 (near/above), push lightness toward 1.0
-    // If layerDifference < 0 (far/below), push lightness toward 0.0
     float layerFactor = saturate(abs(input.P_LayerDifference) / 10.0);
-    float isBrightening = step(0.0, input.P_LayerDifference); // 1.0 if Near, 0.0 if Far
+    float isBrightening = step(0.0, input.P_LayerDifference);
+    borderResult = adjustLightness(borderCol.rgb, layerFactor, isBrightening) * appliedAlpha;
 
-    // 2. Prepare input colors
+    // -- Tile Colors --
+
     float4 bg1Col = input.P_Background1Color / 255.0;
-    // bg1Col.a = 0.0; // DEBUG: transparent backgrounds. This also looks kinda rad.
     bg1Col.rgb *= bg1Col.a;
 
     float4 bg2Col = input.P_Background2Color / 255.0;
-    // bg2Col.a = 0.0; // DEBUG: transparent backgrounds
     bg2Col.rgb *= bg2Col.a;
 
     float4 baseCol = input.P_BaseColor / 255.0;
@@ -326,53 +331,47 @@ float4 MainPS(PixelInput input) : SV_TARGET
     float4 accentCol = input.P_AccentColor / 255.0;
     accentCol.rgb *= accentCol.a;
 
-    float4 borderCol = input.P_BorderColor / 255.0;
-    float appliedAlpha = borderStrength * saturate(borderCol.a);
-
-    // 3. Adjust lightness via HSL (preserves hue and saturation)
     float3 baseResult   = adjustLightness(baseCol.rgb,   layerFactor, isBrightening);
     float3 accentResult = adjustLightness(accentCol.rgb, layerFactor, isBrightening);
-    float3 borderResult = adjustLightness(borderCol.rgb, layerFactor, isBrightening);
 
-    // Apply alpha to border result
-    borderResult *= appliedAlpha;
+    float4 resolvedBg1 = bg1Col;
+    float4 resolvedBg2 = bg2Col;
+    float4 resolvedBase = float4(baseResult, baseCol.a);
+    float4 resolvedAccent = float4(accentResult, accentCol.a);
 
-    // 4. Sample the Texture (using original UVs, already premultiplied)
-    float4 spritePixel = tex2D(TextureSampler, input.P_uv);
+    // Post-classification multisampling: classify each texel individually
+    // (color code → display color), then average the resolved colors.
+    // Branch on CameraZoom (uniform) so the GPU skips the 3x3 path when
+    // zoomed in — all 9 samples would hit the same texel anyway.
+    // NOTE: pixelFootprint (fwidth) is computed above, outside this branch,
+    // to prevent GPU drivers from flattening it due to derivative instructions.
+    float4 spriteLayer;
 
-    // 5. Create Masks
-    // We use step(0.5, value) which returns 1.0 if value >= 0.5, else 0.0.
-    // This snaps the texture colors to pure 0 or 1 to avoid fuzziness.
-    float r = step(0.5, spritePixel.r);
-    float g = step(0.5, spritePixel.g);
-    float b = step(0.5, spritePixel.b);
+    if (CameraZoom < 0.6)
+    {
+        // Zoomed out: 3x3 grid across the pixel footprint
+        float2 gridStep = pixelFootprint / 3.0;
 
-    // Calculate which color this pixel "is" (Results will be 1.0 or 0.0)
-    float isBg1 = r * (1.0 - g) * b;      // Magenta (1,0,1)
-    float isBg2 = (1.0 - r) * g * b;      // Cyan (0,1,1)
-    float isBase = r * g * b;             // White (1,1,1)
-    float isAccent = r * g * (1.0 - b);   // Yellow (1,1,0)
+        #define MSAMPLE(ox, oy) classifyTexel((floor(texelPos + float2(ox, oy) * gridStep) + 0.5) / TextureSize, resolvedBg1, resolvedBg2, resolvedBase, resolvedAccent)
 
-    // 6. Combine Colors
-    // Multiply each color by its mask and sum them up.
-    // Since only one mask will be 1.0 at a time, the others add 0.0.
-    float4 spriteLayer = 0;
-    spriteLayer += isBg1 * bg1Col;
-    spriteLayer += isBg2 * bg2Col;
-    spriteLayer += isBase * float4(baseResult, baseCol.a);
-    spriteLayer += isAccent * float4(accentResult, accentCol.a);
+        spriteLayer = (
+            MSAMPLE(-1, -1) + MSAMPLE(0, -1) + MSAMPLE(1, -1) +
+            MSAMPLE(-1,  0) + MSAMPLE(0,  0) + MSAMPLE(1,  0) +
+            MSAMPLE(-1,  1) + MSAMPLE(0,  1) + MSAMPLE(1,  1)
+        ) / 9.0;
 
-    // 7. Blend Border onto the result
+        #undef MSAMPLE
+    }
+    else
+    {
+        // Zoomed in: single sample at texel center
+        float2 centerUV = (floor(texelPos) + 0.5) / TextureSize;
+        spriteLayer = classifyTexel(centerUV, resolvedBg1, resolvedBg2, resolvedBase, resolvedAccent);
+    }
 
-    // D. Blend Border Over Sprite (Standard Premultiplied Blend)
-    // Formula: Result = Source + Dest * (1 - SourceAlpha)
+    // 7. Blend Border onto the result (appliedAlpha is 0 when borders are off)
     float4 finalColor;
-
-    // RGB Blend
     finalColor.rgb = borderResult + spriteLayer.rgb * (1.0 - appliedAlpha);
-
-    // Alpha Blend
-    // This effectively replaces your old 'max' logic with mathematically correct blending
     finalColor.a = appliedAlpha + spriteLayer.a * (1.0 - appliedAlpha);
 
     return finalColor;

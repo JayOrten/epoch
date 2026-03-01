@@ -20,8 +20,8 @@ public sealed class CameraLogicSystem : SystemBase<GameTime>
 
     private Vector2 _camVelocity;
     private Vector2 _leadOffset;
-    private float _leadRampUp = 2.0f; // How fast the lead engages
-    private float _leadRampDown = 1.0f; // How fast the lead disengages (slower = gentler snap-back)
+    private float _leadRampUp = 1.0f; // How fast the lead engages
+    private float _leadRampDown = 3.0f; // How fast the lead disengages (slower = gentler snap-back)
 
     public CameraLogicSystem(World world)
         : base(world) { }
@@ -47,8 +47,8 @@ public sealed class CameraLogicSystem : SystemBase<GameTime>
                 playerPos.WorldCoordinate + new Vector3(movementInput.Direction, 0);
 
             if (
-                GlobalContext.MapRegistry.IsPassableAt(predictedCoord)
-                || GlobalContext.MapRegistry.IsPassableAt(predictedCoord + new Vector3(0, 0, 1))
+                GlobalContext.ChunkRegistry.IsPassableAt(predictedCoord)
+                || GlobalContext.ChunkRegistry.IsPassableAt(predictedCoord + new Vector3(0, 0, 1))
             )
             {
                 targetLead = movementInput.Direction;
@@ -57,6 +57,8 @@ public sealed class CameraLogicSystem : SystemBase<GameTime>
 
         float rampSpeed = (targetLead != Vector2.Zero) ? _leadRampUp : _leadRampDown;
         _leadOffset = Vector2.Lerp(_leadOffset, targetLead, rampSpeed * delta);
+        if (Vector2.DistanceSquared(_leadOffset, targetLead) < 0.5f)
+            _leadOffset = targetLead;
 
         Vector2 playerPosition =
             (playerGridPos + _leadOffset)
@@ -70,14 +72,24 @@ public sealed class CameraLogicSystem : SystemBase<GameTime>
                 Core.Graphics.PreferredBackBufferHeight / 2
             );
 
-        GlobalContext.CameraEntity.Get<CameraState>().Position = CameraUtils.SmoothDamp(
-            GlobalContext.CameraEntity.Get<CameraState>().Position,
-            targetPosition,
-            ref _camVelocity,
-            smoothTime,
-            float.MaxValue,
-            gameTime.GetElapsedSeconds()
-        );
+        ref var cameraState = ref GlobalContext.CameraEntity.Get<CameraState>();
+        float distSq = Vector2.DistanceSquared(cameraState.Position, targetPosition);
+        if (distSq > 0.5f)
+        {
+            cameraState.Position = CameraUtils.SmoothDamp(
+                cameraState.Position,
+                targetPosition,
+                ref _camVelocity,
+                smoothTime,
+                float.MaxValue,
+                delta
+            );
+        }
+        else
+        {
+            cameraState.Position = targetPosition;
+            _camVelocity = Vector2.Zero;
+        }
 
         // Apply zoom
         float zoomChange = GlobalContext.CameraEntity.Get<CameraInput>().ZoomChange;

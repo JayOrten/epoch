@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Xml.Linq;
 using Arch.Core;
 using Arch.Core.Extensions;
+using Arch.Core.Utils;
 using Microsoft.Xna.Framework;
 
 namespace epoch.ECS;
@@ -100,7 +100,6 @@ public class EntityManager
         return compDef;
     }
 
-
     /// <summary>
     /// Spawns a new entity from a fully-resolved <see cref="EntityDefinition"/>.
     /// Registers non-player entities with the <see cref="MapRegistry"/> and
@@ -148,7 +147,7 @@ public class EntityManager
                 return entity;
 
             var pos = entity.Get<Position>();
-            GlobalContext.MapRegistry.Register(pos.WorldCoordinate, entity);
+            GlobalContext.ChunkRegistry.Register(pos.WorldCoordinate, entity);
         }
 
         return entity;
@@ -183,5 +182,131 @@ public class EntityManager
         Entity entity = Spawn(def);
 
         return entity;
+    }
+
+    // --- Cached fast path: parse template once, stamp + patch at spawn time ---
+
+    private struct CachedTemplate
+    {
+        public ComponentType[] Types;
+        public object[] DefaultValues; // one per type slot, null = uncacheable
+        public bool HasUncacheableComponents;
+    }
+
+    private Dictionary<int, CachedTemplate> _cachedTemplates = new();
+
+    /// <summary>
+    /// Spawns an entity from a cached template with an optional per-spawn patch callback.
+    /// The patch runs after defaults are stamped but before chunk registration,
+    /// so the caller can override Position or any other component.
+    /// Falls back to <see cref="Spawn(int, EntityDefinition)"/> for uncacheable templates.
+    /// </summary>
+    public Entity SpawnCached(int entityId, Action<Entity, World> patch = null)
+    {
+        if (!_cachedTemplates.TryGetValue(entityId, out var template))
+        {
+            template = BuildCachedTemplate(entityId);
+            _cachedTemplates[entityId] = template;
+        }
+
+        // Uncacheable templates (e.g. CompositeController that spawns children) use the full path
+        if (template.HasUncacheableComponents)
+        {
+            var entity = Spawn(entityId);
+            patch?.Invoke(entity, _world);
+            return entity;
+        }
+
+        var spawned = _world.Create(template.Types);
+
+        // Stamp default values (cloned so each entity gets its own copy)
+        for (int i = 0; i < template.DefaultValues.Length; i++)
+        {
+            var val = template.DefaultValues[i];
+            if (val != null)
+            {
+                ComponentFactory.SetFromValue(spawned, _world, ComponentFactory.CloneComponent(val));
+            }
+        }
+
+        // Per-spawn overrides
+        patch?.Invoke(spawned, _world);
+
+        // Register with ChunkRegistry if applicable
+        if (spawned.Has<Position>() && !spawned.Has<PlayerTag>())
+        {
+            var pos = spawned.Get<Position>();
+            GlobalContext.ChunkRegistry.Register(pos.WorldCoordinate, spawned);
+        }
+
+        return spawned;
+    }
+
+    /// <summary>
+    /// Fast path for terrain entities that only vary by position.
+    /// Avoids Clone/Merge/string-interpolation/Dictionary allocation per spawn.
+    /// </summary>
+    public Entity SpawnTerrain(int entityId, Vector3 position)
+    {
+        return SpawnCached(entityId, (entity, world) =>
+        {
+            ref var pos = ref world.Get<Position>(entity);
+            pos.WorldCoordinate = position;
+        });
+    }
+
+    private CachedTemplate BuildCachedTemplate(int entityId)
+    {
+        if (!_entityDefs.TryGetValue(entityId, out var def))
+            throw new InvalidOperationException($"Entity definition ID '{entityId}' not found.");
+
+        // Build ComponentType[] from definition + DirtyTag
+        var types = new List<ComponentType>();
+        var values = new List<object>();
+        bool hasUncacheable = false;
+
+        foreach (var comp in def.Components.Values)
+        {
+            types.Add(ComponentFactory.GetArchType(comp.TypeName));
+
+            // Build cached value for this component
+            switch (comp.TypeName)
+            {
+                case "CompositeControllerComponent":
+                case "CompositePartComponent":
+                    values.Add(null);
+                    hasUncacheable = true;
+                    break;
+                case "GraphicalTileList":
+                {
+                    var tileList = new GraphicalTileList();
+                    int index = 0;
+                    foreach (var subpart in comp.SubCompositeParts)
+                    {
+                        GraphicalTile tile = ComponentFactory.Create<GraphicalTile>(subpart);
+                        tileList.Set(index, tile);
+                        index++;
+                    }
+                    values.Add(tileList);
+                    break;
+                }
+                default:
+                    values.Add(ComponentFactory.CreateComponent(comp));
+                    break;
+            }
+        }
+
+        if (!def.Components.ContainsKey("DirtyTag"))
+        {
+            types.Add(Component<DirtyTag>.ComponentType);
+            values.Add(new DirtyTag());
+        }
+
+        return new CachedTemplate
+        {
+            Types = types.ToArray(),
+            DefaultValues = values.ToArray(),
+            HasUncacheableComponents = hasUncacheable,
+        };
     }
 }
