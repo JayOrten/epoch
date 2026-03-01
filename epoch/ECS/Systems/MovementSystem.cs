@@ -7,7 +7,7 @@ namespace epoch.ECS;
 
 /// <summary>
 /// Processes tile-based movement for entities with <see cref="MovementInput"/>.
-/// Handles collision detection against the <see cref="MapRegistry"/>, including
+/// Handles collision detection against the <see cref="ChunkRegistry"/>, including
 /// slope traversal (step up/down one Z level) and composite entity checks.
 /// Movement is timer-gated by <see cref="Movement.MoveDelay"/>.
 /// </summary>
@@ -25,7 +25,7 @@ public sealed class MovementSystem : SystemBase<GameTime>
     public static (bool canMove, Vector3 newCoordinate) ResolveMovement(
         Vector3 currentCoordinate,
         Vector2 direction,
-        MapRegistry registry
+        ChunkRegistry registry
     )
     {
         Vector3 newCoordinate = currentCoordinate + new Vector3(direction, 0.0f);
@@ -67,7 +67,7 @@ public sealed class MovementSystem : SystemBase<GameTime>
     public static bool CheckCompositeCollision(
         CompositeControllerComponent composite,
         Vector3 newCoordinate,
-        MapRegistry registry
+        ChunkRegistry registry
     )
     {
         foreach (Vector3 childOffset in composite.ChildOffsets)
@@ -118,7 +118,7 @@ public sealed class MovementSystem : SystemBase<GameTime>
                 var (canMove, newCoordinate) = ResolveMovement(
                     position.WorldCoordinate,
                     movementDirection,
-                    GlobalContext.MapRegistry
+                    GlobalContext.ChunkRegistry
                 );
 
                 bool hasComposite = World.TryGet(
@@ -131,7 +131,7 @@ public sealed class MovementSystem : SystemBase<GameTime>
                     canMove = CheckCompositeCollision(
                         compositeController,
                         newCoordinate,
-                        GlobalContext.MapRegistry
+                        GlobalContext.ChunkRegistry
                     );
                 }
 

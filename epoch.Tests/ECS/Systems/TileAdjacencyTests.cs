@@ -94,14 +94,14 @@ public class TileAdjacencyTests
         Assert.Equal(0, bottom);
     }
 
-    // ── CalculateSpaceMask (Tier 2 — needs Arch World + MapRegistry) ─
+    // ── CalculateSpaceMask (Tier 2 — needs Arch World + ChunkRegistry) ─
 
     [Fact]
     public void CalculateSpaceMask_EmptySlot_IsOpen()
     {
         // Empty slot (Entity.Null) in a loaded chunk should be treated as open space
         using var world = World.Create();
-        var registry = new MapRegistry(world, 16, 32);
+        var registry = new ChunkRegistry(world, 16, 32);
 
         // Center entity at (1,1,1) — solid block
         var blockEntity = world.Create(new Position { WorldCoordinate = new Vector3(1, 1, 1), Passable = false });

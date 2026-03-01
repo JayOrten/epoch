@@ -13,7 +13,7 @@ namespace epoch.ECS;
 /// </summary>
 public sealed class CameraLogicSystem : SystemBase<GameTime>
 {
-    private float smoothTime = 0.40f; // Time to move camera to target (player)
+    private float smoothTime = 0.45f; // Time to move camera to target (player)
     private float zoomSpeed = 0.01f; // Speed of zooming
     private float lookSpeed = 15.0f; // Speed of looking around
     private float clampLength = 500.0f; // Max length of look direction
@@ -21,7 +21,7 @@ public sealed class CameraLogicSystem : SystemBase<GameTime>
     private Vector2 _camVelocity;
     private Vector2 _leadOffset;
     private float _leadRampUp = 1.0f; // How fast the lead engages
-    private float _leadRampDown = 2.0f; // How fast the lead disengages (slower = gentler snap-back)
+    private float _leadRampDown = 3.0f; // How fast the lead disengages (slower = gentler snap-back)
 
     public CameraLogicSystem(World world)
         : base(world) { }
@@ -47,8 +47,8 @@ public sealed class CameraLogicSystem : SystemBase<GameTime>
                 playerPos.WorldCoordinate + new Vector3(movementInput.Direction, 0);
 
             if (
-                GlobalContext.MapRegistry.IsPassableAt(predictedCoord)
-                || GlobalContext.MapRegistry.IsPassableAt(predictedCoord + new Vector3(0, 0, 1))
+                GlobalContext.ChunkRegistry.IsPassableAt(predictedCoord)
+                || GlobalContext.ChunkRegistry.IsPassableAt(predictedCoord + new Vector3(0, 0, 1))
             )
             {
                 targetLead = movementInput.Direction;
@@ -57,7 +57,7 @@ public sealed class CameraLogicSystem : SystemBase<GameTime>
 
         float rampSpeed = (targetLead != Vector2.Zero) ? _leadRampUp : _leadRampDown;
         _leadOffset = Vector2.Lerp(_leadOffset, targetLead, rampSpeed * delta);
-        if (Vector2.DistanceSquared(_leadOffset, targetLead) < 0.01f)
+        if (Vector2.DistanceSquared(_leadOffset, targetLead) < 0.5f)
             _leadOffset = targetLead;
 
         Vector2 playerPosition =
@@ -74,7 +74,7 @@ public sealed class CameraLogicSystem : SystemBase<GameTime>
 
         ref var cameraState = ref GlobalContext.CameraEntity.Get<CameraState>();
         float distSq = Vector2.DistanceSquared(cameraState.Position, targetPosition);
-        if (distSq > 0.25f)
+        if (distSq > 0.5f)
         {
             cameraState.Position = CameraUtils.SmoothDamp(
                 cameraState.Position,

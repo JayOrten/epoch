@@ -21,7 +21,7 @@ public static class GlobalContext
     public static OrthographicCamera Camera { get; set; }
     public static Entity CameraEntity { get; set; }
     public static Entity PlayerEntity { get; set; }
-    public static MapRegistry MapRegistry { get; set; }
+    public static ChunkRegistry ChunkRegistry { get; set; }
     public static TileManager TileManager { get; set; }
     public static EntityManager EntityManager { get; set; }
 

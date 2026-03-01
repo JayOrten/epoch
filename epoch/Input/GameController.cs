@@ -152,11 +152,6 @@ public static class GameController
 
     // -- DEBUG --
 
-    public static bool ToggleBorders()
-    {
-        return s_keyboard.WasKeyJustPressed(Keys.F4);
-    }
-
     public static bool ToggleDebugOverlay()
     {
         return s_keyboard.WasKeyJustPressed(Keys.F3)

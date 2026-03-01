@@ -7,12 +7,12 @@ namespace epoch.Tests.ECS.Systems;
 public class MovementTests
 {
     private World _world;
-    private MapRegistry _registry;
+    private ChunkRegistry _registry;
 
     public MovementTests()
     {
         _world = World.Create();
-        _registry = new MapRegistry(_world, 16, 32);
+        _registry = new ChunkRegistry(_world, 16, 32);
     }
 
     private void PlaceSolid(Vector3 coord)

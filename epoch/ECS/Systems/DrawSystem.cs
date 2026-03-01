@@ -106,9 +106,6 @@ public sealed class DrawSystem : SystemBase<GameTime>
         if (cameraZoomParam != null)
             cameraZoomParam.SetValue(GlobalContext.Camera.Zoom);
 
-        var debugBordersParam = _renderShader.Parameters["DebugBordersOff"];
-        if (debugBordersParam != null)
-            debugBordersParam.SetValue((Core.DebugOverlay?.BordersOff ?? false) ? 1.0f : 0.0f);
 
 
         // TODO: just house this stuff inside the instancing?

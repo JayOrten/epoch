@@ -67,9 +67,9 @@ public sealed class TileAdjacencySystem : SystemBase<GameTime>
 
     /// <summary>
     /// Builds the 26-bit space mask for a position by probing each neighbor in the
-    /// <see cref="MapRegistry"/>. A set bit means that direction is open (air or passable).
+    /// <see cref="ChunkRegistry"/>. A set bit means that direction is open (air or passable).
     /// </summary>
-    public static int CalculateSpaceMask(Vector3 worldCoordinate, MapRegistry registry)
+    public static int CalculateSpaceMask(Vector3 worldCoordinate, ChunkRegistry registry)
     {
         int mask = 0;
         for (int i = 0; i < _directions.Length; i++)
@@ -131,7 +131,7 @@ public sealed class TileAdjacencySystem : SystemBase<GameTime>
 
                 position.SpaceMask = CalculateSpaceMask(
                     position.WorldCoordinate,
-                    GlobalContext.MapRegistry
+                    GlobalContext.ChunkRegistry
                 );
 
                 if (position.IsBlock)

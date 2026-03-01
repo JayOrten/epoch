@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.IO;
 using Arch.Core;
 using epoch.ECS;
@@ -18,15 +17,12 @@ public static class TileMap
     /// </summary>
     public static void LoadTileMap(string tileMapPath, World world)
     {
-        // Iterate through each row of the tilemap txt file,
-        // adding a new entity for each index
         string[] lines = File.ReadAllLines(tileMapPath);
 
         int z = 0;
         int row = 0;
         foreach (string line in lines)
         {
-            // If the line is empty, go to the next layer
             if (line == "-")
             {
                 z++;
@@ -40,8 +36,7 @@ public static class TileMap
             {
                 if (token != ".")
                 {
-                    string coordinates = $"{column},{row},{z}";
-                    GenerateTileList(coordinates, token);
+                    GenerateTileList(column, row, z, token);
                 }
                 column++;
             }
@@ -49,24 +44,15 @@ public static class TileMap
         }
     }
 
-    private static void GenerateTileList(string coordinates, string token)
+    private static void GenerateTileList(int x, int y, int z, string token)
     {
         if (!int.TryParse(token, out int tileId))
         {
-            Log.Warn("TileMap: skipping invalid token '{0}' at {1}", token, coordinates);
+            Log.Warn("TileMap: skipping invalid token '{0}' at {1},{2},{3}", token, x, y, z);
             return;
         }
 
-        // ComponentDefinition graphicalTileList = new ComponentDefinition("GraphicalTileList");
-
-        EntityDefinition spawnPosition = new EntityDefinition(
-            new ComponentDefinition(
-                "Position",
-                new Dictionary<string, string> { { "WorldCoordinate", coordinates } }
-            )
-        // graphicalTileList
-        );
-
-        GlobalContext.EntityManager.Spawn(tileId, spawnPosition);
+        Vector3 pos = new Vector3(x, y, z);
+        GlobalContext.EntityManager.SpawnTerrain(tileId, pos);
     }
 }

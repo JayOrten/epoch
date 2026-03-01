@@ -11,8 +11,6 @@ internal class DebugOverlay
     private readonly SpriteFont _font;
     private bool _visible;
     private float _fps;
-    private bool _bordersOff;
-
     // GC tracking: detect collections by watching GC.CollectionCount changes
     private int _lastGc0;
     private int _lastGc1;
@@ -29,8 +27,6 @@ internal class DebugOverlay
     private float _maxFrameTime;
     private float _maxFrameTimeDisplay;
     private float _spikeTimer;
-
-    public bool BordersOff => _bordersOff;
 
     public DebugOverlay(SpriteFont font)
     {
@@ -51,9 +47,6 @@ internal class DebugOverlay
         float elapsed = (float)gameTime.ElapsedGameTime.TotalSeconds;
         if (elapsed > 0)
             _fps = MathHelper.Lerp(_fps, 1f / elapsed, 0.05f);
-
-        if (GameController.ToggleBorders())
-            _bordersOff = !_bordersOff;
 
         // Track GC collections per second
         int gc0 = GC.CollectionCount(0);
@@ -112,7 +105,7 @@ internal class DebugOverlay
         string text =
             $"FPS: {_fps:F0}  worst: {_maxFrameTimeDisplay * 1000:F1}ms\n" +
             $"Zoom: {zoom:F3}  Tile: {tileScreenPx:F1}px\n" +
-            $"Snap: 1/{snapMul:F0}px  Borders [F4]: {(_bordersOff ? "OFF" : "ON")}\n" +
+            $"Snap: 1/{snapMul:F0}px\n" +
             $"GC/s: gen0={_gc0Display} gen1={_gc1Display} gen2={_gc2Display}\n" +
             $"Instances: {instances}/{bufferCap}\n" +
             $"Threads busy: {workerBusy}";

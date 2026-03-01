@@ -16,7 +16,6 @@ float2 ViewportSize;  // Size of the viewport in pixels
 float2 VanishingPoint; // World-pixel coords of vanishing point, set per-frame
 float DepthStrength;   // Perspective warp strength (e.g. 0.06), set per-frame
 float CameraZoom;
-float DebugBordersOff; // 1.0 = skip border computation
 // float GameTime;
 
 Texture2D SpriteTexture;
@@ -283,47 +282,42 @@ float4 MainPS(PixelInput input) : SV_TARGET
     float3 borderResult = 0;
     float appliedAlpha = 0;
 
-    if (DebugBordersOff < 0.5)
-    {
-        // The border mask is in world space (N/E/S/W), but localCoord is in texture space
-        // which rotates with the tile's autotile rotation. To make them match, we un-rotate
-        // localCoord back to world space so border edges line up with the correct screen sides.
-        float2 borderCoord = localCoord - 0.5;
-        float2x2 invRotation = getRotationMatrix(input.P_Rotation);
-        borderCoord = mul(borderCoord, invRotation) + 0.5;
+    // The border mask is in world space (N/E/S/W), but localCoord is in texture space
+    // which rotates with the tile's autotile rotation. To make them match, we un-rotate
+    // localCoord back to world space so border edges line up with the correct screen sides.
+    float2 borderCoord = localCoord - 0.5;
+    float2x2 invRotation = getRotationMatrix(input.P_Rotation);
+    borderCoord = mul(borderCoord, invRotation) + 0.5;
 
-        float mask = floor(input.P_BorderMask + 0.5);
+    float mask = floor(input.P_BorderMask + 0.5);
 
-        // Extract bits (top, right, bottom, left)
-        float bitTop    = step(1.0, fmod(mask, 2.0)); mask = floor(mask / 2.0);
-        float bitRight  = step(1.0, fmod(mask, 2.0)); mask = floor(mask / 2.0);
-        float bitBottom = step(1.0, fmod(mask, 2.0)); mask = floor(mask / 2.0);
-        float bitLeft   = step(1.0, fmod(mask, 2.0));
+    // Extract bits (top, right, bottom, left)
+    float bitTop    = step(1.0, fmod(mask, 2.0)); mask = floor(mask / 2.0);
+    float bitRight  = step(1.0, fmod(mask, 2.0)); mask = floor(mask / 2.0);
+    float bitBottom = step(1.0, fmod(mask, 2.0)); mask = floor(mask / 2.0);
+    float bitLeft   = step(1.0, fmod(mask, 2.0));
 
-        // Determine thickness — minimum 1.5 screen pixels for stability
-        // uvPerPixel derived from pixelFootprint (computed outside all branches)
-        float uvPerPixel = pixelFootprint.x / TileSize.x;
-        float targetWidth = max(input.P_BorderWidth, uvPerPixel * 1.5);
+    // Determine thickness — minimum 1.5 screen pixels for stability
+    // uvPerPixel derived from pixelFootprint (computed outside all branches)
+    float uvPerPixel = pixelFootprint.x / TileSize.x;
+    float targetWidth = max(input.P_BorderWidth, uvPerPixel * 1.5);
 
-        // Analytical box filter for stable border coverage
-        float inTop    = saturate((targetWidth - borderCoord.y)         / uvPerPixel + 0.5);
-        float inRight  = saturate((targetWidth - (1.0 - borderCoord.x)) / uvPerPixel + 0.5);
-        float inBottom = saturate((targetWidth - (1.0 - borderCoord.y)) / uvPerPixel + 0.5);
-        float inLeft   = saturate((targetWidth - borderCoord.x)         / uvPerPixel + 0.5);
+    // Analytical box filter for stable border coverage
+    float inTop    = saturate((targetWidth - borderCoord.y)         / uvPerPixel + 0.5);
+    float inRight  = saturate((targetWidth - (1.0 - borderCoord.x)) / uvPerPixel + 0.5);
+    float inBottom = saturate((targetWidth - (1.0 - borderCoord.y)) / uvPerPixel + 0.5);
+    float inLeft   = saturate((targetWidth - borderCoord.x)         / uvPerPixel + 0.5);
 
-        borderStrength = max(bitTop * inTop, max(bitRight * inRight, max(bitBottom * inBottom, bitLeft * inLeft)));
+    borderStrength = max(bitTop * inTop, max(bitRight * inRight, max(bitBottom * inBottom, bitLeft * inLeft)));
 
-        float4 borderCol = input.P_BorderColor / 255.0;
-        appliedAlpha = borderStrength * saturate(borderCol.a);
+    float4 borderCol = input.P_BorderColor / 255.0;
+    appliedAlpha = borderStrength * saturate(borderCol.a);
 
-        float layerFactor = saturate(abs(input.P_LayerDifference) / 10.0);
-        float isBrightening = step(0.0, input.P_LayerDifference);
-        borderResult = adjustLightness(borderCol.rgb, layerFactor, isBrightening) * appliedAlpha;
-    }
-
-    // -- Tile Colors --
     float layerFactor = saturate(abs(input.P_LayerDifference) / 10.0);
     float isBrightening = step(0.0, input.P_LayerDifference);
+    borderResult = adjustLightness(borderCol.rgb, layerFactor, isBrightening) * appliedAlpha;
+
+    // -- Tile Colors --
 
     float4 bg1Col = input.P_Background1Color / 255.0;
     bg1Col.rgb *= bg1Col.a;
