@@ -39,8 +39,21 @@ public class TuningConfig
     [JsonPropertyName("rotationSpeed")]
     public float RotationSpeed { get; set; } = 2.0f;
 
+    /// <summary>
+    /// Exponential smoothing coefficient for rotation velocity (higher = snappier, lower = more inertia).
+    /// Controls how quickly velocity ramps up on input and coasts to zero on release.
+    /// </summary>
+    [JsonPropertyName("rotationSmoothTime")]
+    public float RotationSmoothTime { get; set; } = 8.0f;
+
     [JsonPropertyName("elevationSpeed")]
     public float ElevationSpeed { get; set; } = 1000.0f;
+
+    /// <summary>
+    /// Exponential smoothing coefficient for elevation velocity (higher = snappier, lower = more inertia).
+    /// </summary>
+    [JsonPropertyName("elevationSmoothTime")]
+    public float ElevationSmoothTime { get; set; } = 8.0f;
 
     [JsonPropertyName("minVpDistance")]
     public float MinVpDistance { get; set; } = 0f;

@@ -1,3 +1,4 @@
+using System;
 using Arch.Core;
 using Arch.Core.Extensions;
 using epoch.Utilities;
@@ -15,6 +16,8 @@ public sealed class CameraLogicSystem : SystemBase<GameTime>
 {
     private Vector2 _camVelocity;
     private Vector2 _leadOffset;
+    private float _rotationVelocity;
+    private float _elevationVelocity;
 
     public CameraLogicSystem(World world)
         : base(world) { }
@@ -86,20 +89,25 @@ public sealed class CameraLogicSystem : SystemBase<GameTime>
             _camVelocity = Vector2.Zero;
         }
 
-        // Apply zoom
+        // Apply zoom — scale delta by current zoom so it feels uniform across zoom levels
         float zoomChange = GlobalContext.CameraEntity.Get<CameraInput>().ZoomChange;
-        GlobalContext.CameraEntity.Get<CameraState>().ZoomAmount += (zoomChange * tuning.ZoomSpeed);
-        GlobalContext.CameraEntity.Get<CameraInput>().ZoomChange = 0; // Reset after applying
+        float currentZoom = MathF.Max(GlobalContext.Camera.Zoom, 0.01f);
+        GlobalContext.CameraEntity.Get<CameraState>().ZoomAmount += zoomChange * tuning.ZoomSpeed * currentZoom;
+        GlobalContext.CameraEntity.Get<CameraInput>().ZoomChange = 0;
 
-        // Apply Rotation
+        // Apply Rotation — exponential velocity decay gives natural momentum on input/release
         float rotationInput = GlobalContext.CameraEntity.Get<CameraInput>().RotationChange;
-        cameraState.Rotation += rotationInput * tuning.RotationSpeed * delta;
+        float targetRotVel = rotationInput * tuning.RotationSpeed;
+        _rotationVelocity += (targetRotVel - _rotationVelocity) * (1f - MathF.Exp(-tuning.RotationSmoothTime * delta));
+        cameraState.Rotation += _rotationVelocity * delta;
         GlobalContext.CameraEntity.Get<CameraInput>().RotationChange = 0;
 
-        // Apply Elevation (VP distance)
+        // Apply Elevation (VP distance) — same momentum model as rotation
         float elevationInput = GlobalContext.CameraEntity.Get<CameraInput>().ElevationChange;
+        float targetElevVel = elevationInput * tuning.ElevationSpeed;
+        _elevationVelocity += (targetElevVel - _elevationVelocity) * (1f - MathF.Exp(-tuning.ElevationSmoothTime * delta));
         cameraState.VpDistance = MathHelper.Clamp(
-            cameraState.VpDistance + elevationInput * tuning.ElevationSpeed * delta,
+            cameraState.VpDistance + _elevationVelocity * delta,
             tuning.MinVpDistance,
             tuning.MaxVpDistance
         );
