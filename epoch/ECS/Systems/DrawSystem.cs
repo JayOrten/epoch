@@ -31,7 +31,10 @@ public sealed class DrawSystem : SystemBase<GameTime>
     private readonly RenderTarget2D _renderTarget2D;
 
     // Controls vanishing point time smoothing
-    private float _depthStrength = 0.06f;
+    private float _depthStrength = 0.04f;
+
+    // Max vertical stretch factor at maximum VP distance
+    private float _maxZScale = 1.5f;
 
     // Smoothed player Z for z-level transition animation
     private float _displayPlayerZ;
@@ -79,12 +82,24 @@ public sealed class DrawSystem : SystemBase<GameTime>
         // get the transformation for world -> screen space
         var viewMatrix = GlobalContext.Camera.GetViewMatrix();
 
+        // Access camera state early — needed for zScale and projection
+        ref var cameraState = ref GlobalContext.CameraEntity.Get<CameraState>();
+        float rot = cameraState.Rotation;
+
+        /// Compute elevation squash factor from VP distance
+        float vpRatio = MathHelper.Clamp(cameraState.VpDistance / 1200f, 0f, 1f);
+        float zScale = MathHelper.Lerp(1.0f, _maxZScale, vpRatio);
+
         // Get projection matrix for projecting to CLIP space (-1 to 1)
+        // Expand vertical range by zScale so the viewport sees more area along the
+        // VP axis. Combined with the per-sprite stretch in the shader, tile bodies
+        // stay the same size while Z-layer gaps compress — simulating a lower camera.
+        float halfExtra = Core.GraphicsDevice.Viewport.Height * (zScale - 1f) / 2f;
         var projectionMatrix = Matrix.CreateOrthographicOffCenter(
             0,
             Core.GraphicsDevice.Viewport.Width,
-            Core.GraphicsDevice.Viewport.Height,
-            0,
+            Core.GraphicsDevice.Viewport.Height + halfExtra,
+            -halfExtra,
             0,
             1
         );
@@ -106,8 +121,6 @@ public sealed class DrawSystem : SystemBase<GameTime>
         if (cameraZoomParam != null)
             cameraZoomParam.SetValue(GlobalContext.Camera.Zoom);
 
-
-
         // TODO: just house this stuff inside the instancing?
 
         // -- DRAW TILES --
@@ -126,9 +139,13 @@ public sealed class DrawSystem : SystemBase<GameTime>
             _displayPlayerZ = MathHelper.Lerp(_displayPlayerZ, playerZLevel, lerpFactor);
         }
 
+        // VP orbits in world space with the camera rotation.
+        // Combined with view matrix rotation, this keeps the VP at a fixed
+        // screen-space position (below center) while the warp direction
+        // tracks the viewing angle.
         Vector2 vanishingPoint =
             GlobalContext.Camera.Center
-            + (GlobalContext.CameraEntity.Get<CameraState>().LookDirection);
+            + cameraState.VpDistance * new Vector2(MathF.Sin(rot), MathF.Cos(rot));
 
         // Set perspective uniforms on the shader
         _renderShader.Parameters["VanishingPoint"]?.SetValue(vanishingPoint);
@@ -142,17 +159,26 @@ public sealed class DrawSystem : SystemBase<GameTime>
         float tileHeight = tileset.TileHeight;
         var tileInstancing = Core.TileInstancing;
 
-        // Viewport culling: compute visible bounds in grid space with margin
-        // for perspective shift and tile size
-        var cameraBounds = GlobalContext.Camera.BoundingRectangle;
+        // Viewport culling: compute rotation-aware AABB in grid space.
+        // BoundingRectangle doesn't account for view rotation, so we compute
+        // the axis-aligned bounding box of the rotated viewport manually.
+        float zoom = GlobalContext.Camera.Zoom;
+        float halfW = Core.GraphicsDevice.Viewport.Width / (2f * zoom);
+        float halfH = Core.GraphicsDevice.Viewport.Height * zScale / (2f * zoom);
+        float absCos = MathF.Abs(MathF.Cos(cameraState.Rotation));
+        float absSin = MathF.Abs(MathF.Sin(cameraState.Rotation));
+        float rotHalfW = halfW * absCos + halfH * absSin;
+        float rotHalfH = halfW * absSin + halfH * absCos;
+        Vector2 camCenter = GlobalContext.Camera.Center;
+
         float worldToGridX = 1.0f / (tileWidth * globalScale);
         float worldToGridY = 1.0f / (tileHeight * globalScale);
         // Margin accounts for perspective offset at extreme Z + one tile of padding
         float cullMargin = 15.0f;
-        float cullMinX = cameraBounds.Left * worldToGridX - cullMargin;
-        float cullMaxX = cameraBounds.Right * worldToGridX + cullMargin;
-        float cullMinY = cameraBounds.Top * worldToGridY - cullMargin;
-        float cullMaxY = cameraBounds.Bottom * worldToGridY + cullMargin;
+        float cullMinX = (camCenter.X - rotHalfW) * worldToGridX - cullMargin;
+        float cullMaxX = (camCenter.X + rotHalfW) * worldToGridX + cullMargin;
+        float cullMinY = (camCenter.Y - rotHalfH) * worldToGridY - cullMargin;
+        float cullMaxY = (camCenter.Y + rotHalfH) * worldToGridY + cullMargin;
 
         // Draw composite entities
         long t0 = Stopwatch.GetTimestamp();
@@ -235,8 +261,11 @@ public sealed class DrawSystem : SystemBase<GameTime>
                     float baseScale = graphicalTile.Scale * globalScale;
 
                     // Perspective depth for GPU (uses smoothed _displayPlayerZ)
+                    // Scale by zScale to increase layer spacing — viewport squash
+                    // compresses it back, foreshortening the view.
                     float perspectiveDepth =
-                        (position.WorldCoordinate.Z - _displayPlayerZ) + graphicalTile.Offset;
+                        ((position.WorldCoordinate.Z - _displayPlayerZ) + graphicalTile.Offset)
+                        * zScale;
 
                     // Color: use override if set, otherwise fall back to tile definition
                     Color background1Color,

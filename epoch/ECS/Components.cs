@@ -319,8 +319,9 @@ public struct CompositePartComponent
 [Component]
 public struct CameraInput
 {
-    public Vector2 LookChange { get; set; }
     public float ZoomChange { get; set; }
+    public float RotationChange { get; set; }
+    public float ElevationChange { get; set; }
 }
 
 /// <summary>Current camera state: world position, look offset, and zoom level.</summary>
@@ -328,8 +329,11 @@ public struct CameraInput
 public struct CameraState
 {
     public Vector2 Position { get; set; }
-    public Vector2 LookDirection { get; set; }
     public float ZoomAmount { get; set; }
+    public float Rotation { get; set; }
+    public float VpDistance { get; set; } = 600f;
+
+    public CameraState() { }
 }
 
 /// <summary>Snapshot of previous frame's camera state for interpolation across refresh rates.</summary>
