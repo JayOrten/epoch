@@ -28,7 +28,7 @@ float4 MainPS(VertexShaderOutput input) : COLOR
     
     // (-0.08) = Barrel (Standard CRT TV look)
     // (0.08)  = Pincushion (Arcade / Projection look)
-    float distortionStrength = 0.00; // 0.05 
+    float distortionStrength = 0.05; // 0.05 
     
     // 1. Center the UVs [0,1] -> [-0.5, 0.5]
     float2 centeredUV = input.TextureCoordinates - 0.5;
@@ -57,7 +57,7 @@ float4 MainPS(VertexShaderOutput input) : COLOR
     // distortedUV = floor(distortedUV / blockUV) * blockUV;
 
     // --- 1. Chromatic Aberration (Applied to Distorted UVs) ---
-    float aberrationStrength = 0.000; // 0.002 
+    float aberrationStrength = 0.002; // 0.002 
     float2 aberrationOffset = (distortedUV - 0.5) * aberrationStrength;
 
     float r = tex2D(SpriteTextureSampler, distortedUV - aberrationOffset).r;
@@ -71,8 +71,8 @@ float4 MainPS(VertexShaderOutput input) : COLOR
     // Adjust 'bloomSpread' for how far the glow reaches (0.004 is decent for 1080p).
     // Adjust 'bloomIntensity' for how "hot" the display looks.
     
-    float bloomSpread = 0.000; // 0.0013 
-    float bloomIntensity = 0; // 1
+    float bloomSpread = 0.001; // 0.0013 
+    float bloomIntensity = 1; // 1
     float bloomThreshold = 0.1;
     
     float4 glow = float4(0,0,0,0);
@@ -124,8 +124,8 @@ float4 MainPS(VertexShaderOutput input) : COLOR
     color.rgb += glow.rgb * bloomIntensity * bleedMask;
 
     // --- 2. Scanline Effect ---
-    // float scanline = sin(distortedUV.y * 400.0) * 0.0020;
-    // color.rgb -= scanline;
+    float scanline = sin(distortedUV.y * 400.0) * 0.0020;
+    color.rgb -= scanline;
 
     // --- 3. Film Grain Effect ---
     float timeStep = Time % 100.0; 
@@ -138,7 +138,7 @@ float4 MainPS(VertexShaderOutput input) : COLOR
     float monoNoise = (nR + nG + nB) / 3.0;
 
     float3 finalNoise = lerp(float3(monoNoise, monoNoise, monoNoise), noise, 1.0f);
-    float grainIntensity = 0.00; // 0.29
+    float grainIntensity = 0.25; // 0.29
     float luminance = dot(color.rgb, float3(0.299, 0.587, 0.114));
     float luminanceMask = pow(1.0 - luminance, 5.0); 
 

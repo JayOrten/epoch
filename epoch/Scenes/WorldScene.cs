@@ -58,6 +58,9 @@ public class WorldScene : Scene
         string tileSetPath = ContentPaths.Config("tileset");
         string entityDefinitionsPath = ContentPaths.Config("entity-definitions");
 
+        // Load tuning config (hot-reloads on save)
+        TuningConfig.Load(ContentPaths.Config("tuning"));
+
         // Load tileset
         Tileset tileset = Tileset.FromFile(Content, tileSetPath);
 

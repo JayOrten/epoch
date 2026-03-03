@@ -30,18 +30,9 @@ public sealed class DrawSystem : SystemBase<GameTime>
 
     private readonly RenderTarget2D _renderTarget2D;
 
-    // Controls vanishing point time smoothing
-    private float _depthStrength = 0.04f;
-
-    // Max vertical stretch factor at maximum VP distance
-    private float _maxZScale = 1.5f;
-
     // Smoothed player Z for z-level transition animation
     private float _displayPlayerZ;
     private bool _playerZInitialized;
-
-    // Controls z-transition smoothing rate (same rate as old per-tile interpolation)
-    private float _zLerpRate = 0.0001f;
 
     // Lightweight profiling: accumulate over N frames, log the average
     private const int ProfileInterval = 60;
@@ -86,9 +77,11 @@ public sealed class DrawSystem : SystemBase<GameTime>
         ref var cameraState = ref GlobalContext.CameraEntity.Get<CameraState>();
         float rot = cameraState.Rotation;
 
+        var tuning = TuningConfig.Instance;
+
         /// Compute elevation squash factor from VP distance
-        float vpRatio = MathHelper.Clamp(cameraState.VpDistance / 1200f, 0f, 1f);
-        float zScale = MathHelper.Lerp(1.0f, _maxZScale, vpRatio);
+        float vpRatio = MathHelper.Clamp(cameraState.VpDistance / tuning.MaxVpDistance, 0f, 1f);
+        float zScale = MathHelper.Lerp(1.0f, tuning.MaxZScale, vpRatio);
 
         // Get projection matrix for projecting to CLIP space (-1 to 1)
         // Expand vertical range by zScale so the viewport sees more area along the
@@ -135,7 +128,7 @@ public sealed class DrawSystem : SystemBase<GameTime>
         }
         else
         {
-            float lerpFactor = 1 - (float)Math.Pow(_zLerpRate, gameTime.GetElapsedSeconds());
+            float lerpFactor = 1 - (float)Math.Pow(tuning.ZLerpRate, gameTime.GetElapsedSeconds());
             _displayPlayerZ = MathHelper.Lerp(_displayPlayerZ, playerZLevel, lerpFactor);
         }
 
@@ -149,12 +142,22 @@ public sealed class DrawSystem : SystemBase<GameTime>
 
         // Set perspective uniforms on the shader
         _renderShader.Parameters["VanishingPoint"]?.SetValue(vanishingPoint);
-        _renderShader.Parameters["DepthStrength"]?.SetValue(_depthStrength);
+        _renderShader.Parameters["DepthStrength"]?.SetValue(tuning.DepthStrength);
+
+        // Hoist globalScale early — needed for stack height and tile loop
+        float globalScale = GlobalContext.GlobalScale;
+
+        // Orthographic stack uniforms
+        Vector2 stackDirection = new Vector2(-MathF.Sin(rot), -MathF.Cos(rot));
+        float stackHeight = vpRatio * tuning.MaxStackHeight * globalScale;
+
+        _renderShader.Parameters["StackDirection"]?.SetValue(stackDirection);
+        _renderShader.Parameters["StackHeight"]?.SetValue(stackHeight);
+        _renderShader.Parameters["VpBlend"]?.SetValue(tuning.VpBlendFactor);
 
         // Hoist per-frame constants out of the hot loop
         var tileManager = GlobalContext.TileManager;
         var tileset = tileManager.Tileset;
-        float globalScale = GlobalContext.GlobalScale;
         float tileWidth = tileset.TileWidth;
         float tileHeight = tileset.TileHeight;
         var tileInstancing = Core.TileInstancing;

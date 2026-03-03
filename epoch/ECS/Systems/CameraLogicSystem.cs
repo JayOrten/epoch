@@ -13,17 +13,8 @@ namespace epoch.ECS;
 /// </summary>
 public sealed class CameraLogicSystem : SystemBase<GameTime>
 {
-    private float smoothTime = 0.45f; // Time to move camera to target (player)
-    private float zoomSpeed = 0.01f; // Speed of zooming
-    private float rotationSpeed = 3.0f; // Radians per second
-    private float elevationSpeed = 300.0f; // Pixels per second
-    private float minVpDistance = 0f; // Directly overhead
-    private float maxVpDistance = 1200f;
-
     private Vector2 _camVelocity;
     private Vector2 _leadOffset;
-    private float _leadRampUp = 1.0f; // How fast the lead engages
-    private float _leadRampDown = 3.0f; // How fast the lead disengages (slower = gentler snap-back)
 
     public CameraLogicSystem(World world)
         : base(world) { }
@@ -57,7 +48,8 @@ public sealed class CameraLogicSystem : SystemBase<GameTime>
             }
         }
 
-        float rampSpeed = (targetLead != Vector2.Zero) ? _leadRampUp : _leadRampDown;
+        var tuning = TuningConfig.Instance;
+        float rampSpeed = (targetLead != Vector2.Zero) ? tuning.LeadRampUp : tuning.LeadRampDown;
         _leadOffset = Vector2.Lerp(_leadOffset, targetLead, rampSpeed * delta);
         if (Vector2.DistanceSquared(_leadOffset, targetLead) < 0.5f)
             _leadOffset = targetLead;
@@ -83,7 +75,7 @@ public sealed class CameraLogicSystem : SystemBase<GameTime>
                 cameraState.Position,
                 targetPosition,
                 ref _camVelocity,
-                smoothTime,
+                tuning.CameraSmoothTime,
                 float.MaxValue,
                 delta
             );
@@ -96,20 +88,20 @@ public sealed class CameraLogicSystem : SystemBase<GameTime>
 
         // Apply zoom
         float zoomChange = GlobalContext.CameraEntity.Get<CameraInput>().ZoomChange;
-        GlobalContext.CameraEntity.Get<CameraState>().ZoomAmount += (zoomChange * zoomSpeed);
+        GlobalContext.CameraEntity.Get<CameraState>().ZoomAmount += (zoomChange * tuning.ZoomSpeed);
         GlobalContext.CameraEntity.Get<CameraInput>().ZoomChange = 0; // Reset after applying
 
         // Apply Rotation
         float rotationInput = GlobalContext.CameraEntity.Get<CameraInput>().RotationChange;
-        cameraState.Rotation += rotationInput * rotationSpeed * delta;
+        cameraState.Rotation += rotationInput * tuning.RotationSpeed * delta;
         GlobalContext.CameraEntity.Get<CameraInput>().RotationChange = 0;
 
         // Apply Elevation (VP distance)
         float elevationInput = GlobalContext.CameraEntity.Get<CameraInput>().ElevationChange;
         cameraState.VpDistance = MathHelper.Clamp(
-            cameraState.VpDistance + elevationInput * elevationSpeed * delta,
-            minVpDistance,
-            maxVpDistance
+            cameraState.VpDistance + elevationInput * tuning.ElevationSpeed * delta,
+            tuning.MinVpDistance,
+            tuning.MaxVpDistance
         );
         GlobalContext.CameraEntity.Get<CameraInput>().ElevationChange = 0;
 

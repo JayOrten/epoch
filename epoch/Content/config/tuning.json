@@ -1,0 +1,15 @@
+{
+  "depthStrength": 0.02,
+  "maxZScale": 1.5,
+  "maxStackHeight": 16.0,
+  "vpBlendFactor": 0.4,
+  "zLerpRate": 0.01,
+  "cameraSmoothTime": 0.5,
+  "zoomSpeed": 0.01,
+  "rotationSpeed": 1.0,
+  "elevationSpeed": 1000.0,
+  "minVpDistance": 0.0,
+  "maxVpDistance": 1200.0,
+  "leadRampUp": 1.5,
+  "leadRampDown": 2.0
+}
