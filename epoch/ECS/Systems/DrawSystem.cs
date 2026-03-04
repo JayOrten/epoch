@@ -224,11 +224,11 @@ public sealed class DrawSystem : SystemBase<GameTime>
 
                 int lastIndex = graphicalTileList.Tiles.Length - 1;
 
-                for (int i = 0; i < graphicalTileList.Tiles.Length; i++)
+                int mask = graphicalTileList.ActiveTileMask;
+                while (mask != 0)
                 {
-                    // Skip inactive tiles
-                    if ((graphicalTileList.ActiveTileMask & (1 << i)) == 0)
-                        continue;
+                    int i = System.Numerics.BitOperations.TrailingZeroCount(mask);
+                    mask &= mask - 1;
 
                     bool isTop = (i == lastIndex);
 
@@ -246,8 +246,8 @@ public sealed class DrawSystem : SystemBase<GameTime>
                     if (tileInfo == null)
                         continue;
 
-                    // Get texture region and rotation
-                    (TextureRegion region, float rotation) = tileset.GetTile(
+                    // Get source rectangle and rotation directly (avoids TextureRegion class indirection)
+                    (Rectangle sourceRect, float rotation) = tileset.GetTileRect(
                         tileInfo.TileIndex,
                         graphicalTile.AutoTileMask
                     );
@@ -324,7 +324,7 @@ public sealed class DrawSystem : SystemBase<GameTime>
                         graphicalTile.BorderMask,
                         graphicalTile.BorderWidth,
                         layerDifference,
-                        region.SourceRectangle,
+                        sourceRect,
                         background1Color,
                         background2Color,
                         baseColor,

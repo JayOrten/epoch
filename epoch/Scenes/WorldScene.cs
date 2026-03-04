@@ -111,6 +111,9 @@ public class WorldScene : Scene
             spriteSheetParam.SetValue(GlobalContext.TileManager.Tileset.GetTile(0).Texture); // TODO: this is super hacky, need to rework these classes.
 
         _drawSystem = new DrawSystem(_world, renderShader, effectShader);
+
+        // Pre-allocate instancing buffers to avoid runtime doubling resizes
+        Core.TileInstancing.SetInternalArraySizes(500_000);
     }
 
     public override void BeginRun()

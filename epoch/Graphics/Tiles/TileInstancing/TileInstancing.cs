@@ -37,7 +37,6 @@ public class TileInstancing
     private readonly VertexBufferBinding[] vertexBufferBindings;
 
     private TileVertex[] instanceDataArray;
-    private TileVertex[] sortedDataArray;
     private float[] sortDepths;
     private int[] sortIndices;
     private int instanceNumber;
@@ -53,6 +52,7 @@ public class TileInstancing
     bool beginCalled;
 
     private const int InitialCapacity = 1024;
+    private const int DrawBatchSize = 100_000;
 
     /// <summary>Number of tile instances submitted this frame.</summary>
     internal int InstanceCount => instanceNumber;
@@ -78,7 +78,6 @@ public class TileInstancing
         CreateBaseVertexAndIndexBuffer();
 
         instanceDataArray = new TileVertex[InitialCapacity];
-        sortedDataArray = new TileVertex[InitialCapacity];
         sortDepths = new float[InitialCapacity];
         sortIndices = new int[InitialCapacity];
         radixKeys = new uint[InitialCapacity];
@@ -203,6 +202,23 @@ public class TileInstancing
         if (instanceDataArray.Length != newSize)
         {
             Array.Resize(ref instanceDataArray, newSize);
+            Array.Resize(ref sortDepths, newSize);
+            Array.Resize(ref sortIndices, newSize);
+            Array.Resize(ref radixKeys, newSize);
+            Array.Resize(ref radixScratchIndices, newSize);
+
+            // Regrow GPU buffer if needed
+            if (dynamicInstancingBuffer.VertexCount < newSize)
+            {
+                dynamicInstancingBuffer?.Dispose();
+                dynamicInstancingBuffer = new DynamicVertexBuffer(
+                    graphicsDevice,
+                    typeof(TileVertex),
+                    newSize,
+                    BufferUsage.WriteOnly
+                );
+                vertexBufferBindings[1] = new VertexBufferBinding(dynamicInstancingBuffer, 0, 1);
+            }
         }
     }
 
@@ -256,7 +272,6 @@ public class TileInstancing
     {
         int newLength = instanceDataArray.Length * 2;
         Array.Resize(ref instanceDataArray, newLength);
-        Array.Resize(ref sortedDataArray, newLength);
         Array.Resize(ref sortDepths, newLength);
         Array.Resize(ref sortIndices, newLength);
         Array.Resize(ref radixKeys, newLength);
@@ -318,9 +333,9 @@ public class TileInstancing
     }
 
     /// <summary>
-    /// 4-pass 8-bit radix sort on depth. Sorts indices into sortedDataArray back-to-front.
-    /// Non-negative floats have uint bit patterns that sort naturally; we bitwise-NOT
-    /// them so that higher depth (further back) sorts first (descending order).
+    /// 4-pass 8-bit radix sort on depth. Produces a permutation in sortIndices,
+    /// then applies it in-place to instanceDataArray via cycle-following.
+    /// Non-negative floats have uint bit patterns that sort naturally.
     /// Skips passes where all elements land in a single bucket.
     /// </summary>
     private void RadixSortByDepth(int count)
@@ -386,9 +401,26 @@ public class TileInstancing
             (src, dst) = (dst, src);
         }
 
-        // 5. Final scatter into sortedDataArray
+        // 5. In-place cycle-following permutation on instanceDataArray
+        // src[] now contains the permutation: position i should hold the element
+        // originally at src[i]. We follow each cycle, moving elements into place.
         for (int i = 0; i < count; i++)
-            sortedDataArray[i] = instanceDataArray[src[i]];
+        {
+            if (src[i] == i)
+                continue; // Already in place
+
+            TileVertex temp = instanceDataArray[i];
+            int j = i;
+            while (src[j] != i)
+            {
+                instanceDataArray[j] = instanceDataArray[src[j]];
+                int next = src[j];
+                src[j] = j; // Mark as placed
+                j = next;
+            }
+            instanceDataArray[j] = temp;
+            src[j] = j; // Mark as placed
+        }
     }
 
     /// <summary>
@@ -422,10 +454,7 @@ public class TileInstancing
         {
             RadixSortByDepth(instanceNumber);
         }
-        else if (instanceNumber == 1)
-        {
-            sortedDataArray[0] = instanceDataArray[0];
-        }
+        // instanceNumber == 1: already in place, no sort needed
 
         // Sets the Instancingbuffer
         // Dispose the buffer from the last Frame if the (vetex)instancingbuffer has changed
@@ -446,30 +475,36 @@ public class TileInstancing
             vertexBufferBindings[1] = new VertexBufferBinding(dynamicInstancingBuffer, 0, 1);
         }
 
-        // Fills the (vertex)instancingbuffer
-        dynamicInstancingBuffer.SetData(
-            sortedDataArray,
-            0,
-            instanceNumber,
-            SetDataOptions.Discard
-        );
-
-        // Binds the vertexBuffers
-        graphicsDevice.SetVertexBuffers(vertexBufferBindings);
-
         // Indexbuffer
         graphicsDevice.Indices = indexBuffer;
 
-        // Activates the shader
-        shader.CurrentTechnique.Passes[0].Apply();
+        // Submit in batches: upload slice → draw, allowing GPU to start earlier batches
+        int remaining = instanceNumber;
+        int offset = 0;
+        while (remaining > 0)
+        {
+            int batchCount = Math.Min(remaining, DrawBatchSize);
 
-        // Draws the 2 triangles on the screen
-        graphicsDevice.DrawInstancedPrimitives(
-            PrimitiveType.TriangleList,
-            0, // baseVertex
-            0, // minVertexIndex
-            2, // primitiveCount
-            instanceNumber
-        );
+            dynamicInstancingBuffer.SetData(
+                instanceDataArray,
+                offset,
+                batchCount,
+                SetDataOptions.Discard
+            );
+
+            graphicsDevice.SetVertexBuffers(vertexBufferBindings);
+            shader.CurrentTechnique.Passes[0].Apply();
+
+            graphicsDevice.DrawInstancedPrimitives(
+                PrimitiveType.TriangleList,
+                0, // baseVertex
+                0, // minVertexIndex
+                2, // primitiveCount
+                batchCount
+            );
+
+            offset += batchCount;
+            remaining -= batchCount;
+        }
     }
 }

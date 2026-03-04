@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
@@ -142,6 +143,16 @@ public class Tileset
         (int increment, float rotation) = rotationMap[autoTileMask];
         int tileId = index + increment;
         return (_tiles[tileId], rotation);
+    }
+
+    /// <summary>
+    /// Returns the source rectangle and rotation for a tile, avoiding the TextureRegion class indirection.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public (Rectangle sourceRect, float rotation) GetTileRect(int index, int autoTileMask)
+    {
+        (int increment, float rotation) = rotationMap[autoTileMask];
+        return (_tiles[index + increment].SourceRectangle, rotation);
     }
 }
 
