@@ -342,4 +342,6 @@ public struct CameraPreviousState
 {
     public Vector2 Position { get; set; }
     public float Zoom { get; set; }
+    public float Rotation { get; set; }
+    public float VpDistance { get; set; }
 }

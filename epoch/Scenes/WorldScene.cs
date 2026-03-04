@@ -157,7 +157,10 @@ public class WorldScene : Scene
         }
 
         // Spawn Camera entity
-        GlobalContext.CameraEntity = _world.Create(new CameraInput(), new CameraState());
+        GlobalContext.CameraEntity = _world.Create(
+            new CameraInput(),
+            new CameraState(),
+            new CameraPreviousState());
 
         // Center camera on player
         ref var pos = ref GlobalContext.PlayerEntity.Get<Position>();
@@ -175,8 +178,16 @@ public class WorldScene : Scene
         // _proceduralGenerationSystem.Update(new GameTime());
     }
 
-    public override void Update(GameTime gameTime)
+    public override void FixedUpdate(GameTime gameTime)
     {
+        // Snapshot camera state before systems modify it
+        ref var camState = ref GlobalContext.CameraEntity.Get<CameraState>();
+        ref var prevState = ref GlobalContext.CameraEntity.Get<CameraPreviousState>();
+        prevState.Position = camState.Position;
+        prevState.Zoom = GlobalContext.Camera.Zoom;
+        prevState.Rotation = camState.Rotation;
+        prevState.VpDistance = camState.VpDistance;
+
         _generationSystem.Update(gameTime);
 
         _inputSystem.Update(gameTime);

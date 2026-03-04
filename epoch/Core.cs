@@ -73,6 +73,18 @@ public class Core : Game
 
     internal static DebugOverlay DebugOverlay => s_debugOverlay;
 
+    // Fixed timestep accumulator
+    private double _accumulator;
+    private const double FixedTimeDelta = 1.0 / 60.0;
+    private static readonly GameTime s_fixedGameTime = new GameTime(
+        TimeSpan.Zero, TimeSpan.FromSeconds(FixedTimeDelta));
+
+    /// <summary>
+    /// Interpolation fraction [0, 1) for rendering between the previous and current
+    /// fixed-update states. Read by DrawSystem for camera interpolation.
+    /// </summary>
+    public static float InterpolationAlpha { get; private set; }
+
     /// <summary>
     /// Creates a new Core instance.
     /// </summary>
@@ -116,6 +128,9 @@ public class Core : Game
 
         // Mouse is visible by default.
         IsMouseVisible = true;
+
+        // We manage our own fixed timestep with interpolation.
+        IsFixedTimeStep = false;
 
         // Exit on escape is true by default
         ExitOnEscape = true;
@@ -173,7 +188,27 @@ public class Core : Game
             TransitionScene();
         }
 
-        // If there is an active scene, update it.
+        // Fixed timestep accumulator — clamp to 250ms to prevent spiral of death
+        double frameDelta = Math.Min(gameTime.ElapsedGameTime.TotalSeconds, 0.25);
+        _accumulator += frameDelta;
+
+        // Update TotalGameTime on the shared fixed GameTime each tick
+        while (_accumulator >= FixedTimeDelta)
+        {
+            s_fixedGameTime.TotalGameTime = gameTime.TotalGameTime
+                - TimeSpan.FromSeconds(_accumulator - FixedTimeDelta);
+
+            if (s_activeScene != null)
+            {
+                s_activeScene.FixedUpdate(s_fixedGameTime);
+            }
+
+            _accumulator -= FixedTimeDelta;
+        }
+
+        InterpolationAlpha = (float)(_accumulator / FixedTimeDelta);
+
+        // Variable-rate update (currently unused by WorldScene, but available)
         if (s_activeScene != null)
         {
             s_activeScene.Update(gameTime);

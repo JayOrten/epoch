@@ -70,17 +70,33 @@ public sealed class DrawSystem : SystemBase<GameTime>
         // Set background color
         Core.GraphicsDevice.Clear(new Color(24, 25, 38));
 
+        // Interpolate camera state between previous and current fixed-update snapshots
+        ref var cameraState = ref GlobalContext.CameraEntity.Get<CameraState>();
+        ref var prevCam = ref GlobalContext.CameraEntity.Get<CameraPreviousState>();
+        float alpha = Core.InterpolationAlpha;
+
+        Vector2 drawPosition = Vector2.Lerp(prevCam.Position, cameraState.Position, alpha);
+        float drawZoom = MathHelper.Lerp(prevCam.Zoom, GlobalContext.Camera.Zoom, alpha);
+        float drawRotation = MathHelper.Lerp(prevCam.Rotation, cameraState.Rotation, alpha);
+        float drawVpDistance = MathHelper.Lerp(prevCam.VpDistance, cameraState.VpDistance, alpha);
+
+        // Temporarily apply interpolated values for view matrix and culling
+        Vector2 savedPosition = GlobalContext.Camera.Position;
+        float savedZoom = GlobalContext.Camera.Zoom;
+        float savedRotation = GlobalContext.Camera.Rotation;
+        GlobalContext.Camera.Position = drawPosition;
+        GlobalContext.Camera.Zoom = drawZoom;
+        GlobalContext.Camera.Rotation = drawRotation;
+
         // get the transformation for world -> screen space
         var viewMatrix = GlobalContext.Camera.GetViewMatrix();
 
-        // Access camera state early — needed for zScale and projection
-        ref var cameraState = ref GlobalContext.CameraEntity.Get<CameraState>();
-        float rot = cameraState.Rotation;
+        float rot = drawRotation;
 
         var tuning = TuningConfig.Instance;
 
         /// Compute elevation squash factor from VP distance
-        float vpRatio = MathHelper.Clamp(cameraState.VpDistance / tuning.MaxVpDistance, 0f, 1f);
+        float vpRatio = MathHelper.Clamp(drawVpDistance / tuning.MaxVpDistance, 0f, 1f);
         float zScale = MathHelper.Lerp(1.0f, tuning.MaxZScale, vpRatio);
 
         // Get projection matrix for projecting to CLIP space (-1 to 1)
@@ -138,7 +154,7 @@ public sealed class DrawSystem : SystemBase<GameTime>
         // tracks the viewing angle.
         Vector2 vanishingPoint =
             GlobalContext.Camera.Center
-            + cameraState.VpDistance * new Vector2(MathF.Sin(rot), MathF.Cos(rot));
+            + drawVpDistance * new Vector2(MathF.Sin(rot), MathF.Cos(rot));
 
         // Set perspective uniforms on the shader
         _renderShader.Parameters["VanishingPoint"]?.SetValue(vanishingPoint);
@@ -360,6 +376,11 @@ public sealed class DrawSystem : SystemBase<GameTime>
         );
 
         Core.SpriteBatch.End();
+
+        // Restore actual camera state (CameraApplySystem owns the authoritative values)
+        GlobalContext.Camera.Position = savedPosition;
+        GlobalContext.Camera.Zoom = savedZoom;
+        GlobalContext.Camera.Rotation = savedRotation;
 
         // Accumulate and log every ProfileInterval frames
         _accumQueryTicks += t1 - t0;
