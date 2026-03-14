@@ -1,9 +1,10 @@
 using System;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using Arch.Core;
 using Arch.Core.Extensions;
-using epoch.Graphics;
 using epoch.Graphics.Tiles;
+using epoch.Graphics.Tiles.TileInstancing;
 using epoch.Utilities;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -20,7 +21,9 @@ namespace epoch.ECS;
 /// </summary>
 public sealed class DrawSystem : SystemBase<GameTime>
 {
-    private readonly QueryDescription _compositeEntitiesToDraw = new QueryDescription().WithAll<
+    // Secondary query for composite parts (player body parts that move with the camera)
+    private readonly QueryDescription _compositePartsQuery = new QueryDescription().WithAll<
+        CompositePartComponent,
         Position,
         GraphicalTileList
     >();
@@ -34,12 +37,19 @@ public sealed class DrawSystem : SystemBase<GameTime>
     private float _displayPlayerZ;
     private bool _playerZInitialized;
 
+    // One-shot cache diagnostic: fires after first ProfileInterval frames
+    private bool _cacheDiagDone;
+
     // Lightweight profiling: accumulate over N frames, log the average
     private const int ProfileInterval = 60;
     private int _profileFrame;
     private long _accumQueryTicks;
-    private long _accumInstEndTicks;
+    private long _accumTileWorkTicks;
+    private long _accumSortTicks;
+    private long _accumUploadTicks;
     private int _accumTiles;
+    private int _accumEntitiesVisited;
+    private int _accumViewportCulled;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="DrawSystem"/> class.
@@ -130,8 +140,6 @@ public sealed class DrawSystem : SystemBase<GameTime>
         if (cameraZoomParam != null)
             cameraZoomParam.SetValue(GlobalContext.Camera.Zoom);
 
-        // TODO: just house this stuff inside the instancing?
-
         // -- DRAW TILES --
         // Get player z position and smooth z-level transitions
         ref var pos = ref GlobalContext.PlayerEntity.Get<Position>();
@@ -171,6 +179,11 @@ public sealed class DrawSystem : SystemBase<GameTime>
         _renderShader.Parameters["StackHeight"]?.SetValue(stackHeight);
         _renderShader.Parameters["VpBlend"]?.SetValue(tuning.VpBlendFactor);
 
+        // Depth uniforms — shader computes perspectiveDepth and layerDifference from raw Z
+        _renderShader.Parameters["DisplayPlayerZ"]?.SetValue(_displayPlayerZ);
+        _renderShader.Parameters["PlayerZLevel"]?.SetValue(playerZLevel);
+        _renderShader.Parameters["ZScale"]?.SetValue(zScale);
+
         // Hoist per-frame constants out of the hot loop
         var tileManager = GlobalContext.TileManager;
         var tileset = tileManager.Tileset;
@@ -193,16 +206,74 @@ public sealed class DrawSystem : SystemBase<GameTime>
         float worldToGridX = 1.0f / (tileWidth * globalScale);
         float worldToGridY = 1.0f / (tileHeight * globalScale);
         // Margin accounts for perspective offset at extreme Z + one tile of padding
-        float cullMargin = 15.0f;
+        float cullMargin = 6.0f;
         float cullMinX = (camCenter.X - rotHalfW) * worldToGridX - cullMargin;
         float cullMaxX = (camCenter.X + rotHalfW) * worldToGridX + cullMargin;
         float cullMinY = (camCenter.Y - rotHalfH) * worldToGridY - cullMargin;
         float cullMaxY = (camCenter.Y + rotHalfH) * worldToGridY + cullMargin;
 
-        // Draw composite entities
+        // Compute visible chunk range from viewport AABB
+        var registry = GlobalContext.ChunkRegistry;
+        int chunkSize = registry.ChunkSize;
+        int chunkMinX = (int)MathF.Floor(cullMinX / chunkSize);
+        int chunkMaxX = (int)MathF.Floor(cullMaxX / chunkSize);
+        int chunkMinY = (int)MathF.Floor(cullMinY / chunkSize);
+        int chunkMaxY = (int)MathF.Floor(cullMaxY / chunkSize);
+
+        // Viewport cull bounds in world-pixel space for draw cache entries
+        float pixelCullMinX = cullMinX * tileWidth * globalScale;
+        float pixelCullMaxX = cullMaxX * tileWidth * globalScale;
+        float pixelCullMinY = cullMinY * tileHeight * globalScale;
+        float pixelCullMaxY = cullMaxY * tileHeight * globalScale;
+
         long t0 = Stopwatch.GetTimestamp();
+        long tileWorkTicks = 0;
         int drawnTiles = 0;
-        var compositeQuery = World.Query(in _compositeEntitiesToDraw);
+        int drawCacheEntries = 0;
+        int viewportCulled = 0;
+
+        // --- Primary loop: terrain via draw cache (pre-filtered, contiguous) ---
+        for (int cx = chunkMinX; cx <= chunkMaxX; cx++)
+        {
+            for (int cy = chunkMinY; cy <= chunkMaxY; cy++)
+            {
+                var cache = registry.GetDrawCache(cx, cy, out int count);
+                drawCacheEntries += count;
+
+                for (int i = 0; i < count; i++)
+                {
+                    ref readonly var entry = ref cache[i];
+
+                    if (entry.BasePosition.X < pixelCullMinX || entry.BasePosition.X > pixelCullMaxX ||
+                        entry.BasePosition.Y < pixelCullMinY || entry.BasePosition.Y > pixelCullMaxY)
+                    { viewportCulled++; continue; }
+
+                    drawnTiles++;
+
+                    tileInstancing.Draw(
+                        entry.BasePosition,
+                        entry.RawZ,
+                        entry.SortDepth,
+                        entry.BaseScale,
+                        entry.Rotation,
+                        entry.BorderMask,
+                        entry.BorderWidth,
+                        entry.EntityZ,
+                        entry.SourceRect,
+                        entry.Bg1,
+                        entry.Bg2,
+                        entry.Base,
+                        entry.Accent,
+                        entry.Border
+                    );
+                }
+            }
+        }
+
+        // --- Secondary loop: composite parts (player body parts) ---
+        // These move with the player and aren't in any chunk's packed list.
+        // Uses uncached path since they move every frame.
+        var compositeQuery = World.Query(in _compositePartsQuery);
         foreach (ref var chunk in compositeQuery)
         {
             var positions = chunk.GetArray<Position>();
@@ -213,147 +284,23 @@ public sealed class DrawSystem : SystemBase<GameTime>
                 ref var position = ref positions[index];
                 ref var graphicalTileList = ref graphicalTileLists[index];
 
-                // ======= CHECK DRAW RULES =======
-                // MiddleMask: cardinal + horizontal edge bits (N/E/S/W + NE/SE/SW/NW)
-                const int MiddleMask =
-                    (1 << 0)
-                    | (1 << 1)
-                    | (1 << 2)
-                    | (1 << 3)
-                    | (1 << 6)
-                    | (1 << 7)
-                    | (1 << 8)
-                    | (1 << 9);
-
-                bool hasMiddleExposure = (position.SpaceMask & MiddleMask) != 0;
-                bool aboveIsOpen = (position.SpaceMask & (1 << 4)) != 0;
-
-                // No exposure at all — fully buried, skip entirely
-                if (!hasMiddleExposure && !aboveIsOpen)
-                    continue;
-
-                // Viewport culling: skip entities outside the visible area
-                float gx = position.WorldCoordinate.X;
-                float gy = position.WorldCoordinate.Y;
-                if (gx < cullMinX || gx > cullMaxX || gy < cullMinY || gy > cullMaxY)
-                    continue;
-
-                int lastIndex = graphicalTileList.Tiles.Length - 1;
-
-                int mask = graphicalTileList.ActiveTileMask;
-                while (mask != 0)
-                {
-                    int i = System.Numerics.BitOperations.TrailingZeroCount(mask);
-                    mask &= mask - 1;
-
-                    bool isTop = (i == lastIndex);
-
-                    // Top tile only draws when above is open
-                    if (isTop && !aboveIsOpen)
-                        continue;
-                    // No middle exposure — only draw the top tile
-                    if (!isTop && !hasMiddleExposure)
-                        continue;
-
-                    drawnTiles++;
-                    ref var graphicalTile = ref graphicalTileList.Tiles[i];
-
-                    Tile tileInfo = tileManager.GetTile(graphicalTile.TileId);
-                    if (tileInfo == null)
-                        continue;
-
-                    // Get source rectangle and rotation directly (avoids TextureRegion class indirection)
-                    (Rectangle sourceRect, float rotation) = tileset.GetTileRect(
-                        tileInfo.TileIndex,
-                        graphicalTile.AutoTileMask
-                    );
-
-                    // Base position (no perspective — GPU handles the warp)
-                    Vector2 basePosition =
-                        new Vector2(
-                            position.WorldCoordinate.X * tileWidth,
-                            position.WorldCoordinate.Y * tileHeight
-                        )
-                        * graphicalTile.Scale
-                        * globalScale;
-
-                    float baseScale = graphicalTile.Scale * globalScale;
-
-                    // Perspective depth for GPU (uses smoothed _displayPlayerZ)
-                    // Scale by zScale to increase layer spacing — viewport squash
-                    // compresses it back, foreshortening the view.
-                    float perspectiveDepth =
-                        ((position.WorldCoordinate.Z - _displayPlayerZ) + graphicalTile.Offset)
-                        * zScale;
-
-                    // Color: use override if set, otherwise fall back to tile definition
-                    Color background1Color,
-                        background2Color,
-                        baseColor,
-                        accentColor,
-                        borderColor;
-                    int colorMask = graphicalTile.ColorOverrideMask;
-                    if (colorMask == 0)
-                    {
-                        background1Color = tileInfo.Background1Color;
-                        background2Color = tileInfo.Background2Color;
-                        baseColor = tileInfo.BaseColor;
-                        accentColor = tileInfo.AccentColor;
-                        borderColor = tileInfo.BorderColor;
-                    }
-                    else
-                    {
-                        background1Color =
-                            (colorMask & (1 << 0)) != 0
-                                ? graphicalTile.Background1Color
-                                : tileInfo.Background1Color;
-                        background2Color =
-                            (colorMask & (1 << 1)) != 0
-                                ? graphicalTile.Background2Color
-                                : tileInfo.Background2Color;
-                        baseColor =
-                            (colorMask & (1 << 2)) != 0
-                                ? graphicalTile.BaseColor
-                                : tileInfo.BaseColor;
-                        accentColor =
-                            (colorMask & (1 << 3)) != 0
-                                ? graphicalTile.AccentColor
-                                : tileInfo.AccentColor;
-                        borderColor =
-                            (colorMask & (1 << 4)) != 0
-                                ? graphicalTile.BorderColor
-                                : tileInfo.BorderColor;
-                    }
-
-                    // Sort depth (unchanged formula — used for radix sort only)
-                    float sortDepth =
-                        position.WorldCoordinate.Z + graphicalTile.Offset + position.Top;
-
-                    float layerDifference = position.WorldCoordinate.Z - playerZLevel;
-
-                    tileInstancing.Draw(
-                        basePosition,
-                        perspectiveDepth,
-                        sortDepth,
-                        baseScale,
-                        rotation,
-                        graphicalTile.BorderMask,
-                        graphicalTile.BorderWidth,
-                        layerDifference,
-                        sourceRect,
-                        background1Color,
-                        background2Color,
-                        baseColor,
-                        accentColor,
-                        borderColor
-                    );
-                }
+                long tileStart = Stopwatch.GetTimestamp();
+                int drawn = DrawEntityTilesUncached(
+                    ref position,
+                    ref graphicalTileList,
+                    globalScale,
+                    tileWidth, tileHeight,
+                    tileManager, tileset,
+                    tileInstancing
+                );
+                tileWorkTicks += Stopwatch.GetTimestamp() - tileStart;
+                drawnTiles += drawn;
             }
         }
+
         long t1 = Stopwatch.GetTimestamp();
 
         Core.TileInstancing.End();
-        long t2 = Stopwatch.GetTimestamp();
 
         // -- Pass 2: Render Target to Screen with post-processing shader --
         Core.GraphicsDevice.SetRenderTarget(null);
@@ -383,24 +330,160 @@ public sealed class DrawSystem : SystemBase<GameTime>
         GlobalContext.Camera.Rotation = savedRotation;
 
         // Accumulate and log every ProfileInterval frames
-        _accumQueryTicks += t1 - t0;
-        _accumInstEndTicks += t2 - t1;
+        long queryTicks = t1 - t0;
+        _accumQueryTicks += queryTicks;
+        _accumTileWorkTicks += tileWorkTicks;
+        _accumSortTicks += tileInstancing.LastSortTicks;
+        _accumUploadTicks += tileInstancing.LastUploadDrawTicks;
         _accumTiles += drawnTiles;
+        _accumEntitiesVisited += drawCacheEntries;
+        _accumViewportCulled += viewportCulled;
         _profileFrame++;
 
         if (_profileFrame >= ProfileInterval)
         {
-            double avgQueryMs = _accumQueryTicks * 1000.0 / Stopwatch.Frequency / ProfileInterval;
-            double avgInstEndMs =
-                _accumInstEndTicks * 1000.0 / Stopwatch.Frequency / ProfileInterval;
+            double toMs = 1000.0 / Stopwatch.Frequency / ProfileInterval;
+            double avgQueryMs = _accumQueryTicks * toMs;
+            double avgTileWorkMs = _accumTileWorkTicks * toMs;
+            double avgIterMs = avgQueryMs - avgTileWorkMs;
+            double avgSortMs = _accumSortTicks * toMs;
+            double avgUploadMs = _accumUploadTicks * toMs;
             int avgTiles = _accumTiles / ProfileInterval;
+            int avgCacheEntries = _accumEntitiesVisited / ProfileInterval;
+            int avgViewCulled = _accumViewportCulled / ProfileInterval;
             Log.Warn(
-                $"Draw (avg {ProfileInterval}f): query={avgQueryMs:F3}ms ({avgTiles} tiles, {(avgTiles > 0 ? avgQueryMs * 1_000_000.0 / avgTiles : 0):F1}ns/tile)  instEnd={avgInstEndMs:F3}ms"
+                $"Draw (avg {ProfileInterval}f): "
+                + $"cache: {avgCacheEntries} ({avgViewCulled} view-culled)  tiles: {avgTiles}  |  "
+                + $"iterate={avgIterMs:F3}ms  "
+                + $"tileWork={avgTileWorkMs:F3}ms  "
+                + $"sort={avgSortMs:F3}ms  upload={avgUploadMs:F3}ms  "
+                + $"total={avgQueryMs:F3}ms"
             );
             _profileFrame = 0;
             _accumQueryTicks = 0;
-            _accumInstEndTicks = 0;
+            _accumTileWorkTicks = 0;
+            _accumSortTicks = 0;
+            _accumUploadTicks = 0;
             _accumTiles = 0;
+            _accumEntitiesVisited = 0;
+            _accumViewportCulled = 0;
+
+            // One-shot: report draw cache stats
+            if (!_cacheDiagDone)
+            {
+                _cacheDiagDone = true;
+                int totalCacheEntries = 0;
+                var diagRegistry = GlobalContext.ChunkRegistry;
+                foreach (var (cx, cy) in diagRegistry.LoadedChunks)
+                {
+                    diagRegistry.GetDrawCache(cx, cy, out int cacheCount);
+                    totalCacheEntries += cacheCount;
+                }
+                Log.Warn($"[CacheDiag] draw cache: {totalCacheEntries} entries across {diagRegistry.LoadedChunks.Count} chunks");
+            }
         }
+    }
+
+    /// <summary>
+    /// Draws tiles for an entity using uncached computation (composite parts path).
+    /// These entities move every frame so caching doesn't help.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int DrawEntityTilesUncached(
+        ref Position position,
+        ref GraphicalTileList graphicalTileList,
+        float globalScale,
+        float tileWidth, float tileHeight,
+        TileManager tileManager, Tileset tileset,
+        TileInstancing tileInstancing)
+    {
+        const int MiddleMask =
+            (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3)
+            | (1 << 6) | (1 << 7) | (1 << 8) | (1 << 9);
+
+        bool hasMiddleExposure = (position.SpaceMask & MiddleMask) != 0;
+        bool aboveIsOpen = (position.SpaceMask & (1 << 4)) != 0;
+
+        if (!hasMiddleExposure && !aboveIsOpen)
+            return 0;
+
+        int lastIndex =
+            graphicalTileList.ActiveTileMask == 0
+                ? -1
+                : 31 - System.Numerics.BitOperations.LeadingZeroCount(
+                    (uint)graphicalTileList.ActiveTileMask);
+
+        int drawnTiles = 0;
+        int mask = graphicalTileList.ActiveTileMask;
+        while (mask != 0)
+        {
+            int i = System.Numerics.BitOperations.TrailingZeroCount(mask);
+            mask &= mask - 1;
+
+            bool isTop = (i == lastIndex);
+            if (isTop && !aboveIsOpen) continue;
+            if (!isTop && !hasMiddleExposure) continue;
+
+            drawnTiles++;
+            ref var graphicalTile = ref graphicalTileList.Tiles[i];
+
+            Tile tileInfo = tileManager.GetTile(graphicalTile.TileId);
+            if (tileInfo == null) continue;
+
+            (Rectangle sourceRect, float rotation) = tileset.GetTileRect(
+                tileInfo.TileIndex, graphicalTile.AutoTileMask);
+
+            Vector2 basePosition =
+                new Vector2(
+                    position.WorldCoordinate.X * tileWidth,
+                    position.WorldCoordinate.Y * tileHeight
+                ) * graphicalTile.Scale * globalScale;
+
+            float baseScale = graphicalTile.Scale * globalScale;
+
+            // Pass raw Z — shader computes perspectiveDepth and layerDifference
+            float rawZ = position.WorldCoordinate.Z + graphicalTile.Offset;
+
+            Color bg1, bg2, baseColor, accentColor, borderColor;
+            int colorMask = graphicalTile.ColorOverrideMask;
+            if (colorMask == 0)
+            {
+                bg1 = tileInfo.Background1Color;
+                bg2 = tileInfo.Background2Color;
+                baseColor = tileInfo.BaseColor;
+                accentColor = tileInfo.AccentColor;
+                borderColor = tileInfo.BorderColor;
+            }
+            else
+            {
+                bg1 = (colorMask & (1 << 0)) != 0
+                    ? graphicalTile.Background1Color : tileInfo.Background1Color;
+                bg2 = (colorMask & (1 << 1)) != 0
+                    ? graphicalTile.Background2Color : tileInfo.Background2Color;
+                baseColor = (colorMask & (1 << 2)) != 0
+                    ? graphicalTile.BaseColor : tileInfo.BaseColor;
+                accentColor = (colorMask & (1 << 3)) != 0
+                    ? graphicalTile.AccentColor : tileInfo.AccentColor;
+                borderColor = (colorMask & (1 << 4)) != 0
+                    ? graphicalTile.BorderColor : tileInfo.BorderColor;
+            }
+
+            float sortDepth = position.WorldCoordinate.Z + graphicalTile.Offset + position.Top;
+            float entityZ = position.WorldCoordinate.Z;
+
+            tileInstancing.Draw(
+                basePosition,
+                rawZ,
+                sortDepth,
+                baseScale,
+                rotation,
+                graphicalTile.BorderMask,
+                graphicalTile.BorderWidth,
+                entityZ,
+                sourceRect,
+                bg1, bg2, baseColor, accentColor, borderColor
+            );
+        }
+        return drawnTiles;
     }
 }

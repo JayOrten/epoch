@@ -14,6 +14,7 @@
 // copies or substantial portions of the Software.
 /// </summary>
 using System;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -37,6 +38,7 @@ public class TileInstancing
     private readonly VertexBufferBinding[] vertexBufferBindings;
 
     private TileVertex[] instanceDataArray;
+    private TileVertex[] sortedDataArray; // Gather-copy target for sorted upload
     private float[] sortDepths;
     private int[] sortIndices;
     private int instanceNumber;
@@ -60,6 +62,12 @@ public class TileInstancing
     /// <summary>Current CPU-side buffer capacity (doubles on resize).</summary>
     internal int BufferCapacity => instanceDataArray.Length;
 
+    /// <summary>Ticks spent in radix sort during last End() call.</summary>
+    internal long LastSortTicks { get; private set; }
+
+    /// <summary>Ticks spent in GPU upload + draw during last End() call.</summary>
+    internal long LastUploadDrawTicks { get; private set; }
+
     public TileInstancing(GraphicsDevice graphicsDevice)
     {
         // Like Spritebatch
@@ -78,6 +86,7 @@ public class TileInstancing
         CreateBaseVertexAndIndexBuffer();
 
         instanceDataArray = new TileVertex[InitialCapacity];
+        sortedDataArray = new TileVertex[InitialCapacity];
         sortDepths = new float[InitialCapacity];
         sortIndices = new int[InitialCapacity];
         radixKeys = new uint[InitialCapacity];
@@ -202,6 +211,7 @@ public class TileInstancing
         if (instanceDataArray.Length != newSize)
         {
             Array.Resize(ref instanceDataArray, newSize);
+            Array.Resize(ref sortedDataArray, newSize);
             Array.Resize(ref sortDepths, newSize);
             Array.Resize(ref sortIndices, newSize);
             Array.Resize(ref radixKeys, newSize);
@@ -272,6 +282,7 @@ public class TileInstancing
     {
         int newLength = instanceDataArray.Length * 2;
         Array.Resize(ref instanceDataArray, newLength);
+        Array.Resize(ref sortedDataArray, newLength);
         Array.Resize(ref sortDepths, newLength);
         Array.Resize(ref sortIndices, newLength);
         Array.Resize(ref radixKeys, newLength);
@@ -333,12 +344,13 @@ public class TileInstancing
     }
 
     /// <summary>
-    /// 4-pass 8-bit radix sort on depth. Produces a permutation in sortIndices,
-    /// then applies it in-place to instanceDataArray via cycle-following.
+    /// 4-pass 8-bit radix sort on depth. Produces a sorted permutation —
+    /// after this call, src[i] gives the original index of the i-th element
+    /// in sorted order (accessible via the out parameter).
     /// Non-negative floats have uint bit patterns that sort naturally.
     /// Skips passes where all elements land in a single bucket.
     /// </summary>
-    private void RadixSortByDepth(int count)
+    private void RadixSortByDepth(int count, out int[] sortedIndices)
     {
         // 1. Clear histogram (256 buckets x 4 passes)
         Array.Clear(histogramBuffer, 0, 256 * 4);
@@ -359,6 +371,7 @@ public class TileInstancing
         // We ping-pong between sortIndices and radixScratchIndices
         int[] src = sortIndices;
         int[] dst = radixScratchIndices;
+        sortedIndices = src; // Default if all passes are skipped
 
         // 3-4. Prefix sum + scatter for each of 4 bytes
         for (int pass = 0; pass < 4; pass++)
@@ -401,26 +414,7 @@ public class TileInstancing
             (src, dst) = (dst, src);
         }
 
-        // 5. In-place cycle-following permutation on instanceDataArray
-        // src[] now contains the permutation: position i should hold the element
-        // originally at src[i]. We follow each cycle, moving elements into place.
-        for (int i = 0; i < count; i++)
-        {
-            if (src[i] == i)
-                continue; // Already in place
-
-            TileVertex temp = instanceDataArray[i];
-            int j = i;
-            while (src[j] != i)
-            {
-                instanceDataArray[j] = instanceDataArray[src[j]];
-                int next = src[j];
-                src[j] = j; // Mark as placed
-                j = next;
-            }
-            instanceDataArray[j] = temp;
-            src[j] = j; // Mark as placed
-        }
+        sortedIndices = src;
     }
 
     /// <summary>
@@ -450,11 +444,25 @@ public class TileInstancing
             return;
         }
 
+        long sortStart = Stopwatch.GetTimestamp();
+
+        // Radix sort produces a permutation; gather-copy applies it with
+        // sequential writes (cache-friendly) instead of random cycle-following.
+        TileVertex[] uploadArray;
         if (instanceNumber > 1)
         {
-            RadixSortByDepth(instanceNumber);
+            RadixSortByDepth(instanceNumber, out var perm);
+            for (int i = 0; i < instanceNumber; i++)
+                sortedDataArray[i] = instanceDataArray[perm[i]];
+            uploadArray = sortedDataArray;
         }
-        // instanceNumber == 1: already in place, no sort needed
+        else
+        {
+            uploadArray = instanceDataArray;
+        }
+
+        long sortEnd = Stopwatch.GetTimestamp();
+        LastSortTicks = sortEnd - sortStart;
 
         // Sets the Instancingbuffer
         // Dispose the buffer from the last Frame if the (vetex)instancingbuffer has changed
@@ -486,7 +494,7 @@ public class TileInstancing
             int batchCount = Math.Min(remaining, DrawBatchSize);
 
             dynamicInstancingBuffer.SetData(
-                instanceDataArray,
+                uploadArray,
                 offset,
                 batchCount,
                 SetDataOptions.Discard
@@ -506,5 +514,6 @@ public class TileInstancing
             offset += batchCount;
             remaining -= batchCount;
         }
+        LastUploadDrawTicks = Stopwatch.GetTimestamp() - sortEnd;
     }
 }

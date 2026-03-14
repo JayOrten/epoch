@@ -72,7 +72,13 @@ public class WorldScene : Scene
 
         // Create terrain generator and chunk registry
         var terrainGenerator = new TerrainGenerator(16);
-        GlobalContext.ChunkRegistry = new ChunkRegistry(_world, 16, GlobalContext.MaxZ, 4, terrainGenerator);
+        GlobalContext.ChunkRegistry = new ChunkRegistry(
+            _world,
+            16,
+            GlobalContext.MaxZ,
+            3,
+            terrainGenerator
+        );
 
         // Create the entity manager, loading in entity definitions from file
         GlobalContext.EntityManager = new EntityManager(_world, entityDefinitionsPath);
@@ -113,7 +119,7 @@ public class WorldScene : Scene
         _drawSystem = new DrawSystem(_world, renderShader, effectShader);
 
         // Pre-allocate instancing buffers to avoid runtime doubling resizes
-        Core.TileInstancing.SetInternalArraySizes(500_000);
+        Core.TileInstancing.SetInternalArraySizes(200_000);
     }
 
     public override void BeginRun()
@@ -160,7 +166,8 @@ public class WorldScene : Scene
         GlobalContext.CameraEntity = _world.Create(
             new CameraInput(),
             new CameraState(),
-            new CameraPreviousState());
+            new CameraPreviousState()
+        );
 
         // Center camera on player
         ref var pos = ref GlobalContext.PlayerEntity.Get<Position>();

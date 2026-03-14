@@ -19,7 +19,9 @@ float CameraZoom;
 float2 StackDirection; // Unit vector for ortho stack direction (rotates with camera)
 float StackHeight;     // Pixels per depth-unit for ortho stacking
 float VpBlend;         // 0 = pure ortho stack, 1 = pure VP warp
-// float GameTime;
+float DisplayPlayerZ;  // Smoothed player Z for depth computation
+float PlayerZLevel;    // Actual player Z level for layer difference
+float ZScale;          // Elevation compression factor
 
 Texture2D SpriteTexture;
 sampler TextureSampler : register(s0)
@@ -183,13 +185,15 @@ PixelInput MainVS(VertexInput v, InstanceInput i)
 
     // 1. UNPACK INSTANCE DATA
     float2 I_Position = i.I_TransformData.xy;
-    float I_Depth = i.I_TransformData.z;
+    // Depth field contains raw Z (entity Z + tile offset); shader computes perspective depth
+    float I_Depth = (i.I_TransformData.z - DisplayPlayerZ) * ZScale;
     float I_Scale = i.I_TransformData.w;
 
     float I_Rotation = radians(i.I_PropData.x);
     float I_BorderMask = i.I_PropData.y;
     float I_BorderWidth = i.I_PropData.z;
-    float I_LayerDifference = i.I_PropData.w;
+    // LayerDifference field contains raw entity Z; shader computes layer difference
+    float I_LayerDifference = i.I_PropData.w - PlayerZLevel;
 
     float I_RectangleX = i.I_RectXY.x;
     float I_RectangleY = i.I_RectXY.y;
