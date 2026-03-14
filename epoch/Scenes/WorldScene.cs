@@ -58,6 +58,9 @@ public class WorldScene : Scene
         string tileSetPath = ContentPaths.Config("tileset");
         string entityDefinitionsPath = ContentPaths.Config("entity-definitions");
 
+        // Load tuning config (hot-reloads on save)
+        TuningConfig.Load(ContentPaths.Config("tuning"));
+
         // Load tileset
         Tileset tileset = Tileset.FromFile(Content, tileSetPath);
 
@@ -69,7 +72,13 @@ public class WorldScene : Scene
 
         // Create terrain generator and chunk registry
         var terrainGenerator = new TerrainGenerator(16);
-        GlobalContext.ChunkRegistry = new ChunkRegistry(_world, 16, GlobalContext.MaxZ, 4, terrainGenerator);
+        GlobalContext.ChunkRegistry = new ChunkRegistry(
+            _world,
+            16,
+            GlobalContext.MaxZ,
+            3,
+            terrainGenerator
+        );
 
         // Create the entity manager, loading in entity definitions from file
         GlobalContext.EntityManager = new EntityManager(_world, entityDefinitionsPath);
@@ -108,6 +117,9 @@ public class WorldScene : Scene
             spriteSheetParam.SetValue(GlobalContext.TileManager.Tileset.GetTile(0).Texture); // TODO: this is super hacky, need to rework these classes.
 
         _drawSystem = new DrawSystem(_world, renderShader, effectShader);
+
+        // Pre-allocate instancing buffers to avoid runtime doubling resizes
+        Core.TileInstancing.SetInternalArraySizes(200_000);
     }
 
     public override void BeginRun()
@@ -151,7 +163,11 @@ public class WorldScene : Scene
         }
 
         // Spawn Camera entity
-        GlobalContext.CameraEntity = _world.Create(new CameraInput(), new CameraState());
+        GlobalContext.CameraEntity = _world.Create(
+            new CameraInput(),
+            new CameraState(),
+            new CameraPreviousState()
+        );
 
         // Center camera on player
         ref var pos = ref GlobalContext.PlayerEntity.Get<Position>();
@@ -169,8 +185,16 @@ public class WorldScene : Scene
         // _proceduralGenerationSystem.Update(new GameTime());
     }
 
-    public override void Update(GameTime gameTime)
+    public override void FixedUpdate(GameTime gameTime)
     {
+        // Snapshot camera state before systems modify it
+        ref var camState = ref GlobalContext.CameraEntity.Get<CameraState>();
+        ref var prevState = ref GlobalContext.CameraEntity.Get<CameraPreviousState>();
+        prevState.Position = camState.Position;
+        prevState.Zoom = GlobalContext.Camera.Zoom;
+        prevState.Rotation = camState.Rotation;
+        prevState.VpDistance = camState.VpDistance;
+
         _generationSystem.Update(gameTime);
 
         _inputSystem.Update(gameTime);

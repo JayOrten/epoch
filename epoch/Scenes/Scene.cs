@@ -69,6 +69,13 @@ public abstract class Scene : IDisposable
     }
 
     /// <summary>
+    /// Updates this scene at a fixed timestep (default 60Hz).
+    /// Game logic systems should run here for deterministic simulation.
+    /// </summary>
+    /// <param name="gameTime">A snapshot with fixed elapsed time.</param>
+    public virtual void FixedUpdate(GameTime gameTime) { }
+
+    /// <summary>
     /// Updates this scene.
     /// </summary>
     /// <param name="gameTime">A snapshot of the timing values for the current frame.</param>

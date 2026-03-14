@@ -14,6 +14,7 @@
 // copies or substantial portions of the Software.
 /// </summary>
 using System;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -37,7 +38,7 @@ public class TileInstancing
     private readonly VertexBufferBinding[] vertexBufferBindings;
 
     private TileVertex[] instanceDataArray;
-    private TileVertex[] sortedDataArray;
+    private TileVertex[] sortedDataArray; // Gather-copy target for sorted upload
     private float[] sortDepths;
     private int[] sortIndices;
     private int instanceNumber;
@@ -53,12 +54,19 @@ public class TileInstancing
     bool beginCalled;
 
     private const int InitialCapacity = 1024;
+    private const int DrawBatchSize = 100_000;
 
     /// <summary>Number of tile instances submitted this frame.</summary>
     internal int InstanceCount => instanceNumber;
 
     /// <summary>Current CPU-side buffer capacity (doubles on resize).</summary>
     internal int BufferCapacity => instanceDataArray.Length;
+
+    /// <summary>Ticks spent in radix sort during last End() call.</summary>
+    internal long LastSortTicks { get; private set; }
+
+    /// <summary>Ticks spent in GPU upload + draw during last End() call.</summary>
+    internal long LastUploadDrawTicks { get; private set; }
 
     public TileInstancing(GraphicsDevice graphicsDevice)
     {
@@ -203,6 +211,24 @@ public class TileInstancing
         if (instanceDataArray.Length != newSize)
         {
             Array.Resize(ref instanceDataArray, newSize);
+            Array.Resize(ref sortedDataArray, newSize);
+            Array.Resize(ref sortDepths, newSize);
+            Array.Resize(ref sortIndices, newSize);
+            Array.Resize(ref radixKeys, newSize);
+            Array.Resize(ref radixScratchIndices, newSize);
+
+            // Regrow GPU buffer if needed
+            if (dynamicInstancingBuffer.VertexCount < newSize)
+            {
+                dynamicInstancingBuffer?.Dispose();
+                dynamicInstancingBuffer = new DynamicVertexBuffer(
+                    graphicsDevice,
+                    typeof(TileVertex),
+                    newSize,
+                    BufferUsage.WriteOnly
+                );
+                vertexBufferBindings[1] = new VertexBufferBinding(dynamicInstancingBuffer, 0, 1);
+            }
         }
     }
 
@@ -318,12 +344,13 @@ public class TileInstancing
     }
 
     /// <summary>
-    /// 4-pass 8-bit radix sort on depth. Sorts indices into sortedDataArray back-to-front.
-    /// Non-negative floats have uint bit patterns that sort naturally; we bitwise-NOT
-    /// them so that higher depth (further back) sorts first (descending order).
+    /// 4-pass 8-bit radix sort on depth. Produces a sorted permutation —
+    /// after this call, src[i] gives the original index of the i-th element
+    /// in sorted order (accessible via the out parameter).
+    /// Non-negative floats have uint bit patterns that sort naturally.
     /// Skips passes where all elements land in a single bucket.
     /// </summary>
-    private void RadixSortByDepth(int count)
+    private void RadixSortByDepth(int count, out int[] sortedIndices)
     {
         // 1. Clear histogram (256 buckets x 4 passes)
         Array.Clear(histogramBuffer, 0, 256 * 4);
@@ -344,6 +371,7 @@ public class TileInstancing
         // We ping-pong between sortIndices and radixScratchIndices
         int[] src = sortIndices;
         int[] dst = radixScratchIndices;
+        sortedIndices = src; // Default if all passes are skipped
 
         // 3-4. Prefix sum + scatter for each of 4 bytes
         for (int pass = 0; pass < 4; pass++)
@@ -386,9 +414,7 @@ public class TileInstancing
             (src, dst) = (dst, src);
         }
 
-        // 5. Final scatter into sortedDataArray
-        for (int i = 0; i < count; i++)
-            sortedDataArray[i] = instanceDataArray[src[i]];
+        sortedIndices = src;
     }
 
     /// <summary>
@@ -418,14 +444,25 @@ public class TileInstancing
             return;
         }
 
+        long sortStart = Stopwatch.GetTimestamp();
+
+        // Radix sort produces a permutation; gather-copy applies it with
+        // sequential writes (cache-friendly) instead of random cycle-following.
+        TileVertex[] uploadArray;
         if (instanceNumber > 1)
         {
-            RadixSortByDepth(instanceNumber);
+            RadixSortByDepth(instanceNumber, out var perm);
+            for (int i = 0; i < instanceNumber; i++)
+                sortedDataArray[i] = instanceDataArray[perm[i]];
+            uploadArray = sortedDataArray;
         }
-        else if (instanceNumber == 1)
+        else
         {
-            sortedDataArray[0] = instanceDataArray[0];
+            uploadArray = instanceDataArray;
         }
+
+        long sortEnd = Stopwatch.GetTimestamp();
+        LastSortTicks = sortEnd - sortStart;
 
         // Sets the Instancingbuffer
         // Dispose the buffer from the last Frame if the (vetex)instancingbuffer has changed
@@ -446,30 +483,37 @@ public class TileInstancing
             vertexBufferBindings[1] = new VertexBufferBinding(dynamicInstancingBuffer, 0, 1);
         }
 
-        // Fills the (vertex)instancingbuffer
-        dynamicInstancingBuffer.SetData(
-            sortedDataArray,
-            0,
-            instanceNumber,
-            SetDataOptions.Discard
-        );
-
-        // Binds the vertexBuffers
-        graphicsDevice.SetVertexBuffers(vertexBufferBindings);
-
         // Indexbuffer
         graphicsDevice.Indices = indexBuffer;
 
-        // Activates the shader
-        shader.CurrentTechnique.Passes[0].Apply();
+        // Submit in batches: upload slice → draw, allowing GPU to start earlier batches
+        int remaining = instanceNumber;
+        int offset = 0;
+        while (remaining > 0)
+        {
+            int batchCount = Math.Min(remaining, DrawBatchSize);
 
-        // Draws the 2 triangles on the screen
-        graphicsDevice.DrawInstancedPrimitives(
-            PrimitiveType.TriangleList,
-            0, // baseVertex
-            0, // minVertexIndex
-            2, // primitiveCount
-            instanceNumber
-        );
+            dynamicInstancingBuffer.SetData(
+                uploadArray,
+                offset,
+                batchCount,
+                SetDataOptions.Discard
+            );
+
+            graphicsDevice.SetVertexBuffers(vertexBufferBindings);
+            shader.CurrentTechnique.Passes[0].Apply();
+
+            graphicsDevice.DrawInstancedPrimitives(
+                PrimitiveType.TriangleList,
+                0, // baseVertex
+                0, // minVertexIndex
+                2, // primitiveCount
+                batchCount
+            );
+
+            offset += batchCount;
+            remaining -= batchCount;
+        }
+        LastUploadDrawTicks = Stopwatch.GetTimestamp() - sortEnd;
     }
 }

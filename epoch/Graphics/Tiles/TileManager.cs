@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -13,16 +14,16 @@ namespace epoch.Graphics.Tiles;
 /// </summary>
 public class TileManager
 {
-    public List<Tile> Tiles { get; set; } = new List<Tile>();
+    public Tile[] Tiles { get; set; } = Array.Empty<Tile>();
 
     private Dictionary<string, Tile> _tilesByName;
 
     public Tileset Tileset;
 
-    public TileManager(Tileset tileset, List<Tile> tiles)
+    public TileManager(Tileset tileset, Tile[] tiles)
     {
         Tileset = tileset;
-        Tiles = tiles ?? new List<Tile>();
+        Tiles = tiles ?? Array.Empty<Tile>();
         _tilesByName = Tiles.ToDictionary(t => t.Name);
     }
 
@@ -44,7 +45,7 @@ public class TileManager
             BaseColor: ParseOrDefault(el.Attribute("base")?.Value),
             AccentColor: ParseOrDefault(el.Attribute("accent")?.Value),
             BorderColor: ParseOrDefault(el.Attribute("border")?.Value)
-        )).ToList();
+        )).ToArray();
 
         return new TileManager(tileset, tiles);
     }
@@ -52,7 +53,7 @@ public class TileManager
     /// <summary>Returns the tile at <paramref name="index"/>, or <c>null</c> if out of range.</summary>
     public Tile GetTile(int index)
     {
-        if (index < 0 || index >= Tiles.Count)
+        if (index < 0 || index >= Tiles.Length)
             return null;
 
         return Tiles[index];

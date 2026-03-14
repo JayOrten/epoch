@@ -24,6 +24,7 @@ public sealed class CameraApplySystem : SystemBase<GameTime>
         // definitive authority. A CPU-side snap here was redundant (and was only
         // snapping to 1/32 pixel anyway, i.e. sub-pixel resolution).
         GlobalContext.Camera.Position = cameraState.Position;
+        GlobalContext.Camera.Rotation = cameraState.Rotation;
 
         if (cameraState.ZoomAmount > 0)
         {

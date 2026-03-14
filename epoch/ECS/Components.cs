@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using Arch.Core;
 using Microsoft.Xna.Framework;
 
@@ -40,14 +41,17 @@ public struct DirtyTag { }
 // ── Tile Components ─────────────────────────────────────────────────
 
 /// <summary>
-/// Variable-length list of <see cref="GraphicalTile"/> layers for an entity.
-/// Uses a bitmask (<see cref="ActiveTileMask"/>) to track which slots are active,
-/// enabling O(1) enable/disable without shifting array elements.
+/// Fixed-size inline buffer of <see cref="GraphicalTile"/> layers for an entity.
+/// Uses <see cref="InlineArrayAttribute"/> to embed tiles directly in the struct
+/// (no heap allocation). A bitmask (<see cref="ActiveTileMask"/>) tracks which
+/// slots are active, enabling O(1) enable/disable without shifting elements.
 /// </summary>
 [Component(UseCustomFactory = true)]
 public struct GraphicalTileList
 {
-    public GraphicalTile[] Tiles;
+    public const int MaxTiles = 9;
+
+    public GraphicalTileBuffer Tiles;
 
     public int NumTiles { get; private set; } = 0;
 
@@ -56,20 +60,11 @@ public struct GraphicalTileList
     // 0101 = Tile0 and Tile2
     public int ActiveTileMask { get; set; } = 0;
 
-    /// <summary>Activates a tile at <paramref name="index"/>, growing the array if needed.</summary>
+    /// <summary>Activates a tile at <paramref name="index"/>. No-op if out of bounds.</summary>
     public void Set(int index, GraphicalTile tile)
     {
-        if (index < 0)
+        if (index < 0 || index >= MaxTiles)
             return;
-
-        // Grow array if needed
-        if (Tiles == null || index >= Tiles.Length)
-        {
-            var newTiles = new GraphicalTile[index + 1];
-            if (Tiles != null)
-                Array.Copy(Tiles, newTiles, Tiles.Length);
-            Tiles = newTiles;
-        }
 
         bool wasInactive = (ActiveTileMask & (1 << index)) == 0;
         Tiles[index] = tile;
@@ -81,10 +76,10 @@ public struct GraphicalTileList
             NumTiles++;
     }
 
-    /// <summary>Deactivates the tile at <paramref name="index"/> without removing the array slot.</summary>
+    /// <summary>Deactivates the tile at <paramref name="index"/> without clearing the slot.</summary>
     public void Remove(int index)
     {
-        if (index < 0 || Tiles == null || index >= Tiles.Length)
+        if (index < 0 || index >= MaxTiles)
             return;
 
         bool wasActive = (ActiveTileMask & (1 << index)) != 0;
@@ -96,10 +91,14 @@ public struct GraphicalTileList
             NumTiles--;
     }
 
-    public GraphicalTileList()
-    {
-        Tiles = [];
-    }
+    public GraphicalTileList() { }
+}
+
+/// <summary>Fixed-size inline buffer holding up to <see cref="GraphicalTileList.MaxTiles"/> tiles.</summary>
+[InlineArray(GraphicalTileList.MaxTiles)]
+public struct GraphicalTileBuffer
+{
+    private GraphicalTile _element;
 }
 
 /// <summary>
@@ -189,6 +188,15 @@ public struct GraphicalTile
     // Whether or not this tiles TileId should be incremented based on the BorderMask
     public bool AutoTile { get; set; } = false;
     public int AutoTileMask { get; set; } = 0;
+
+    // Cached draw data — recomputed at spawn/dirty time by TileAdjacencySystem
+    // Internal to avoid source generator trying to parse these from XML
+    internal Vector2 CachedBasePosition;
+    internal float CachedBaseScale;
+    internal Rectangle CachedSourceRect;
+    internal float CachedRotation;
+    internal float CachedSortDepth;
+    internal Color CachedBg1, CachedBg2, CachedBase, CachedAccent, CachedBorder;
 
     public GraphicalTile() { }
 }
@@ -319,8 +327,9 @@ public struct CompositePartComponent
 [Component]
 public struct CameraInput
 {
-    public Vector2 LookChange { get; set; }
     public float ZoomChange { get; set; }
+    public float RotationChange { get; set; }
+    public float ElevationChange { get; set; }
 }
 
 /// <summary>Current camera state: world position, look offset, and zoom level.</summary>
@@ -328,8 +337,11 @@ public struct CameraInput
 public struct CameraState
 {
     public Vector2 Position { get; set; }
-    public Vector2 LookDirection { get; set; }
     public float ZoomAmount { get; set; }
+    public float Rotation { get; set; }
+    public float VpDistance { get; set; } = 600f;
+
+    public CameraState() { }
 }
 
 /// <summary>Snapshot of previous frame's camera state for interpolation across refresh rates.</summary>
@@ -338,4 +350,6 @@ public struct CameraPreviousState
 {
     public Vector2 Position { get; set; }
     public float Zoom { get; set; }
+    public float Rotation { get; set; }
+    public float VpDistance { get; set; }
 }

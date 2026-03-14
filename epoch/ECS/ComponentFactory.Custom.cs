@@ -43,6 +43,15 @@ namespace epoch.ECS
                             new CompositePartComponent { MasterId = entity, PartLabel = part.Key }
                         );
 
+                        // Composite parts move with the player, not with the chunk they
+                        // spawned in. Remove from packed list so chunk culling skips them;
+                        // DrawSystem handles them via a separate composite query.
+                        if (world.Has<Position>(partEntity))
+                        {
+                            var partPos = world.Get<Position>(partEntity);
+                            GlobalContext.ChunkRegistry.Unregister(partPos.WorldCoordinate);
+                        }
+
                         childParts[part.Key] = partEntity;
 
                         childOffsets.Add(part.Offset);

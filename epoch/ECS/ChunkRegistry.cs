@@ -1,9 +1,31 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
 using Arch.Core;
 using Microsoft.Xna.Framework;
 
 namespace epoch.ECS;
+
+/// <summary>
+/// Pre-filtered, contiguous draw data for a single visible tile.
+/// Populated by TileAdjacencySystem, consumed by DrawSystem.
+/// Eliminates per-entity ECS lookups during rendering.
+/// </summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct DrawCacheEntry
+{
+    public Vector2 BasePosition;
+    public float RawZ;           // entity Z + tile offset (shader computes perspectiveDepth)
+    public float SortDepth;      // entity Z + tile offset + position.Top
+    public float BaseScale;
+    public float Rotation;
+    public float BorderMask;
+    public float BorderWidth;
+    public float EntityZ;        // entity Z (shader computes layerDifference)
+    public Rectangle SourceRect;
+    public Color Bg1, Bg2, Base, Accent, Border;
+}
 
 /// <summary>
 /// Callback interface for generating terrain into a chunk.
@@ -67,17 +89,50 @@ public class ChunkRegistry
     {
         public Entity[] Entities;
         public byte[] Collision;
+        public List<Entity> Packed;
+
+        // Dense array of draw-ready tile data (only visible tiles)
+        public DrawCacheEntry[] DrawCache;
+        public int DrawCacheCount;
+
+        // LocalIndex → start offset in DrawCache (-1 = not in cache)
+        public short[] DrawCacheStart;
+        // LocalIndex → tile count in DrawCache for this entity
+        public byte[] DrawCacheTileCount;
+        // DrawCache index → LocalIndex (reverse map for swap-remove)
+        public short[] DrawCacheOwner;
 
         public Chunk(int volume)
         {
             Entities = new Entity[volume];
             Array.Fill(Entities, Entity.Null);
             Collision = new byte[volume];
+            Packed = new List<Entity>();
+
+            // Draw cache: assume ~2 visible tiles per entity on average
+            int cacheCapacity = volume * 2;
+            DrawCache = new DrawCacheEntry[cacheCapacity];
+            DrawCacheCount = 0;
+            DrawCacheStart = new short[volume];
+            Array.Fill(DrawCacheStart, (short)-1);
+            DrawCacheTileCount = new byte[volume];
+            DrawCacheOwner = new short[cacheCapacity];
         }
     }
 
     /// <summary>The side length of each chunk in X and Y.</summary>
     public int ChunkSize => _chunkSize;
+
+    /// <summary>Returns the packed entity list for a chunk, or empty if the chunk doesn't exist.</summary>
+    public ReadOnlySpan<Entity> GetPackedEntities(int cx, int cy)
+    {
+        if (_chunks.TryGetValue((cx, cy), out var chunk))
+            return CollectionsMarshal.AsSpan(chunk.Packed);
+        return ReadOnlySpan<Entity>.Empty;
+    }
+
+    /// <summary>The set of currently loaded chunk coordinates.</summary>
+    public IReadOnlyCollection<(int, int)> LoadedChunks => _loadedChunks;
 
     /// <summary>
     /// Creates a new registry with chunk lifecycle management.
@@ -140,6 +195,11 @@ public class ChunkRegistry
 
         int idx = LocalIndex(x, y, z);
         chunk.Entities[idx] = entity;
+        chunk.DrawCacheStart[idx] = -1;
+        chunk.DrawCacheTileCount[idx] = 0;
+        // Only drawable entities go in the packed list (skips air, collision-only, etc.)
+        if (_world.Has<GraphicalTileList>(entity))
+            chunk.Packed.Add(entity);
 
         ref var position = ref _world.Get<Position>(entity);
         chunk.Collision[idx] = (byte)(position.Passable ? 0 : 1);
@@ -156,8 +216,12 @@ public class ChunkRegistry
         if (_chunks.TryGetValue(key, out var chunk))
         {
             int idx = LocalIndex(x, y, z);
+            RemoveFromDrawCache(chunk, idx);
+            var entity = chunk.Entities[idx];
             chunk.Entities[idx] = Entity.Null;
             chunk.Collision[idx] = 0;
+            if (entity != Entity.Null)
+                chunk.Packed.Remove(entity);
         }
     }
 
@@ -193,6 +257,118 @@ public class ChunkRegistry
             return chunk.Collision[LocalIndex(x, y, z)] == 0;
 
         return true;
+    }
+
+    // --- Draw Cache API ---
+
+    /// <summary>
+    /// Returns the draw cache for a chunk as a contiguous span.
+    /// </summary>
+    internal ReadOnlySpan<DrawCacheEntry> GetDrawCache(int cx, int cy, out int count)
+    {
+        if (_chunks.TryGetValue((cx, cy), out var chunk))
+        {
+            count = chunk.DrawCacheCount;
+            return chunk.DrawCache.AsSpan(0, chunk.DrawCacheCount);
+        }
+        count = 0;
+        return ReadOnlySpan<DrawCacheEntry>.Empty;
+    }
+
+    /// <summary>
+    /// Writes draw cache entries for an entity. Handles add, update-in-place, and remove
+    /// based on the number of visible tiles.
+    /// </summary>
+    internal void UpdateDrawCache(Vector3 coord, ReadOnlySpan<DrawCacheEntry> entries)
+    {
+        int x = (int)coord.X, y = (int)coord.Y, z = (int)coord.Z;
+        var key = ChunkKey(x, y);
+        if (!_chunks.TryGetValue(key, out var chunk))
+            return;
+
+        int localIdx = LocalIndex(x, y, z);
+
+        if (entries.Length == 0)
+        {
+            RemoveFromDrawCache(chunk, localIdx);
+            return;
+        }
+
+        int oldCount = chunk.DrawCacheTileCount[localIdx];
+        int oldStart = chunk.DrawCacheStart[localIdx];
+
+        if (oldStart >= 0 && oldCount == entries.Length)
+        {
+            // Same size — overwrite in place
+            entries.CopyTo(chunk.DrawCache.AsSpan(oldStart, oldCount));
+        }
+        else
+        {
+            // Size changed or not cached yet — remove old, append new
+            if (oldStart >= 0)
+                RemoveFromDrawCache(chunk, localIdx);
+
+            AddToDrawCache(chunk, localIdx, entries);
+        }
+    }
+
+    private void AddToDrawCache(Chunk chunk, int localIdx, ReadOnlySpan<DrawCacheEntry> entries)
+    {
+        int start = chunk.DrawCacheCount;
+        int needed = start + entries.Length;
+
+        // Grow arrays if needed
+        if (needed > chunk.DrawCache.Length)
+        {
+            int newCap = Math.Max(chunk.DrawCache.Length * 2, needed);
+            Array.Resize(ref chunk.DrawCache, newCap);
+            Array.Resize(ref chunk.DrawCacheOwner, newCap);
+        }
+
+        entries.CopyTo(chunk.DrawCache.AsSpan(start, entries.Length));
+        chunk.DrawCacheStart[localIdx] = (short)start;
+        chunk.DrawCacheTileCount[localIdx] = (byte)entries.Length;
+
+        for (int i = 0; i < entries.Length; i++)
+            chunk.DrawCacheOwner[start + i] = (short)localIdx;
+
+        chunk.DrawCacheCount = needed;
+
+        Debug.Assert(chunk.DrawCacheCount <= chunk.DrawCache.Length);
+    }
+
+    private void RemoveFromDrawCache(Chunk chunk, int localIdx)
+    {
+        int start = chunk.DrawCacheStart[localIdx];
+        if (start < 0)
+            return;
+
+        int count = chunk.DrawCacheTileCount[localIdx];
+        int blockEnd = start + count;
+        int totalEnd = chunk.DrawCacheCount;
+        int shiftCount = totalEnd - blockEnd;
+
+        chunk.DrawCacheStart[localIdx] = -1;
+        chunk.DrawCacheTileCount[localIdx] = 0;
+
+        if (shiftCount > 0)
+        {
+            // Shift everything after the removed block down to fill the gap.
+            // This preserves block contiguity (swap-remove would split blocks).
+            Array.Copy(chunk.DrawCache, blockEnd, chunk.DrawCache, start, shiftCount);
+            Array.Copy(chunk.DrawCacheOwner, blockEnd, chunk.DrawCacheOwner, start, shiftCount);
+
+            // Fix start pointers: each owner updated exactly once, when we hit
+            // the first entry of their block (old start == old position of this entry).
+            for (int i = 0; i < shiftCount; i++)
+            {
+                short movedOwner = chunk.DrawCacheOwner[start + i];
+                if (chunk.DrawCacheStart[movedOwner] == blockEnd + i)
+                    chunk.DrawCacheStart[movedOwner] = (short)(start + i);
+            }
+        }
+
+        chunk.DrawCacheCount = totalEnd - count;
     }
 
     /// <summary>

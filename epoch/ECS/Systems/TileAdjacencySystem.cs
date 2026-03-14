@@ -1,6 +1,8 @@
+using System;
 using System.Runtime.CompilerServices;
 using Arch.Core;
 using Arch.Core.Extensions;
+using epoch.Graphics.Tiles;
 using Microsoft.Xna.Framework;
 
 namespace epoch.ECS;
@@ -120,6 +122,12 @@ public sealed class TileAdjacencySystem : SystemBase<GameTime>
         var commandBuffer = new Arch.Buffer.CommandBuffer();
         var query = World.Query(in _entitiesToUpdate2);
 
+        var tileManager = GlobalContext.TileManager;
+        var tileset = tileManager.Tileset;
+        float tileWidth = tileset.TileWidth;
+        float tileHeight = tileset.TileHeight;
+        float globalScale = GlobalContext.GlobalScale;
+
         foreach (ref var chunk in query.GetChunkIterator())
         {
             var references = chunk.GetFirst<Position, GraphicalTileList, DirtyTag>();
@@ -140,8 +148,11 @@ public sealed class TileAdjacencySystem : SystemBase<GameTime>
                         position.SpaceMask
                     );
 
-                    for (int i = 0; i < graphicalTileList.Tiles.Length; i++)
+                    int tileMask = graphicalTileList.ActiveTileMask;
+                    while (tileMask != 0)
                     {
+                        int i = System.Numerics.BitOperations.TrailingZeroCount(tileMask);
+                        tileMask &= tileMask - 1;
                         ref var tile = ref graphicalTileList.Tiles[i];
 
                         if (tile.BorderType != BorderType.None)
@@ -164,10 +175,149 @@ public sealed class TileAdjacencySystem : SystemBase<GameTime>
                     }
                 }
 
-                commandBuffer.Remove<DirtyTag>(chunk.Entity(entity));
+                // Populate cached draw data for all active tiles
+                PopulateTileCache(ref position, ref graphicalTileList, tileManager, tileset, tileWidth, tileHeight, globalScale);
+
+                // Update the chunk draw cache with visible tiles.
+                // Skip composite parts — they move every frame and use the uncached draw path.
+                var archEntity = chunk.Entity(entity);
+                if (!archEntity.Has<CompositePartComponent>())
+                    PopulateDrawCache(ref position, ref graphicalTileList, GlobalContext.ChunkRegistry);
+
+                commandBuffer.Remove<DirtyTag>(archEntity);
             }
         }
 
         commandBuffer.Playback(World, true);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void PopulateTileCache(
+        ref Position position,
+        ref GraphicalTileList graphicalTileList,
+        TileManager tileManager,
+        Tileset tileset,
+        float tileWidth,
+        float tileHeight,
+        float globalScale)
+    {
+        int mask = graphicalTileList.ActiveTileMask;
+        while (mask != 0)
+        {
+            int i = System.Numerics.BitOperations.TrailingZeroCount(mask);
+            mask &= mask - 1;
+
+            ref var tile = ref graphicalTileList.Tiles[i];
+
+            Tile tileInfo = tileManager.GetTile(tile.TileId);
+            if (tileInfo == null)
+                continue;
+
+            (Rectangle sourceRect, float rotation) = tileset.GetTileRect(
+                tileInfo.TileIndex,
+                tile.AutoTileMask
+            );
+
+            tile.CachedSourceRect = sourceRect;
+            tile.CachedRotation = rotation;
+
+            tile.CachedBasePosition = new Vector2(
+                position.WorldCoordinate.X * tileWidth,
+                position.WorldCoordinate.Y * tileHeight
+            ) * tile.Scale * globalScale;
+
+            tile.CachedBaseScale = tile.Scale * globalScale;
+
+            tile.CachedSortDepth = position.WorldCoordinate.Z + tile.Offset + position.Top;
+
+            // Resolve colors: override if set, otherwise tile definition default
+            int colorMask = tile.ColorOverrideMask;
+            if (colorMask == 0)
+            {
+                tile.CachedBg1 = tileInfo.Background1Color;
+                tile.CachedBg2 = tileInfo.Background2Color;
+                tile.CachedBase = tileInfo.BaseColor;
+                tile.CachedAccent = tileInfo.AccentColor;
+                tile.CachedBorder = tileInfo.BorderColor;
+            }
+            else
+            {
+                tile.CachedBg1 = (colorMask & (1 << 0)) != 0
+                    ? tile.Background1Color : tileInfo.Background1Color;
+                tile.CachedBg2 = (colorMask & (1 << 1)) != 0
+                    ? tile.Background2Color : tileInfo.Background2Color;
+                tile.CachedBase = (colorMask & (1 << 2)) != 0
+                    ? tile.BaseColor : tileInfo.BaseColor;
+                tile.CachedAccent = (colorMask & (1 << 3)) != 0
+                    ? tile.AccentColor : tileInfo.AccentColor;
+                tile.CachedBorder = (colorMask & (1 << 4)) != 0
+                    ? tile.BorderColor : tileInfo.BorderColor;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Builds draw cache entries for visible tiles and writes them to the ChunkRegistry.
+    /// Uses the same visibility rules as DrawSystem (space mask culling).
+    /// </summary>
+    private static void PopulateDrawCache(
+        ref Position position,
+        ref GraphicalTileList graphicalTileList,
+        ChunkRegistry registry)
+    {
+        const int MiddleMaskCheck =
+            (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3)
+            | (1 << 6) | (1 << 7) | (1 << 8) | (1 << 9);
+
+        bool hasMiddleExposure = (position.SpaceMask & MiddleMaskCheck) != 0;
+        bool aboveIsOpen = (position.SpaceMask & (1 << 4)) != 0;
+
+        // Fully buried — no visible tiles
+        if (!hasMiddleExposure && !aboveIsOpen)
+        {
+            registry.UpdateDrawCache(position.WorldCoordinate, ReadOnlySpan<DrawCacheEntry>.Empty);
+            return;
+        }
+
+        int lastIndex =
+            graphicalTileList.ActiveTileMask == 0
+                ? -1
+                : 31 - System.Numerics.BitOperations.LeadingZeroCount(
+                    (uint)graphicalTileList.ActiveTileMask);
+
+        // Stack-allocate entries buffer (max 9 tiles)
+        Span<DrawCacheEntry> entries = stackalloc DrawCacheEntry[GraphicalTileList.MaxTiles];
+        int entryCount = 0;
+
+        int mask = graphicalTileList.ActiveTileMask;
+        while (mask != 0)
+        {
+            int i = System.Numerics.BitOperations.TrailingZeroCount(mask);
+            mask &= mask - 1;
+
+            bool isTop = (i == lastIndex);
+            if (isTop && !aboveIsOpen) continue;
+            if (!isTop && !hasMiddleExposure) continue;
+
+            ref var tile = ref graphicalTileList.Tiles[i];
+            ref var entry = ref entries[entryCount++];
+
+            entry.BasePosition = tile.CachedBasePosition;
+            entry.RawZ = position.WorldCoordinate.Z + tile.Offset;
+            entry.SortDepth = tile.CachedSortDepth;
+            entry.BaseScale = tile.CachedBaseScale;
+            entry.Rotation = tile.CachedRotation;
+            entry.BorderMask = tile.BorderMask;
+            entry.BorderWidth = tile.BorderWidth;
+            entry.EntityZ = position.WorldCoordinate.Z;
+            entry.SourceRect = tile.CachedSourceRect;
+            entry.Bg1 = tile.CachedBg1;
+            entry.Bg2 = tile.CachedBg2;
+            entry.Base = tile.CachedBase;
+            entry.Accent = tile.CachedAccent;
+            entry.Border = tile.CachedBorder;
+        }
+
+        registry.UpdateDrawCache(position.WorldCoordinate, entries.Slice(0, entryCount));
     }
 }

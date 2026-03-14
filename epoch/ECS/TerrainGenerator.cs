@@ -52,14 +52,14 @@ public sealed class TerrainGenerator : IChunkGenerator
             // stone
             for (int z = 0; z < dirtStart; z++)
             {
-                GlobalContext.EntityManager.SpawnTerrain(17, new Vector3(bx, by, z));
+                GlobalContext.EntityManager.SpawnTerrain(15, new Vector3(bx, by, z));
                 DirtyNeighbors(new Vector3(bx, by, z));
                 budget--;
             }
             // dirt
             for (int z = dirtStart; z < height; z++)
             {
-                GlobalContext.EntityManager.SpawnTerrain(16, new Vector3(bx, by, z));
+                GlobalContext.EntityManager.SpawnTerrain(15, new Vector3(bx, by, z));
                 DirtyNeighbors(new Vector3(bx, by, z));
                 budget--;
             }

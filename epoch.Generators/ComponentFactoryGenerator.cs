@@ -217,17 +217,12 @@ public class ComponentFactoryGenerator : IIncrementalGenerator
         {
             if (ShouldUseCustomFactory(comp))
             {
-                // GraphicalTileList needs array cloning; Composite types are uncacheable
                 if (comp.Name == "GraphicalTileList")
                 {
-                    sb.AppendLine($"                case {comp.ToDisplayString()} val:");
-                    sb.AppendLine("                {");
-                    sb.AppendLine($"                    var clone = val;");
+                    // Inline buffer: struct copy = deep copy, no special cloning needed
                     sb.AppendLine(
-                        "                    if (val.Tiles != null) clone.Tiles = (epoch.ECS.GraphicalTile[])val.Tiles.Clone();"
+                        $"                case {comp.ToDisplayString()} val: return val;"
                     );
-                    sb.AppendLine("                    return clone;");
-                    sb.AppendLine("                }");
                 }
                 else
                 {

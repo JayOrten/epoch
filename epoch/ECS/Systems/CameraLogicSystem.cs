@@ -1,3 +1,4 @@
+using System;
 using Arch.Core;
 using Arch.Core.Extensions;
 using epoch.Utilities;
@@ -13,15 +14,10 @@ namespace epoch.ECS;
 /// </summary>
 public sealed class CameraLogicSystem : SystemBase<GameTime>
 {
-    private float smoothTime = 0.45f; // Time to move camera to target (player)
-    private float zoomSpeed = 0.01f; // Speed of zooming
-    private float lookSpeed = 15.0f; // Speed of looking around
-    private float clampLength = 500.0f; // Max length of look direction
-
     private Vector2 _camVelocity;
     private Vector2 _leadOffset;
-    private float _leadRampUp = 1.0f; // How fast the lead engages
-    private float _leadRampDown = 3.0f; // How fast the lead disengages (slower = gentler snap-back)
+    private float _rotationVelocity;
+    private float _elevationVelocity;
 
     public CameraLogicSystem(World world)
         : base(world) { }
@@ -55,15 +51,17 @@ public sealed class CameraLogicSystem : SystemBase<GameTime>
             }
         }
 
-        float rampSpeed = (targetLead != Vector2.Zero) ? _leadRampUp : _leadRampDown;
+        var tuning = TuningConfig.Instance;
+        float rampSpeed = (targetLead != Vector2.Zero) ? tuning.LeadRampUp : tuning.LeadRampDown;
         _leadOffset = Vector2.Lerp(_leadOffset, targetLead, rampSpeed * delta);
         if (Vector2.DistanceSquared(_leadOffset, targetLead) < 0.5f)
             _leadOffset = targetLead;
 
+        float tileWorldSize =
+            GlobalContext.GlobalScale * GlobalContext.TileManager.Tileset.TileHeight;
         Vector2 playerPosition =
-            (playerGridPos + _leadOffset)
-            * GlobalContext.GlobalScale
-            * GlobalContext.TileManager.Tileset.TileHeight;
+            (playerGridPos + _leadOffset) * tileWorldSize
+            + new Vector2(tileWorldSize * 0.5f, tileWorldSize * 0.5f);
 
         Vector2 targetPosition =
             playerPosition
@@ -80,7 +78,7 @@ public sealed class CameraLogicSystem : SystemBase<GameTime>
                 cameraState.Position,
                 targetPosition,
                 ref _camVelocity,
-                smoothTime,
+                tuning.CameraSmoothTime,
                 float.MaxValue,
                 delta
             );
@@ -91,27 +89,29 @@ public sealed class CameraLogicSystem : SystemBase<GameTime>
             _camVelocity = Vector2.Zero;
         }
 
-        // Apply zoom
+        // Apply zoom — scale delta by current zoom so it feels uniform across zoom levels
         float zoomChange = GlobalContext.CameraEntity.Get<CameraInput>().ZoomChange;
-        GlobalContext.CameraEntity.Get<CameraState>().ZoomAmount += (zoomChange * zoomSpeed);
-        GlobalContext.CameraEntity.Get<CameraInput>().ZoomChange = 0; // Reset after applying
+        float currentZoom = MathF.Max(GlobalContext.Camera.Zoom, 0.01f);
+        GlobalContext.CameraEntity.Get<CameraState>().ZoomAmount += zoomChange * tuning.ZoomSpeed * currentZoom;
+        GlobalContext.CameraEntity.Get<CameraInput>().ZoomChange = 0;
 
-        // Apply Look Direction
-        Vector2 currentLookDirection = GlobalContext.CameraEntity.Get<CameraState>().LookDirection;
-        Vector2 lookChange = GlobalContext.CameraEntity.Get<CameraInput>().LookChange;
+        // Apply Rotation — exponential velocity decay gives natural momentum on input/release
+        float rotationInput = GlobalContext.CameraEntity.Get<CameraInput>().RotationChange;
+        float targetRotVel = rotationInput * tuning.RotationSpeed;
+        _rotationVelocity += (targetRotVel - _rotationVelocity) * (1f - MathF.Exp(-tuning.RotationSmoothTime * delta));
+        cameraState.Rotation += _rotationVelocity * delta;
+        GlobalContext.CameraEntity.Get<CameraInput>().RotationChange = 0;
 
-        // 1. Calculate the tentative new position
-        Vector2 newLook = currentLookDirection + (lookChange * lookSpeed);
-
-        // 2. CIRCULAR CLAMP
-        // We check LengthSquared() because it is faster than Length() (avoids square root)
-        if (newLook.LengthSquared() > clampLength * clampLength)
-        {
-            // Normalize gets the direction (length of 1), then we multiply by radius
-            newLook = Vector2.Normalize(newLook) * clampLength;
-        }
-
-        GlobalContext.CameraEntity.Get<CameraState>().LookDirection = newLook;
+        // Apply Elevation (VP distance) — same momentum model as rotation
+        float elevationInput = GlobalContext.CameraEntity.Get<CameraInput>().ElevationChange;
+        float targetElevVel = elevationInput * tuning.ElevationSpeed;
+        _elevationVelocity += (targetElevVel - _elevationVelocity) * (1f - MathF.Exp(-tuning.ElevationSmoothTime * delta));
+        cameraState.VpDistance = MathHelper.Clamp(
+            cameraState.VpDistance + _elevationVelocity * delta,
+            tuning.MinVpDistance,
+            tuning.MaxVpDistance
+        );
+        GlobalContext.CameraEntity.Get<CameraInput>().ElevationChange = 0;
 
         // TODO: add previous state update for different refresh rates?
     }

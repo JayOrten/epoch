@@ -16,7 +16,12 @@ float2 ViewportSize;  // Size of the viewport in pixels
 float2 VanishingPoint; // World-pixel coords of vanishing point, set per-frame
 float DepthStrength;   // Perspective warp strength (e.g. 0.06), set per-frame
 float CameraZoom;
-// float GameTime;
+float2 StackDirection; // Unit vector for ortho stack direction (rotates with camera)
+float StackHeight;     // Pixels per depth-unit for ortho stacking
+float VpBlend;         // 0 = pure ortho stack, 1 = pure VP warp
+float DisplayPlayerZ;  // Smoothed player Z for depth computation
+float PlayerZLevel;    // Actual player Z level for layer difference
+float ZScale;          // Elevation compression factor
 
 Texture2D SpriteTexture;
 sampler TextureSampler : register(s0)
@@ -180,13 +185,15 @@ PixelInput MainVS(VertexInput v, InstanceInput i)
 
     // 1. UNPACK INSTANCE DATA
     float2 I_Position = i.I_TransformData.xy;
-    float I_Depth = i.I_TransformData.z;
+    // Depth field contains raw Z (entity Z + tile offset); shader computes perspective depth
+    float I_Depth = (i.I_TransformData.z - DisplayPlayerZ) * ZScale;
     float I_Scale = i.I_TransformData.w;
 
     float I_Rotation = radians(i.I_PropData.x);
     float I_BorderMask = i.I_PropData.y;
     float I_BorderWidth = i.I_PropData.z;
-    float I_LayerDifference = i.I_PropData.w;
+    // LayerDifference field contains raw entity Z; shader computes layer difference
+    float I_LayerDifference = i.I_PropData.w - PlayerZLevel;
 
     float I_RectangleX = i.I_RectXY.x;
     float I_RectangleY = i.I_RectXY.y;
@@ -209,14 +216,18 @@ PixelInput MainVS(VertexInput v, InstanceInput i)
     // C. Translation to world position
     v.V_Position.xy += I_Position;
 
-    // C2. Perspective warp: scale position relative to vanishing point.
-    // Uses tanh (via exp) to bound extreme depths — behaves like the linear model
-    // near depth=0 but saturates rather than exploding or collapsing.
-    // tanh(x) = (e^2x - 1) / (e^2x + 1), approximates x for small x.
+    // C2. Blended VP warp + orthographic stack offset.
+    // VP offset: convergence toward vanishing point (tanh-bounded)
     float depthInput = I_Depth * DepthStrength;
     float e2x = exp(2.0 * depthInput);
     float perspectiveScale = 1.0 + (e2x - 1.0) / (e2x + 1.0);
-    v.V_Position.xy = VanishingPoint + (v.V_Position.xy - VanishingPoint) * perspectiveScale;
+    float2 vpOffset = (v.V_Position.xy - VanishingPoint) * (perspectiveScale - 1.0);
+
+    // Ortho offset: flat directional displacement per depth level
+    float2 stackOffset = I_Depth * StackHeight * StackDirection;
+
+    // Blend and apply
+    v.V_Position.xy += lerp(stackOffset, vpOffset, VpBlend);
 
     // E. Depth Adjustment
     // v.V_Position.z = 0.0;
